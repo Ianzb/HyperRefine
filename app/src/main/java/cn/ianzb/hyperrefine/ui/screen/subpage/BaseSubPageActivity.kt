@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import cn.ianzb.hyperrefine.AppSettings
 import cn.ianzb.hyperrefine.LocaleHelper
-import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.ui.component.SubPageScaffold
 import cn.ianzb.hyperrefine.ui.theme.AppTheme
 import cn.ianzb.hyperrefine.ui.util.applyWindowBackground
@@ -28,8 +27,12 @@ abstract class BaseSubPageActivity : ComponentActivity() {
     @get:StringRes
     protected abstract val titleRes: Int
 
-    /** 是否在顶栏右上角显示「快捷操作」入口（系统界面热重载 / 重启）。 */
-    protected open val showSystemUiActions: Boolean = false
+    /**
+     * 顶栏右侧扩展槽（如「重启应用」入口）。
+     *
+     * 默认不显示；子类可覆写返回 `{ QuickActionsAction(packages) }` 等组件。
+     */
+    protected open val topBarActions: (@Composable () -> Unit)? = null
 
     @Composable
     protected abstract fun SubPageContent(
@@ -62,11 +65,7 @@ abstract class BaseSubPageActivity : ComponentActivity() {
                     title = stringResource(titleRes),
                     isBlurEnabled = settings.isBlurEnabled,
                     onBack = { finish() },
-                    topBarActions = if (showSystemUiActions) {
-                        { cn.ianzb.hyperrefine.ui.component.SystemUiQuickActionsAction() }
-                    } else {
-                        null
-                    },
+                    topBarActions = topBarActions,
                 ) { padding ->
                     SubPageContent(settings.isBlurEnabled, padding)
                 }

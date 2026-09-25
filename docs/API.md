@@ -32,7 +32,7 @@
 | **JavaHook** | ART 方法调用 | `XposedModule` | `HookHelper` + `BaseHook` | `META-INF/xposed/java_init.list` |
 | **NativeHook** | 机器码 / 符号 / 函数表 | `native_init` | `NativeHookHelper` + `BaseNativeHook` | `META-INF/xposed/native_init.list` |
 
-两者共用同一套「开关配置、状态上报、热重载、安全模式、版本筛选」链路；区别仅在于 Hook 代码写在 Java/Kotlin 还是原生库。选择依据见 [原生 Hook 指南 · 两种 Hook 的区别](NATIVE_HOOK.md#0-两种-hook-的区别)。
+两者共用同一套「开关配置、状态上报、安全模式、版本筛选」链路；区别仅在于 Hook 代码写在 Java/Kotlin 还是原生库。选择依据见 [原生 Hook 指南 · 两种 Hook 的区别](NATIVE_HOOK.md#0-两种-hook-的区别)。
 
 ### 1.1 `HookHelper`
 
@@ -52,10 +52,10 @@ object HookHelper {
         hooker: Hooker,
     ): HookHandle
 
-    fun hookBefore(executable: Executable, priority: Int = ..., callback: (HookParam) -> Unit): HookHandle
-    fun hookAfter(executable: Executable, priority: Int = ..., callback: (HookParam) -> Unit): HookHandle
-    fun hookReplace(executable: Executable, priority: Int = ..., callback: (HookParam) -> Any?): HookHandle
-    fun hookClassInitializer(clazz: Class<*>, priority: Int = ..., callback: (HookParam) -> Unit): HookHandle
+    fun hookBefore(executable: Executable, priority: Int = XposedInterface.PRIORITY_DEFAULT, callback: (HookParam) -> Unit): HookHandle
+    fun hookAfter(executable: Executable, priority: Int = XposedInterface.PRIORITY_DEFAULT, callback: (HookParam) -> Unit): HookHandle
+    fun hookReplace(executable: Executable, priority: Int = XposedInterface.PRIORITY_DEFAULT, callback: (HookParam) -> Any?): HookHandle
+    fun hookClassInitializer(clazz: Class<*>, priority: Int = XposedInterface.PRIORITY_DEFAULT, callback: (HookParam) -> Unit): HookHandle
 
     // 查找并挂载
     fun findAndHookMethod(clazz: Class<*>, methodName: String, vararg parameterTypes: Class<*>, callback: (HookParam) -> Unit): HookHandle
@@ -92,7 +92,7 @@ class HookParam(
 ```kotlin
 object HookRegistry {
     fun register(handle: HookHandle)
-    fun unhookAll()     // 热重载 / 卸载时统一调用
+    fun unhookAll()     // 卸载时统一调用
     fun size(): Int
 }
 ```
@@ -106,7 +106,7 @@ object Reflect {
     fun findClass(name: String, classLoader: ClassLoader? = null): Class<*>
     fun findClassIfExists(name: String, classLoader: ClassLoader? = null): Class<*>?
     fun findMethod(clazz: Class<*>, name: String, vararg parameterTypes: Class<*>): Method
-    fun findMethodIfExists(...): Method?
+    fun findMethodIfExists(clazz: Class<*>, name: String, vararg parameterTypes: Class<*>): Method?
     fun findField(clazz: Class<*>, name: String): Field
     fun callMethod(instance: Any, name: String, vararg args: Any?): Any?
     fun callStaticMethod(clazz: Class<*>, name: String, vararg args: Any?): Any?
@@ -128,7 +128,10 @@ abstract class BaseHook {
     open val key: String            // 配置键 / 状态标识，默认类名
     open fun useDexKit(): Boolean = false
     open fun initDexKit(): Boolean = true
-    abstract fun init()
+    open fun init()
+
+    // 当前目标包信息，由 BaseLoad 在安装前注入，可在 init() 中读取（如 target.classLoader）
+    protected lateinit var target: PackageTarget
 
     // DexKit 辅助（仅在 initDexKit 中调用）
     protected fun <T> requiredMember(key: String, finder: IDexKit): T
@@ -185,8 +188,6 @@ class PackageTarget(
 | `onModuleLoaded` | 初始化 `HookHelper` / `HookPrefs` / `HookStatusWriter` |
 | `onPackageReady` | 按包分发 `BaseLoad.onPackageReady`（开机 / 冷启动即应用） |
 | `onSystemServerStarting` | 预留 system_server 支持 |
-| `onHotReloading` | 刷新状态、保存目标信息到 extras，返回 `true` 允许热重载 |
-| `onHotReloaded` | 卸载旧 hook、重新初始化并重装 |
 
 ### 1.10 原生 Hook 封装
 
@@ -202,11 +203,10 @@ data class NativeLibrarySpec(
 
 object NativeHookHelper {
     fun load(spec: NativeLibrarySpec): Boolean
-    fun load(libraryName: String, key: String = ..., required: Boolean = true): Boolean
+    fun load(libraryName: String, key: String = libraryName, required: Boolean = true): Boolean
     fun loaded(): List<NativeLibrarySpec>
     fun isLoaded(libraryName: String): Boolean
     fun size(): Int
-    fun reset()        // 热重载 / 新代码代次（so 无法真正卸载）
 }
 
 abstract class BaseNativeHook {
@@ -221,7 +221,7 @@ abstract class BaseNativeHook {
 `BaseLoad` 新增声明入口（与 `initHook` 对称）：
 
 ```kotlin
-initNativeHook(hook: BaseNativeHook, enabled: Boolean)
+fun initNativeHook(hook: BaseNativeHook, enabled: Boolean)
 ```
 
 用法：
@@ -306,7 +306,7 @@ override val variants = listOf(
 
 hook 代码内需要按设备分支时，直接读 `DeviceContext.current.type`。
 
-**手动覆盖**：设置页「模块 → 当前设备类型」提供 `默认（<模块判定>）` / `手机` / `平板` / `折叠屏` 四项。覆盖值存于配置键 `device_type`（`auto` / `phone` / `pad` / `fold`），经 `PrefsStore` 同步到远程偏好，hook 进程由 `DeviceContext.current` 读取生效；`默认` 即使用 `DeviceContext.detected`。修改后需重启 / 热重载目标进程。
+**手动覆盖**：设置页「模块 → 当前设备类型」提供 `默认（<模块判定>）` / `手机` / `平板` / `折叠屏` 四项。覆盖值存于配置键 `device_type`（`auto` / `phone` / `pad` / `fold`），经 `PrefsStore` 同步到远程偏好，hook 进程由 `DeviceContext.current` 读取生效；`默认` 即使用 `DeviceContext.detected`。修改后需重启目标进程。
 
 ---
 
@@ -461,7 +461,12 @@ object PrefsStore {
     fun init(context: Context)
     fun attachRemote(remotePrefs: SharedPreferences?)  // 服务绑定后调用，并同步本地→远程
     fun syncToRemote()
-    fun getBoolean/getInt/getLong/getFloat/getString/getStringSet(key, default): ...
+    fun getBoolean(key: String, default: Boolean = false): Boolean
+    fun getInt(key: String, default: Int = 0): Int
+    fun getLong(key: String, default: Long = 0L): Long
+    fun getFloat(key: String, default: Float = 0f): Float
+    fun getString(key: String, default: String? = null): String?
+    fun getStringSet(key: String, default: Set<String> = emptySet()): Set<String>
     fun put(key: String, value: Any?)                  // 写物理存储 + 远程偏好
     fun remove(key: String)
     fun getAll(): Map<String, Any?>
@@ -504,7 +509,11 @@ object HookPrefs {
     const val GROUP = "hyperrefine_remote"
     fun init(remote: SharedPreferences)
     fun getBoolean(key: String, defaultValue: Boolean = false): Boolean
-    fun getString/getInt/getLong/getFloat/getStringSet(...)
+    fun getInt(key: String, defaultValue: Int = 0): Int
+    fun getLong(key: String, defaultValue: Long = 0L): Long
+    fun getFloat(key: String, defaultValue: Float = 0f): Float
+    fun getString(key: String, defaultValue: String? = null): String?
+    fun getStringSet(key: String, defaultValue: Set<String> = emptySet()): Set<String>
     fun getAll(): Map<String, *>
 }
 ```
@@ -531,8 +540,6 @@ object XposedServiceManager {
     fun isInScope(packageName: String): Boolean
     fun ensureScope(packages: List<String>, onResult: ((Boolean, String?) -> Unit)? = null)
     fun removeScope(packages: List<String>)
-    fun hotReload(packages: List<String>, onResult: ((String) -> Unit)? = null)
-    fun runningTargets(): List<HookedTarget>
 }
 ```
 
@@ -576,10 +583,12 @@ object AppRestarter {
     fun isSystemPackage(packageName: String): Boolean   // system / android / system_server
     fun restart(context: Context, packageName: String): Boolean  // 无 Root 返回 false
     fun reboot(): Boolean
+    fun restartSystemUi(processName: String = "com.android.systemui"): Boolean
 }
 ```
 
 - 普通应用：应用在运行时才执行 Root 下 `am force-stop <pkg>` 并拉起启动 Activity；未运行则不更改、不打开。
+- 系统界面（`com.android.systemui`）：`restart()` 内部改走 `restartSystemUi()`，结束进程由系统自动拉起（`pkill -f` → `killall` → `am force-stop` 兜底），**不触发系统重启**。
 - 系统目标（`system` / `android` / `system_server`）：执行 `reboot`。
 - 无 Root 时返回 `false`，调用方据此提示用户。
 
@@ -627,9 +636,10 @@ object SafeModeReader {
 | `HookRadioCard` | `CheckboxPreference`(End) | 右侧复选框表示选中项（单选语义） |
 | `HookSliderCard` | `SliderPreference` | 主开关控制显隐与生效，支持整数/小数/范围，数值类型说明居左、当前值紧邻箭头，点击弹出输入对话框 |
 | `HookTextCard` | `ArrowPreference` + `WindowDialog` | 点击弹出文本输入对话框 |
-| `HookPackageListCard` | `ArrowPreference` + `WindowDialog` | 包名列表输入（多行），驱动页面右上角「快捷操作」按钮 |
+| `HookPackageListCard` | `ArrowPreference` + `WindowDialog` | 包名列表输入（多行），驱动页面右上角「重启应用」按钮 |
 | `HookOptionView` | 分发器 | 按 `OptionSpec.type` 渲染对应组件 |
-| `HookOptionsPage` | `Scaffold` + `SearchBar` | 通用组件页面（顶栏 + 搜索 + 分区列表） |
+| `HookOptionsPage` | `Scaffold` + `SearchBar` | 通用功能页面（顶栏 + 搜索 + 分区列表 + 子页面搜索） |
+| `HookSubPage` | — | 子页面搜索入口：把子页面（支持多级嵌套）内的功能并入父页搜索 |
 | `HookSectionCard` | `SmallTitle` + `Card` | 组件分区卡片容器 |
 
 ### 5.2 组件签名
@@ -663,7 +673,7 @@ fun ensureScopeFor(spec: OptionSpec)
 - `rememberDependencyEnabled`：根据 `spec.dependsOn` / `spec.dependsOnValue` 返回是否启用；依赖项不满足时组件 `enabled = false`。
 - `rememberHookStatus`：计算当前状态（成功 / 失败 / 未应用）；若 `spec.demoStatus != null` 则直接返回该值。
 - `HookStatusTitleColor`：返回标题 `titleColor`（成功=绿色 / 失败=红色），未应用时返回默认标题色；零额外占位。
-- `hookSectionTitle`：把 `HookSection` 拼成 `中文（English）` 标题。
+- `hookSectionTitle`：渲染分区标题；默认仅 `titleRes`，`titleEn` 非空时拼成 `中文（English）`（仅示例 / API 展示用，实际功能页应省略 `titleEn`）。
 - `ensureScopeFor`：为 `spec.targetPackages` 中未授权的包申请作用域。
 
 **状态判定顺序（`rememberHookStatus`）：**
@@ -679,23 +689,32 @@ fun ensureScopeFor(spec: OptionSpec)
 
 ### 5.4 通用页面 `HookOptionsPage`
 
-一次性获得「顶栏 + 可折叠搜索栏 + 分区列表」的完整布局，搜索结果为可点击列表项，点击后收起搜索并滚动定位到对应分区（不内联渲染组件）。
+一次性获得「顶栏 + 可折叠搜索栏 + 分区列表」的完整布局，搜索结果为可点击列表项，点击后收起搜索并滚动定位到对应分区（不内联渲染组件）；子页面（含多级嵌套）功能可通过 `subPages` 并入同一搜索。
 
 ```kotlin
 data class HookSection(
-    val titleRes: Int,               // 分区标题（中文描述）字符串资源
+    val titleRes: Int,               // 分区标题字符串资源（默认单语言）
     val specs: List<OptionSpec>,     // 分区内配置项（按顺序渲染）
-    val titleEn: String = "",        // 英文组件名，以「中文（English）」拼接
+    val titleEn: String = "",        // 可选英文组件名；非空时拼成「中文（English）」，仅示例展示用
+)
+
+data class HookSubPage(
+    val titleRes: Int,               // 子页面标题，作为搜索结果摘要（多级路径）的一部分
+    val specs: List<OptionSpec>,     // 该层子页面直接包含的配置项（并入搜索）
+    val onOpen: () -> Unit,          // 点击搜索结果时打开该子页面
+    val subPages: List<HookSubPage> = emptyList(), // 更深一层子页面，递归并入搜索
 )
 
 @Composable
 fun HookOptionsPage(
     title: String,
     sections: List<HookSection>,
+    subPages: List<HookSubPage> = emptyList(),          // 子页面功能并入搜索
     isBlurEnabled: Boolean = true,
     extraBottomPadding: Dp = 0.dp,
     onArrowClick: (OptionSpec) -> Unit = {},
-    customActionPackages: List<String> = emptyList(),   // 额外注入快捷操作包名
+    customActionPackages: List<String> = emptyList(),   // 额外注入重启应用包名
+    topBarActions: (@Composable () -> Unit)? = null,     // 顶栏右侧扩展槽
 )
 
 @Composable
@@ -706,17 +725,18 @@ fun HookSectionCard(
 )
 ```
 
-分区标题统一渲染为 **`中文（English）`** 单行标题（例如 `开关卡片（SwitchPreference）`），由 `hookSectionTitle(section)` 生成；不再使用副标题行。
+分区标题默认**单语言**（仅 `titleRes`）。`titleEn` 仅为模板示例保留，用 `hookSectionTitle(section)` 可拼出 `中文（English）`（例如 `开关卡片（SwitchPreference）`）；**实际功能页不要传 `titleEn`**，英文组件名以本文档 5.1 为准。
 
 行为：
-- 自动把分区内全部 `OptionSpec` 注册到 `OptionRegistry`，标题接入全局搜索。
+- 自动把本页分区与 `subPages`（**含多级嵌套 `HookSubPage.subPages`**）内的全部 `OptionSpec` 注册到 `OptionRegistry`，标题接入全局搜索。
 - 搜索栏基于 Miuix `SearchBar` + `InputField`（胶囊输入框、清除按钮、取消按钮）。
-- 搜索结果为可点击列表项（标题 = 配置项标题，摘要 = 所属分区标题）；点击后收起搜索、清空输入并滚动定位到对应分区，**不内联渲染组件**。
-- 结果按分区去重（同一分区只显示一条），并包含通过 `masterKey` 引用的配置项（如滑块主开关）。
+- 搜索结果为可点击列表项（标题 = 配置项标题，摘要 = 所属分区 / 子页面多级路径「父 / 子」）；点击后收起搜索、清空输入：本页分区则滚动定位，子页面功能则调用对应层级 `HookSubPage.onOpen()` **直接打开目标页面**，**不内联渲染组件**。
+- 结果按目标去重（同一分区 / 子页面只显示一条），并包含通过 `masterKey` 引用的配置项（如滑块主开关）。
 - 箭头卡片点击回调 `onArrowClick(spec)`。
-- **快捷操作**：当分区内存在 `PACKAGE_LIST` 选项，或传入 `customActionPackages` 时，顶栏右上角出现「更多」按钮。点击弹出 `QuickActionDialog`，对汇总后的包名批量执行「热重载」「重启」（重启需 Root），并提供「全部热重载」。
+- **重启应用**：当分区内存在 `PACKAGE_LIST` 选项，或传入 `customActionPackages` 时，顶栏右上角出现「重启」图标按钮。点击弹出 `QuickActionDialog`：每行右侧勾选应用（默认全选），底部左侧「全选 / 全不选」、右侧「重启」（无勾选时禁用），对选中包批量重启（需 Root）。
   - 包名来源 = 全部 `PACKAGE_LIST` 选项解析结果 + `customActionPackages`，去重。
   - 二次开发可通过 `customActionPackages` 直接暴露任意自定义应用，无需用户手动输入。
+- **顶栏扩展**：`topBarActions` 渲染在自动生成的「重启应用」按钮之前；子页面可用 `QuickActionsAction(packages)` 注入同样式的右上角入口（见 5.6）。
 
 ### 5.5 完整使用示例
 
@@ -748,21 +768,36 @@ val featureLevel = OptionSpec(
 ```kotlin
 @Composable
 fun MyFeaturePage(isBlurEnabled: Boolean, extraBottomPadding: Dp) {
+    val context = LocalContext.current
     val sections = listOf(
         HookSection(
             titleRes = R.string.section_switch,
-            titleEn = "SwitchPreference",
             specs = listOf(featureSwitch),
         ),
         HookSection(
             titleRes = R.string.section_dropdown,
-            titleEn = "WindowDropdownPreference",
             specs = listOf(featureLevel),
+        ),
+    )
+    // 子页面功能并入本页搜索（支持多级嵌套）；命中即打开对应层级页面。
+    val subPages = listOf(
+        HookSubPage(
+            titleRes = R.string.my_subpage,
+            specs = listOf(featureSub),
+            onOpen = { context.startActivity(Intent(context, MySubPageActivity::class.java)) },
+            subPages = listOf(
+                HookSubPage(
+                    titleRes = R.string.my_deep_subpage,
+                    specs = listOf(featureDeep),
+                    onOpen = { context.startActivity(Intent(context, MyDeepSubPageActivity::class.java)) },
+                ),
+            ),
         ),
     )
     HookOptionsPage(
         title = stringResource(R.string.my_feature_page),
         sections = sections,
+        subPages = subPages,
         isBlurEnabled = isBlurEnabled,
         extraBottomPadding = extraBottomPadding,
         onArrowClick = { /* 打开二级页面 */ },
@@ -783,7 +818,7 @@ Card {
 
 ```kotlin
 HookSectionCard(
-    HookSection(R.string.section_switch, listOf(featureSwitch), "SwitchPreference"),
+    HookSection(R.string.section_switch, listOf(featureSwitch)),
 ) {
     HookSwitchCard(featureSwitch)
 }
@@ -797,14 +832,47 @@ HookSectionCard(
 |---|---|---|
 | 卡片水平内边距 | `Modifier.padding(horizontal = 12.dp)` | 所有卡片统一左右 12dp |
 | 卡片间距 | `Modifier.padding(bottom = 12.dp)` | **统一用 `bottom`，不要用 `top`**；避免与标题上间距叠加导致不一致 |
-| 分组标题 | `SmallTitle(text = hookSectionTitle(section))` | 单行 `中文（English）`；**不要额外加 `Modifier.padding(top = ...)`**，`SmallTitle` 默认 `insideMargin = PaddingValues(28.dp, 8.dp)` 已提供标准间距 |
+| 分组标题 | `SmallTitle(text = hookSectionTitle(section))` | 单语言标题（仅 `titleRes`）；`titleEn` 仅示例展示用；**不要额外加 `Modifier.padding(top = ...)`**，`SmallTitle` 默认 `insideMargin = PaddingValues(28.dp, 8.dp)` 已提供标准间距 |
 | 组件行内边距 | `BasicComponentDefaults.InsideMargin`（16dp） | 由 Miuix 组件默认提供，不要覆盖 |
 | 页面顶/底内边距 | 使用 `Scaffold` 的 `innerPadding` + `extraBottomPadding` | 不要额外加固定 top 间距 |
 | 顶部搜索栏间距 | `Modifier.padding(top = 12.dp, bottom = 8.dp)` | 搜索栏与上方顶栏、下方首个分区的间距 |
 | 状态提示 | 标题颜色 `titleColor` | 成功=绿色标题，失败=红色标题，未应用保持默认色 |
 | 二级页面 | 继承 `BaseSubPageActivity`，内容用 `SubPageScaffold` 提供的 `contentPadding` | 不要自行处理系统栏 / 顶栏间距 |
 
-**标题规范（强制）：** 分区标题必须为 **单行 `中文（English）`**（例如 `开关卡片（SwitchPreference）`），不得拆成「英文标题 + 中文副标题」两行；由 `HookSection(titleRes, specs, titleEn)` + `hookSectionTitle()` 统一生成。
+**标题规范（强制）：** 实际功能页的分区标题使用**单一语言**（仅 `HookSection.titleRes`）。`titleEn` 仅为模板示例保留：非空时由 `HookSection(titleRes, specs, titleEn)` + `hookSectionTitle()` 拼成单行 `中文（English）`（例如 `开关卡片（SwitchPreference）`），用于展示 API 英文组件名；无论哪种情形都不得拆成「英文标题 + 中文副标题」两行。
+
+**入口卡片文案（强制）：** 作为**二级菜单入口**的卡片（`HookArrowCard` 跳转二级页、`HookTextCard` / `HookPackageListCard` 弹出对话框，以及二级页面里指向更深一层的入口等）按以下要求书写：
+
+- **尽量不加小标题（`summaryRes`，即副标题）**：入口本身已通过箭头 / 点击语义表达「可进入」，不要再叠加一行解释；确需提示时才写极短补充（如「需 Root」）。
+- **大标题（`titleRes`）用总结性名词短语**：如「高级选项」「重启应用列表」；**不要**写成描述性句子（如「输入包名后可在右上角批量重启」）。
+- 描述性、说明性内容放到**二级页面内部**，不放在入口卡片上。
+
+> 与 5.6「重启应用」对话框一致：标题固定为总结性短语（「重启应用」），且不显示小标题。
+
+**显示 / 隐藏动画（强制）：** 组件出现 / 隐藏统一使用 Miuix 标准弹簧 `MiuixExpandSpec`（`folmeSpring(damping = 1.0f, response = 0.4f)`，见 `ui/util/MiuixAnimations.kt`）：
+
+```kotlin
+AnimatedVisibility(
+    visible = showContent,
+    enter = expandVertically(animationSpec = MiuixExpandSpec),
+    exit = shrinkVertically(animationSpec = MiuixExpandSpec),
+) {
+    // 内容
+}
+```
+
+禁止使用默认 `expandVertically()` / `shrinkVertically()` 或自定义时长，以保证全局动效一致。
+
+**右上角重启样式（强制）：** 需要对目标批量「重启」时，顶栏右上角统一使用 `MiuixIcons.Refresh`（重启）图标按钮（`IconButton` + `tint = onSurface`）→ `QuickActionDialog`：
+
+- 入口：`HookOptionsPage` 在检测到 `PACKAGE_LIST` 选项或传入 `customActionPackages` 时自动生成；二级页面通过 `topBarActions = { QuickActionsAction(packages) }` 注入，不要自行实现；
+- 对话框标题固定为「重启应用」（`quick_action_title`），**不显示小标题 / `summary`**；
+- 应用列表必须用 Miuix `Card` 圆角容器包裹（可滚动，`heightIn(max = 420.dp)`），**不得**用裸 `Column` 直接平铺；
+- 列表每行用 `CheckboxPreference`：`checkboxLocation = CheckboxLocation.End`（对勾必须在应用右侧），且默认**全选**；行标题为应用名、摘要为包名（两者不同时）；
+- 底部一行：左侧「全选 / 全不选」`TextButton`（`ButtonDefaults.textButtonColors()`）——**全部勾选时显示「全不选」，否则显示「全选」**；右侧「重启」主按钮（`Button(buttonColorsPrimary)`，`enabled = 已勾选项非空`）；
+- 重启只作用于**已勾选**的包；
+- `system_server`（`system` / `android` / `system_server`）重启前弹出 `SystemRestartConfirmDialog` 二次确认；
+- `com.android.systemui` 由 `AppRestarter.restartSystemUi()` 结束进程（系统自动拉起），**不触发系统重启**。
 
 **为什么统一用 `bottom` 而不是 `top`：** 若卡片使用 `top` 间距，同时标题又带 `top` 修饰符，会导致「标题上间距」与其它页面不一致。统一由「上一张卡片的 `bottom = 12.dp` + `SmallTitle` 默认上内边距」提供间距，可保证任意页面、任意分区数量下的间距完全一致。
 
@@ -831,7 +899,7 @@ HookSectionCard(
 
 **`HookTextCard` 细则：** 主界面为一行（标题 + 当前值摘要），点击弹出与滑块一致的对话框：当前值 / 默认值同行左右显示 + `TextField` + 取消 / 恢复默认 / 确定。
 
-**状态示例：** 通过 `OptionSpec.demoStatus` 可强制指定状态，仅用于示例 / 预览。示例页 `HookStatus` 分区演示了成功 / 失败 / 未应用三种状态。
+**状态示例：** 通过 `OptionSpec.demoStatus` 可强制指定状态，仅用于示例 / 预览。功能页 `HookStatus` 分区演示了成功 / 失败 / 未应用三种状态。
 
 ---
 
@@ -847,23 +915,25 @@ fun SubPageScaffold(
     title: String,
     isBlurEnabled: Boolean,
     onBack: () -> Unit,
+    topBarActions: (@Composable () -> Unit)? = null,   // 顶栏右侧扩展槽
     content: @Composable (PaddingValues) -> Unit,
 )
 ```
 
-提供顶栏返回、背景模糊与主题统一的脚手架。
+提供顶栏返回、背景模糊与主题统一的脚手架；`topBarActions` 用于注入「重启应用」等右上角入口。
 
 ### 6.2 `BaseSubPageActivity`
 
 ```kotlin
 abstract class BaseSubPageActivity : ComponentActivity() {
     protected abstract val titleRes: Int
+    protected open val topBarActions: (@Composable () -> Unit)? = null   // 顶栏右侧扩展槽，默认不显示
     @Composable
     protected abstract fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues)
 }
 ```
 
-自动套用模块配置（主题模式、背景模糊），使用系统默认页面切换动画。子类示例：
+自动套用模块配置（主题模式、背景模糊），使用系统默认页面切换动画；`topBarActions` 会透传给 `SubPageScaffold`，子类可覆写为 `{ QuickActionsAction(listOf("com.android.systemui")) }`。子类示例：
 
 ```kotlin
 class MySubPageActivity : BaseSubPageActivity() {
@@ -885,6 +955,8 @@ class MySubPageActivity : BaseSubPageActivity() {
     android:exported="false"
     android:theme="@style/Theme.HyperRefine" />
 ```
+
+> 若希望子页面（及其嵌套子页面）内的功能也能被父页面搜索到，在父页 `HookOptionsPage(subPages = ...)` 中传入 `HookSubPage(titleRes, specs, onOpen, subPages = ...)`，子页面自身无需再放搜索栏（见 5.4）。
 
 ### 6.3 `SafeModeActivity`（安全模式页）
 
@@ -956,7 +1028,7 @@ OptionRegistry.register(spec)
 HookOptionsPage(
     title = stringResource(R.string.page_title),
     sections = listOf(
-        HookSection(R.string.section_switch, listOf(spec), "SwitchPreference"),
+        HookSection(R.string.section_switch, listOf(spec)),
     ),
 )
 
@@ -988,5 +1060,7 @@ Card { HookSwitchCard(spec) }
 | 配置系统 | `app/.../prefs/` |
 | 服务与状态 | `app/.../xposed/XposedServiceManager.kt`、`HookStatusReader.kt`、`RootHelper.kt` |
 | 组件 | `app/.../ui/component/pref/`（`HookCards.kt`、`HookDropdownCards.kt`、`HookSliderCard.kt`、`HookTextCard.kt`、`HookOptionView.kt`、`HookOptionSupport.kt`、`HookOptionsPage.kt`） |
+| 顶栏重启应用 | `app/.../ui/component/QuickActionsAction.kt` |
+| 显隐动画 | `app/.../ui/util/MiuixAnimations.kt`（`MiuixExpandSpec`） |
 | 二级页面模板 | `app/.../ui/component/SubPageScaffold.kt`、`app/.../ui/screen/subpage/BaseSubPageActivity.kt` |
-| 功能页 | `app/.../ui/screen/features/FeaturesPage.kt` |
+| 功能页 | `app/.../ui/screen/features/FeaturesPage.kt`（子页面示例 `FeatureSubPageActivity.kt`） |

@@ -19,13 +19,13 @@
 | 应用图标 | `res/drawable/ic_launcher_*.xml`、`res/mipmap-anydpi*/ic_launcher*.xml`、`colors.xml` → `ic_launcher_background` |                                                     |
 | 关于页链接 | `strings.xml` → `about_source_code_summary`、`about_telegram_summary` | 显示与跳转均使用该值                                          |
 | 版权 | `strings.xml` → `copyright` |                                                     |
-| **Based on 标注** | `strings.xml` → `about_based_on`、`README.md` 「Based on 约定」 | 保留 `Based on MiuixGuiTemplate <版本号>` 并更新为所依据的脚手架版本  |
+| **Based on 标注** | `strings.xml` → `about_based_on` | 应用内「关于」页保留 `Based on MiuixGuiTemplate <版本号>` 并更新为所依据的脚手架版本（README 无需标注） |
 | 参考与致谢 | 应用内 `LicensePage.kt` → `licenses_section_refs` | 保留对参考项目的致谢（可增不可删），文档不展开具体借鉴说明 |
 | 开源协议 | 根目录 `LICENSE`、`README.md`「许可证」、`strings.xml` → `license_lgpl*` | **须保持 LGPL-3.0（或更弱兼容的 GPL-3.0）**，见第 11 节            |
 | 许可证列表 | `ui/screen/about/LicensePage.kt` → `licenseSections` | 增删依赖库                                               |
 | 模块元数据 | `hook/src/main/resources/META-INF/xposed/{module.prop,scope.list,java_init.list}` |                                                     |
 | Hook 目标 | `hook/.../base/HookEntryRegistry.kt`、`BaseLoad` 子类 |                                                     |
-| 配置项 / 页面 | `ui/screen/examples/ExamplesPage.kt`（示例）、`OptionRegistry` |                                                     |
+| 配置项 / 页面 | `ui/screen/features/FeaturesPage.kt`（功能页）、`OptionRegistry` |                                                     |
 | 导出文件名 | `ui/screen/settings/SettingsPage.kt` → `exportLauncher.launch(...)` |                                                     |
 | 主题 / 颜色 | `res/values/themes.xml`、`res/values/colors.xml` |                                                     |
 | README / 更新日志 | `README.md`、`changelog.md` |                                                     |
@@ -107,9 +107,9 @@ android {
 
 ```xml
 <string name="about_source_code">项目地址</string>
-<string name="about_source_code_summary">https://github.com/yourname/yourmodule</string>
+<string name="about_source_code_summary">https://github.com/Ianzb/HyperRefine</string>
 <string name="about_telegram">反馈渠道</string>
-<string name="about_telegram_summary">https://t.me/yourchannel</string>
+<string name="about_telegram_summary">https://t.me/HyperRefine</string>
 <string name="copyright">© 2026 Your Name.</string>
 ```
 
@@ -158,7 +158,6 @@ com.yourname.yourmodule.hook.xposed.XposedEntry
 ```
 minApiVersion=102
 targetApiVersion=102
-autoHotReload=true
 staticScope=false
 ```
 
@@ -249,7 +248,7 @@ class MyHook : BaseHook() {
 
 ### 7.1 声明配置项
 
-在 `OptionRegistry` 注册（示例见 `ui/screen/examples/ExamplesPage.kt` 的 `exampleSpecs()`）：
+在 `OptionRegistry` 注册（示例见 `ui/screen/features/FeaturesPage.kt` 的 `featureSpecs()`）：
 
 ```kotlin
 OptionSpec(
@@ -264,24 +263,52 @@ OptionSpec(
 
 ### 7.2 构建页面
 
-使用通用页面组件（详见 [API 文档](API.md) 第 5 节）：
+使用通用页面组件（详见 [API 文档](API.md) 第 5 节）。**小标题用单语言**（只传 `titleRes`，不要传 `titleEn`）：
 
 ```kotlin
 HookOptionsPage(
     title = stringResource(R.string.tab_features),
     sections = listOf(
-        HookSection(R.string.section_switch, listOf(spec), "SwitchPreference"),
+        HookSection(R.string.section_switch, listOf(spec)),
     ),
     isBlurEnabled = isBlurEnabled,
     extraBottomPadding = extraBottomPadding,
 )
 ```
 
-### 7.3 替换 / 删除示例页
+子页面内的功能通过 `HookSubPage` 并入父页搜索（子页面自身无需再放搜索栏）；多级页面可继续嵌套 `subPages`，搜索可达并直接打开对应层级：
 
-- 示例页 `ui/screen/examples/ExamplesPage.kt` 可整体替换为你的功能页；
-- 若删除示例页，请同步更新 `MainActivity.kt` 的标签页列表（当前为 主页 / 示例 / 设置 / 关于）；
-- `TemplateApp.onCreate()` 中注册示例配置项的 `OptionRegistry.registerAll(exampleSpecs())` 一并调整。
+```kotlin
+HookOptionsPage(
+    title = stringResource(R.string.tab_features),
+    sections = sections,
+    subPages = listOf(
+        HookSubPage(
+            titleRes = R.string.my_subpage,
+            specs = listOf(subSpec),
+            onOpen = { context.startActivity(Intent(context, MySubPageActivity::class.java)) },
+            // 更深一层子页面，递归并入搜索，命中直接打开该页面
+            subPages = listOf(
+                HookSubPage(
+                    titleRes = R.string.my_deep_subpage,
+                    specs = listOf(deepSpec),
+                    onOpen = { context.startActivity(Intent(context, MyDeepSubPageActivity::class.java)) },
+                ),
+            ),
+        ),
+    ),
+)
+```
+
+**入口卡片文案**：作为二级菜单入口的卡片（跳转二级页 / 弹出对话框）尽量不加小标题（`summaryRes`），大标题（`titleRes`）用总结性名词短语而非描述性句子，描述性说明放到二级页面内。详见 [接口文档](API.md) 5.6。
+
+### 7.3 从功能页开始开发
+
+模板的「功能」页 `ui/screen/features/FeaturesPage.kt`（子页 `FeatureSubPageActivity.kt`、配置项 `featureSpecs()`）已按真实模块的形态组织：**页面名以功能命名、小标题用单语言**。二次开发时：
+
+- 把 `FeaturesPage.kt` 的示例分区替换为你的真实功能，示例配置项 `featureSpecs()` 一并替换；
+- 新增子页面时继承 `BaseSubPageActivity` 并在 `AndroidManifest.xml` 注册；把子页配置项通过 `HookSubPage` 传入父页 `subPages`，即可被搜索直达；多级页面继续在 `HookSubPage.subPages` 中嵌套登记（见 7.2）；
+- Tab 标签已为「功能」，无需再改；若删除该页，请同步更新 `MainActivity.kt` 的标签页列表与 `TemplateApp.onCreate()` 的注册。
 
 ### 7.4 导出文件名
 
@@ -291,9 +318,9 @@ HookOptionsPage(
 exportLauncher.launch("YourModuleName_settings.json")
 ```
 
-### 7.5 包名列表与快捷操作（热重载 / 重启）
+### 7.5 包名列表与重启应用
 
-声明 `OptionType.PACKAGE_LIST` 选项后，用户在二级页面输入包名，页面右上角即出现「快捷操作」按钮，可批量热重载 / 重启：
+声明 `OptionType.PACKAGE_LIST` 选项后，用户在二级页面输入包名，页面右上角即出现「重启应用」按钮，点击后勾选应用并批量重启：
 
 ```kotlin
 OptionSpec(
@@ -309,13 +336,19 @@ OptionSpec(
 
 ```kotlin
 HookOptionsPage(
-    title = ...,
-    sections = ...,
+    title = stringResource(R.string.tab_features),
+    sections = sections,
     customActionPackages = listOf("com.a", "com.b"),
 )
 ```
 
-> 重启需要 Root（主页「模块状态」已标注）；热重载通过 LSPosed 服务完成，无需 Root。
+> 重启需要 Root（主页「模块状态」已标注）。
+> `com.android.systemui` 走 `AppRestarter.restartSystemUi()`（结束进程后由系统自动拉起），**不触发系统重启**；仅 `system` / `android` / `system_server` 才执行 `reboot`。
+
+### 7.6 显隐动画与顶栏重启应用
+
+- **显隐动画**：所有组件出现 / 隐藏统一使用 Miuix 标准弹簧 `MiuixExpandSpec`（`ui/util/MiuixAnimations.kt`），即 `expandVertically(animationSpec = MiuixExpandSpec)` / `shrinkVertically(animationSpec = MiuixExpandSpec)`，禁止使用默认或自定义时长。详见 [接口文档](API.md) 5.6。
+- **顶栏重启应用**：批量「重启」入口统一为 `Refresh`（重启）图标 → `QuickActionDialog`。`HookOptionsPage` 自动生成；二级页面通过 `BaseSubPageActivity.topBarActions` 注入 `QuickActionsAction(packages)`，不要自行实现按钮样式。对话框固定标题「重启应用」且**无小标题**，应用列表用 `Card` 圆角容器，每行 `CheckboxPreference`（`checkboxLocation = End`，默认全选），底部左「全选 / 全不选」（全选时显示「全不选」）+ 右「重启」（无勾选禁用）。完整规范见 [接口文档](API.md) 5.6。
 
 ---
 
@@ -344,6 +377,7 @@ HookOptionsPage(
 | 检查更新 | `SettingsPage.kt` / `MainActivity.kt` | 当前为占位（点击仅提示），接入真实更新逻辑时替换 |
 | 清空 DexKit 缓存 | `SettingsPage.kt` + `xposed/RootHelper.kt` | 需要 Root，删除作用域应用的 `cache/<CACHE_DIR>` |
 | README | `README.md` | 项目简介、链接、构建说明 |
+| 发布与 CI | `.github/workflows/` + `app/build.gradle.kts` | CI 构建 Debug 产物；Release 走签名发布（`release.keystore`、环境变量 / GitHub Secrets 配置见 [README · 发布与 CI](../README.md#发布与-ci)） |
 | 更新日志 | `changelog.md` | 按版本记录变更 |
 | 接口文档 | `docs/API.md` | 全部对外接口与布局规范 |
 | 模块开发工作流 | `docs/WORKFLOW.md` | Hook 需求实现、真机 `adb` 扫描授权与第三方复用合规 |
@@ -376,11 +410,10 @@ HookOptionsPage(
 
 ### 11.2 Based on 约定
 
-衍生项目**必须**在以下两处保留形如 `Based on MiuixGuiTemplate <版本号>` 的文本（示例：`Based on MiuixGuiTemplate 0.3.1`），并把版本号更新为**所依据的脚手架版本**：
+衍生项目**只需**在应用内「关于」页保留形如 `Based on MiuixGuiTemplate <版本号>` 的文本（示例：`Based on MiuixGuiTemplate 0.3.1`），并把版本号更新为**所依据的脚手架版本**；**无需**在各自的 `README.md` 中强调或标注。
 
 | 落点 | 文件 |
 |---|---|
-| `README.md`「使用本模板的项目（Based on 约定）」 | 项目根目录 |
 | 应用内「关于」页 Logo 下方 | `strings.xml` → `about_based_on`（两套语言均改） |
 
 用途：同步脚手架的修复与改进时，以该版本号判断差异范围。当前已知衍生项目：**HyperNavBar**（`Based on MiuixGuiTemplate 0.3.0`）。
@@ -393,7 +426,7 @@ HookOptionsPage(
 | 2 | README「许可证」章节声明 LGPL-3.0 并保留第三方许可说明 | 不得改回 Apache-2.0 |
 | 3 | 关于页协议条目指向 LGPL-3.0 | `license_lgpl*` + `openUri` 指向 LGPL-3.0 文本 |
 | 4 | 保留参考与致谢 | 应用内 `LicensePage.kt` `licenses_section_refs` 分组保留致谢；文档仅保留指向该页的说明 |
-| 5 | 保留并更新 Based on 标注 | `README.md` 与关于页两处，版本号 = 所依据脚手架版本 |
+| 5 | 保留并更新 Based on 标注 | 应用内「关于」页（`about_based_on`），版本号 = 所依据脚手架版本；README 无需标注 |
 | 6 | 第三方许可证页完整 | `licenseSections` 覆盖实际依赖 |
 | 7 | 引入的第三方源文件保留原始版权 / SPDX 声明 | 如自 miuix 复制的 `Apache-2.0` 文件头 |
 | 8 | 修改过的第三方源文件标注改动 | 文件头或相邻注释注明修改点 |

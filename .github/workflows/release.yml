@@ -1,0 +1,271 @@
+name: Release Build
+
+env:
+  PROGRAM_NAME: "HyperRefine"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号"
+        required: false
+        default: ""
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Setup JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: "25"
+          distribution: "temurin"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: 解码签名密钥
+        run: |
+          $bytes = [Convert]::FromBase64String("${{ secrets.KEYSTORE_BASE64 }}")
+          [IO.File]::WriteAllBytes("release.keystore", $bytes)
+        shell: pwsh
+
+      - name: 读取当前版本号
+        id: get_version
+        run: |
+          $content = Get-Content app/build.gradle.kts -Raw
+          $versionName = [regex]::Match($content, 'versionName = "([^"]+)"').Groups[1].Value
+          $versionCode = [regex]::Match($content, 'versionCode = (\d+)').Groups[1].Value
+          Write-Output "version_name=$versionName" >> $env:GITHUB_OUTPUT
+          Write-Output "version_code=$versionCode" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: 更新版本号（如果提供）
+        id: update_version
+        run: |
+          $inputVersion = "${{ github.event.inputs.version }}"
+          $tagVersion = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME } else { "" }
+          $currentVersionName = "${{ steps.get_version.outputs.version_name }}"
+          $currentVersionCode = [int]"${{ steps.get_version.outputs.version_code }}"
+          
+          if (-not [string]::IsNullOrEmpty($tagVersion)) {
+            $tagVersionWithoutPrefix = $tagVersion -replace "^v", ""
+            if ($currentVersionName -ne $tagVersion -and $currentVersionName -ne $tagVersionWithoutPrefix) {
+              Write-Host "Tag 版本 $tagVersion 与项目版本 $currentVersionName 不一致"
+              exit 1
+            }
+
+            Write-Host "使用 tag 版本号: $tagVersion"
+            Write-Output "final_version=$tagVersion" >> $env:GITHUB_OUTPUT
+            Write-Output "version_code=$currentVersionCode" >> $env:GITHUB_OUTPUT
+            Write-Output "version_changed=false" >> $env:GITHUB_OUTPUT
+          } elseif ([string]::IsNullOrEmpty($inputVersion)) {
+            Write-Host "未指定版本号，使用当前版本号"
+            Write-Output "final_version=$currentVersionName" >> $env:GITHUB_OUTPUT
+            Write-Output "version_code=$currentVersionCode" >> $env:GITHUB_OUTPUT
+            Write-Output "version_changed=false" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "使用指定版本号: $inputVersion"
+            $newVersionCode = $currentVersionCode + 1
+            
+            # 更新 build.gradle.kts 中的版本号
+            $content = Get-Content app/build.gradle.kts -Raw
+            $content = $content -replace "versionCode = $currentVersionCode", "versionCode = $newVersionCode"
+            $content = $content -replace "versionName = `"$currentVersionName`"", "versionName = `"$inputVersion`""
+            Set-Content app/build.gradle.kts $content
+            
+            Write-Output "final_version=$inputVersion" >> $env:GITHUB_OUTPUT
+            Write-Output "version_code=$newVersionCode" >> $env:GITHUB_OUTPUT
+            Write-Output "version_changed=true" >> $env:GITHUB_OUTPUT
+          }
+        shell: pwsh
+
+      - name: 构建 Release APK (arm64-v8a)
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: 重命名 APK
+        run: |
+          $finalVersion = "${{ steps.update_version.outputs.final_version }}"
+          $sourcePath = "app/build/outputs/apk/release/app-arm64-v8a-release.apk"
+          $destPath = "${{ env.PROGRAM_NAME }}_$finalVersion.apk"
+          
+          if (Test-Path $sourcePath) {
+            Move-Item -Path $sourcePath -Destination $destPath -Force
+            Write-Host "APK renamed to: $destPath"
+          } else {
+            Write-Host "Source APK not found at: $sourcePath"
+            Get-ChildItem -Path "app/build/outputs/apk/release" -Recurse
+            exit 1
+          }
+        shell: pwsh
+
+      - name: 提交版本更新
+        if: steps.update_version.outputs.version_changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add -u
+          $diff = git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git stash
+            git pull --rebase origin master
+            git stash pop
+            git add -u
+            git commit -m "Update version to ${{ steps.update_version.outputs.final_version }} (code ${{ steps.update_version.outputs.version_code }}) [ci skip]"
+            git push origin master
+          } else {
+            Write-Host "无版本变更"
+          }
+        shell: pwsh
+
+      - name: 准备 Release Notes
+        id: notes
+        run: |
+          $version = "${{ steps.update_version.outputs.final_version }}"
+          $versionWithoutPrefix = $version -replace "^v", ""
+          $notesPath = "release-notes.md"
+          $fallbackNotes = @"
+          ## ${{ env.PROGRAM_NAME }} $version
+
+          ### 下载
+          - **APK**: `${{ env.PROGRAM_NAME }}_$version.apk`
+          - **架构**: arm64-v8a
+          "@
+
+          $changelogPath = @("changelog.md", "docs/changelog.md", "docs/CHANGELOG.md") |
+            Where-Object { Test-Path $_ } |
+            Select-Object -First 1
+
+          if (-not $changelogPath) {
+            $fallbackNotes.Trim() | Set-Content -Path $notesPath -Encoding utf8
+            "notes_path=$notesPath" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          $lines = Get-Content -Path $changelogPath
+          $headingPattern = '^\s*##\s+\[?(?<heading>v?\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)\]?(?:\s|$)'
+          $nextHeadingPattern = '^\s*##\s+'
+          $startIndex = $null
+
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match $headingPattern) {
+              $heading = $Matches.heading
+
+              if ($heading -eq $version -or $heading -eq $versionWithoutPrefix) {
+                $startIndex = $i
+                break
+              }
+            }
+          }
+
+          if ($null -eq $startIndex) {
+            $fallbackNotes.Trim() | Set-Content -Path $notesPath -Encoding utf8
+            "notes_path=$notesPath" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+
+          $endIndex = $lines.Count
+
+          for ($i = $startIndex + 1; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match $nextHeadingPattern) {
+              $endIndex = $i
+              break
+            }
+          }
+
+          $sectionLines = @()
+
+          if ($endIndex -gt ($startIndex + 1)) {
+            $sectionLines = $lines[($startIndex + 1)..($endIndex - 1)]
+          }
+
+          $releaseNotes = ($sectionLines -join [Environment]::NewLine).Trim()
+
+          if ([string]::IsNullOrWhiteSpace($releaseNotes)) {
+            $releaseNotes = $fallbackNotes.Trim()
+          }
+
+          $releaseNotes | Set-Content -Path $notesPath -Encoding utf8
+          "notes_path=$notesPath" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: 发布 GitHub Release
+        id: github_release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: ${{ steps.update_version.outputs.final_version }}
+          tag_name: ${{ steps.update_version.outputs.final_version }}
+          files: ${{ env.PROGRAM_NAME }}_${{ steps.update_version.outputs.final_version }}.apk
+          body_path: ${{ steps.notes.outputs.notes_path }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PROGRAM_NAME }}_${{ steps.update_version.outputs.final_version }}
+          path: ${{ env.PROGRAM_NAME }}_${{ steps.update_version.outputs.final_version }}.apk
+          retention-days: 30
+
+      - name: 上传到Telegram
+        env:
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          APK_FILE: "${{ github.workspace }}/${{ env.PROGRAM_NAME }}_${{ steps.update_version.outputs.final_version }}.apk"
+          ACTOR_NAME: "${{ github.actor }}"
+          RELEASE_URL: "${{ steps.github_release.outputs.url }}"
+          EVENT_NAME: "${{ github.event_name }}"
+        run: |
+          ESCAPED_CAPTION=$(python3 -c '
+          import os, re
+
+          def escape_md_v2_code(text):
+              return text.replace("\\", "\\\\").replace("`", "\\`")
+
+          def escape_md_v2_url(text):
+              return re.sub(r"([)\\])", r"\\\1", text)
+
+          actor = escape_md_v2_code(os.environ.get("ACTOR_NAME", ""))
+          event_name = os.environ.get("EVENT_NAME", "")
+          release_url = escape_md_v2_url(os.environ.get("RELEASE_URL", ""))
+
+          lines = ["*New GitHub Release*"]
+          if release_url:
+              lines.append(f"Release: [View on GitHub]({release_url})")
+          if event_name == "workflow_dispatch":
+              lines.append(f"Manually run by `{actor}`")
+          msg_body = "\n".join(lines)
+
+          print(msg_body)
+          ')
+
+          curl -v -F chat_id=${CHANNEL_ID} \
+                  -F document=@"${APK_FILE}" \
+                  -F parse_mode="MarkdownV2" \
+                  -F caption="${ESCAPED_CAPTION}" \
+                  https://api.telegram.org/bot${BOT_TOKEN}/sendDocument
+
+      - name: 显示构建信息
+        run: Write-Host "Release ${{ steps.update_version.outputs.final_version }} 已发布"
+        shell: pwsh

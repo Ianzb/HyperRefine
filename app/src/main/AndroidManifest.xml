@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- 读取作用域内任意应用的信息（图标 / 名称 / 版本）需要包可见性 -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- 读取作用域内任意应用的信息（图标 / 名称 / 版本）需要包可见性；
+         作用域应用在运行期才确定，无法用 <queries> 预先声明，故保留该权限。 -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <application
         android:name=".TemplateApp"

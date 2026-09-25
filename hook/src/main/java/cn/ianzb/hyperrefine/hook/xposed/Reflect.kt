@@ -3,11 +3,24 @@ package cn.ianzb.hyperrefine.hook.xposed
 import java.lang.reflect.Field
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 常用反射工具，便于在 hook 代码里定位类 / 方法 / 字段。
+ *
+ * 字段 / 方法查找结果会按类缓存，避免在高频回调（如音量拖动逐帧）里反复
+ * `getDeclaredMethods()`（每次都会复制整个数组）造成掉帧。
  */
 object Reflect {
+
+    private val fieldCache = ConcurrentHashMap<Class<*>, ConcurrentHashMap<String, Field>>()
+    private val methodCache = ConcurrentHashMap<Class<*>, ConcurrentHashMap<MethodKey, Method>>()
+
+    private data class MethodKey(
+        val name: String,
+        val static: Boolean,
+        val argTypes: List<Class<*>>,
+    )
 
     private fun defaultClassLoader(): ClassLoader =
         Thread.currentThread().contextClassLoader ?: ClassLoader.getSystemClassLoader()
@@ -28,8 +41,11 @@ object Reflect {
         runCatching { findMethod(clazz, name, *parameterTypes) }.getOrNull()
 
     fun findField(clazz: Class<*>, name: String): Field {
+        val byName = fieldCache.getOrPut(clazz) { ConcurrentHashMap() }
+        byName[name]?.let { return it }
         val field = clazz.getDeclaredField(name)
         field.isAccessible = true
+        byName[name] = field
         return field
     }
 
@@ -72,12 +88,19 @@ object Reflect {
         args: Array<out Any?>,
         static: Boolean,
     ): Method? {
+        val key = MethodKey(name, static, args.map { it?.javaClass ?: NULL_TYPE })
+        val byKey = methodCache.getOrPut(clazz) { ConcurrentHashMap() }
+        byKey[key]?.let { return it }
+
         var current: Class<*>? = clazz
         while (current != null) {
             current.declaredMethods
-                .filter { it.name == name && Modifier.isStatic(it.modifiers) == static }
-                .firstOrNull { matches(it.parameterTypes, args) }
-                ?.let { it.isAccessible = true; return it }
+                .firstOrNull { it.name == name && Modifier.isStatic(it.modifiers) == static && matches(it.parameterTypes, args) }
+                ?.let {
+                    it.isAccessible = true
+                    byKey[key] = it
+                    return it
+                }
             current = current.superclass
         }
         return null
@@ -102,4 +125,7 @@ object Reflect {
         java.lang.Double.TYPE -> java.lang.Double::class.java
         else -> type
     }
+
+    /** 供缓存键使用的 null 参数占位类型。 */
+    private val NULL_TYPE: Class<*> = Any::class.java
 }

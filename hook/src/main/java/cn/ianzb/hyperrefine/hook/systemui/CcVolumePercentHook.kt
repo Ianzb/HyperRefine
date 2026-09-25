@@ -54,7 +54,7 @@ class CcVolumePercentHook : BaseHook() {
                 max = max,
                 pref = PREF,
                 icon = icon,
-                fallbackColor = FALLBACK_COLOR,
+                highlightColor = HIGHLIGHT_COLOR,
             )
         }.onFailure { HookHelper.log("$tag: update failed", it) }
     }
@@ -64,7 +64,7 @@ class CcVolumePercentHook : BaseHook() {
         const val PREF = "cc_volume"
         const val CONTROLLER_CLASS = "miui.systemui.controlcenter.panel.main.volume.VolumeSliderController"
 
-        /** 喇叭图标蓝色（跟随取不到时的兜底）。 */
-        val FALLBACK_COLOR: Int = 0xFF3482FF.toInt()
+        /** 高值喇叭图标蓝色（对应插件 `color/toggle_slider_volume_icon_color`）。 */
+        val HIGHLIGHT_COLOR: Int = 0xFF3482FF.toInt()
     }
 }

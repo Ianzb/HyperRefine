@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package cn.ianzb.hyperrefine.hook.nativehook
 
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
@@ -90,16 +92,4 @@ object NativeHookHelper {
 
     @Synchronized
     fun size(): Int = loaded.size
-
-    /**
-     * 重置跟踪状态（热重载 / 新代码代次使用）。
-     *
-     * 注意：Android 不会真正卸载已 `dlopen` 的 so，原生侧的 hook 必须保持幂等，
-     * 重置仅清空本封装的记录，便于新代次重新执行加载流程。
-     */
-    @Synchronized
-    fun reset() {
-        specs.clear()
-        loaded.clear()
-    }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
@@ -28,13 +29,13 @@ import cn.ianzb.hyperrefine.ui.screen.subpage.BaseSubPageActivity
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import cn.ianzb.hyperrefine.xposed.AppRestarter
-import cn.ianzb.hyperrefine.xposed.HookStatusReader
 import cn.ianzb.hyperrefine.xposed.SafeModeReader
 import cn.ianzb.hyperrefine.xposed.XposedServiceManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
@@ -48,7 +49,7 @@ import top.yukonga.miuix.kmp.basic.Text as MiuixText
  * 作用域列表二级页面。
  *
  * - 页面可见期间轮询刷新作用域，实时反映 LSPosed 中的授权变化。
- * - 每项右侧提供「热重载」「重启」按钮（重启需要 Root）。
+ * - 每项右侧提供「重启」按钮（需要 Root）。
  * - 被兜底机制自动禁用的应用会标注「安全模式」，并提供一键恢复。
  */
 class ScopeListActivity : BaseSubPageActivity() {
@@ -62,12 +63,12 @@ class ScopeListActivity : BaseSubPageActivity() {
     ) {
         // 进入页面前已在主页刷新过；这里延后刷新，避免与打开动画冲突（动画优先）。
         LaunchedEffect(Unit) {
-            delay(400)
+            delay(400.milliseconds)
             XposedServiceManager.refreshScope()
             SafeModeReader.refresh()
             // 轮询保持列表实时更新（含安全模式状态）。
             while (true) {
-                delay(1500)
+                delay(1500.milliseconds)
                 XposedServiceManager.refreshScope()
                 SafeModeReader.refresh()
             }
@@ -75,6 +76,7 @@ class ScopeListActivity : BaseSubPageActivity() {
 
         val context = LocalContext.current
         val density = LocalDensity.current
+        val resources = LocalResources.current
         val scope = XposedServiceManager.scope
         val safeModePackages = SafeModeReader.safeModePackages
         val coroutineScope = rememberCoroutineScope()
@@ -136,7 +138,7 @@ class ScopeListActivity : BaseSubPageActivity() {
                         if (version.isNotBlank()) append(" · v").append(version)
                         if (inSafeMode) {
                             append(" · ")
-                            append(context.getString(R.string.scope_safe_mode))
+                            append(resources.getString(R.string.scope_safe_mode))
                         }
                     }
 
@@ -149,7 +151,7 @@ class ScopeListActivity : BaseSubPageActivity() {
                             if (!ok) {
                                 Toast.makeText(
                                     context,
-                                    context.getString(R.string.scope_restart_need_root),
+                                    resources.getString(R.string.scope_restart_need_root),
                                     Toast.LENGTH_SHORT,
                                 ).show()
                             }
@@ -182,7 +184,7 @@ class ScopeListActivity : BaseSubPageActivity() {
                                             SafeModeReader.reset(packageName)
                                             Toast.makeText(
                                                 context,
-                                                context.getString(R.string.scope_safe_mode_reset_done, appName),
+                                                resources.getString(R.string.scope_safe_mode_reset_done, appName),
                                                 Toast.LENGTH_SHORT,
                                             ).show()
                                         },
@@ -190,22 +192,6 @@ class ScopeListActivity : BaseSubPageActivity() {
                                         minWidth = 0.dp,
                                     )
                                 }
-                                TextButton(
-                                    text = stringResource(R.string.scope_hot_reload),
-                                    onClick = {
-                                        XposedServiceManager.hotReload(listOf(packageName)) { result ->
-                                            HookStatusReader.refresh()
-                                            val text = if (result == "no running target") {
-                                                context.getString(R.string.module_hot_reload_no_target)
-                                            } else {
-                                                context.getString(R.string.module_hot_reload_result, result)
-                                            }
-                                            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                    colors = ButtonDefaults.textButtonColors(),
-                                    minWidth = 0.dp,
-                                )
                                 Button(
                                     onClick = {
                                         if (AppRestarter.isSystemPackage(packageName)) {

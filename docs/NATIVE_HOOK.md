@@ -42,7 +42,7 @@
 
 - 目标逻辑是 Java/Kotlin 方法 → 用 **JavaHook**（配合 DexKit）。
 - 目标逻辑是 Rust（`lib*_frb.so`、`rust_*`、含 Rust mangled 符号的 `.so`）→ 用 **NativeHook**。
-- 二者可同时使用，且共享同一套配置、状态、热重载、安全模式与版本筛选链路。
+- 二者可同时使用，且共享同一套配置、状态、安全模式与版本筛选链路。
 
 ---
 
@@ -164,7 +164,7 @@ cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
 
 ## 7. 一键封装 API
 
-原生 Hook 由 Rust 库实现，但「声明 / 加载 / 开关 / 状态 / 热重载 / 安全模式 / 版本筛选」全部由 Kotlin 封装接管，用法与 JavaHook 对称。
+原生 Hook 由 Rust 库实现，但「声明 / 加载 / 开关 / 状态 / 安全模式 / 版本筛选」全部由 Kotlin 封装接管，用法与 JavaHook 对称。
 
 包名：`cn.ianzb.hyperrefine.hook.nativehook`
 
@@ -185,10 +185,10 @@ override fun onPackageLoaded(target: PackageTarget) {
 }
 ```
 
-- `NativeHookHelper`：库名归一化、`System.loadLibrary`、去重、异常兜底、状态上报、热重载 `reset()`。
+- `NativeHookHelper`：库名归一化、`System.loadLibrary`、去重、异常兜底、状态上报。
 - `BaseNativeHook`：`libraryName` / `key` / `required` / `description` / `versionGate` / `deviceScope` / `appliesTo(ctx)`。
 - 版本筛选 DSL 见 [接口文档 · 1.11](API.md#111-版本筛选hookversiongate)；设备筛选见 [接口文档 · 1.12](API.md#112-设备筛选devicescope)。
-- 设备类型默认由模块自动判定，也可在设置页「模块 → 当前设备类型」手动覆盖（`auto` / `phone` / `pad` / `fold`，经远程偏好下发，重启 / 热重载后生效）。
+- 设备类型默认由模块自动判定，也可在设置页「模块 → 当前设备类型」手动覆盖（`auto` / `phone` / `pad` / `fold`，经远程偏好下发，重启后生效）。
 
 ---
 
@@ -226,9 +226,9 @@ C ABI 导出 → inline hook；只有 Rust mangled 符号 → `rustfilt` 还原�
 
 加载结果写入 `HookStatusWriter`；关键应用重复崩溃会自动进入安全模式，可在「设置 → 模块 → 安全模式」逐项开关（见 [接口文档 6.3](API.md#63-safemodeactivity安全模式页)）。
 
-### Step 7 — 热重载与清理
+### Step 7 — 幂等性
 
-`NativeHookHelper.reset()` 在热重载时清空跟踪记录；Rust hook **必须幂等**（重复安装要么覆盖、要么跳过）。
+Rust hook **应保持幂等**（重复安装要么覆盖、要么跳过），避免同一进程内 `native_init` 被多次执行时重复挂载。
 
 ### Step 8 — 联调与验证
 
@@ -288,7 +288,7 @@ unsafe extern "C" fn on_module_loaded(name: *const c_char, handle: *mut c_void) 
 | hook 不生效 | 目标被内联 / 泛型多实例 / 未走到调用点 | 改用 C ABI 边界或调用点，见 [第 4 节](#4-目标定位rust-符号) |
 | 找不到目标函数 | 符号被剥离 / 版本漂移 | 用 `.gnu_debugdata`，或用指令签名 |
 | 启动卡顿 | `native_init` 做了阻塞 / Binder | 移到加载回调或异步线程 |
-| 热重载后重复 hook 崩溃 | Rust hook 不幂等 | 用状态位保证只安装一次 |
+| 重复加载重复 hook | `native_init` 被多次执行且不幂等 | 用状态位保证只安装一次 |
 | 只在部分机型生效 | 架构 / 版本差异 | `versionGate` 分支 + 运行时探测 |
 
 ---

@@ -44,10 +44,10 @@ import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.prefs.OptionRegistry
 import cn.ianzb.hyperrefine.ui.screen.safemode.SafeModeActivity
 import cn.ianzb.hyperrefine.ui.util.BlurredBar
+import cn.ianzb.hyperrefine.ui.util.MiuixExpandSpec
 import cn.ianzb.hyperrefine.ui.util.blurSource
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import cn.ianzb.hyperrefine.ui.util.rememberBlurState
-import cn.ianzb.hyperrefine.xposed.HookStatusReader
 import cn.ianzb.hyperrefine.xposed.RootHelper
 import cn.ianzb.hyperrefine.xposed.SafeModeReader
 import cn.ianzb.hyperrefine.xposed.XposedServiceManager
@@ -246,24 +246,6 @@ fun SettingsPageView(
                                 },
                             )
                             ArrowPreference(
-                                title = stringResource(R.string.module_hot_reload),
-                                summary = stringResource(R.string.module_hot_reload_summary),
-                                onClick = {
-                                    val packages = OptionRegistry.all()
-                                        .flatMap { it.targetPackages }
-                                        .distinct()
-                                    XposedServiceManager.hotReload(packages) { result ->
-                                        HookStatusReader.refresh()
-                                        val text = if (result == "no running target") {
-                                            resources.getString(R.string.module_hot_reload_no_target)
-                                        } else {
-                                            resources.getString(R.string.module_hot_reload_result, result)
-                                        }
-                                        Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                            )
-                            ArrowPreference(
                                 title = stringResource(R.string.module_clear_dexkit),
                                 summary = stringResource(R.string.module_clear_dexkit_summary),
                                 onClick = {
@@ -324,8 +306,8 @@ fun SettingsPageView(
 
                                 AnimatedVisibility(
                                     visible = isFloatingNavbar,
-                                    enter = expandVertically(),
-                                    exit = shrinkVertically(),
+                                    enter = expandVertically(animationSpec = MiuixExpandSpec),
+                                    exit = shrinkVertically(animationSpec = MiuixExpandSpec),
                                 ) {
                                     SwitchPreference(
                                         title = stringResource(R.string.liquid_glass),

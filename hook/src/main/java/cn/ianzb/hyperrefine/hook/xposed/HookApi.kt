@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package cn.ianzb.hyperrefine.hook.xposed
 
 import io.github.libxposed.api.XposedInterface
@@ -33,7 +35,7 @@ typealias ReplaceHook = (HookParam) -> Any?
  * libxposed API 102 的二次封装门面。
  *
  * - 统一挂载入口（before / after / replace / intercept / 批量）
- * - 所有 [HookHandle] 自动登记到 [HookRegistry]，便于热重载时统一卸载
+ * - 所有 [HookHandle] 自动登记到 [HookRegistry]，便于统一卸载
  */
 object HookHelper {
 
@@ -201,7 +203,7 @@ object HookHelper {
 }
 
 /**
- * 统一登记 HookHandle，供热重载 / 卸载使用。
+ * 统一登记 HookHandle，供卸载使用。
  */
 object HookRegistry {
     private val handles = java.util.concurrent.CopyOnWriteArrayList<HookHandle>()

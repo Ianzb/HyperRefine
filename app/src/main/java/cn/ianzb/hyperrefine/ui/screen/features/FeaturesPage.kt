@@ -11,9 +11,10 @@ import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.prefs.OptionType
-import cn.ianzb.hyperrefine.ui.component.SystemUiQuickActionsAction
+import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionsPage
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
+import cn.ianzb.hyperrefine.ui.component.pref.HookSubPage
 import cn.ianzb.hyperrefine.xposed.HookStatusReader
 
 /**
@@ -32,8 +33,29 @@ fun FeaturesPageView(
         listOf(
             HookSection(
                 titleRes = R.string.section_system_ui,
-                titleEn = "System UI",
                 specs = listOf(specByKey(specs, KEY_APPEARANCE)),
+            ),
+        )
+    }
+    // 外观为二级页，各位置功能页为三级页：通过嵌套 subPages 让搜索直达多级功能。
+    val subPages = remember(specs) {
+        listOf(
+            HookSubPage(
+                titleRes = R.string.feature_appearance,
+                specs = PercentLocation.all().map { specByKey(specs, PercentLocation.entryKey(it)) },
+                onOpen = { context.startActivity(Intent(context, AppearanceActivity::class.java)) },
+                subPages = PercentLocation.all().map { location ->
+                    HookSubPage(
+                        titleRes = appearanceTitleRes(location),
+                        specs = locationSpecs(specs, location),
+                        onOpen = {
+                            context.startActivity(
+                                Intent(context, PercentStyleActivity::class.java)
+                                    .putExtra(PercentStyleActivity.EXTRA_LOCATION, location)
+                            )
+                        },
+                    )
+                },
             ),
         )
     }
@@ -45,16 +67,19 @@ fun FeaturesPageView(
     HookOptionsPage(
         title = stringResource(R.string.tab_features),
         sections = sections,
+        subPages = subPages,
         isBlurEnabled = isBlurEnabled,
         extraBottomPadding = extraBottomPadding,
         onArrowClick = {
             context.startActivity(Intent(context, AppearanceActivity::class.java))
         },
-        topBarActions = { SystemUiQuickActionsAction() },
+        topBarActions = { QuickActionsAction(listOf("com.android.systemui")) },
     )
 }
 
 const val KEY_APPEARANCE = "feature_appearance"
+const val SIDE_INSIDE_KEY = "side_volume_inside"
+const val SIDE_LONGPRESS_KEY = "side_volume_longpress"
 
 /** 位置标识：与配置键前缀一致。 */
 object PercentLocation {
@@ -72,6 +97,28 @@ object PercentLocation {
 private fun specByKey(specs: List<OptionSpec>, key: String): OptionSpec =
     specs.first { it.key == key }
 
+/** 各位置页面标题（二级 / 三级页面共用）。 */
+private fun appearanceTitleRes(location: String): Int = when (location) {
+    PercentLocation.CC_BRIGHTNESS -> R.string.appearance_cc_brightness
+    PercentLocation.SIDE_VOLUME -> R.string.appearance_side_volume
+    else -> R.string.appearance_cc_volume
+}
+
+/** 各位置页面内（三级页面）的配置项，用于多级搜索直达。 */
+private fun locationSpecs(specs: List<OptionSpec>, location: String): List<OptionSpec> {
+    val keys = mutableListOf(
+        PercentLocation.masterKey(location),
+        "${location}_font_size",
+        "${location}_font_weight",
+        "${location}_follow_icon",
+    )
+    if (location == PercentLocation.SIDE_VOLUME) {
+        keys += SIDE_INSIDE_KEY
+        keys += SIDE_LONGPRESS_KEY
+    }
+    return keys.map { specByKey(specs, it) }
+}
+
 /** 按键取功能配置项（供各功能子页复用同一份声明）。 */
 fun featureSpec(key: String): OptionSpec =
     featureSpecs().first { it.key == key }
@@ -84,7 +131,6 @@ internal fun featureSpecs(): List<OptionSpec> {
             key = KEY_APPEARANCE,
             type = OptionType.ARROW,
             titleRes = R.string.feature_appearance,
-            summaryRes = R.string.feature_appearance_summary,
         ),
     )
     PercentLocation.all().forEach { location ->
@@ -92,11 +138,6 @@ internal fun featureSpecs(): List<OptionSpec> {
             PercentLocation.CC_VOLUME -> R.string.appearance_cc_volume
             PercentLocation.CC_BRIGHTNESS -> R.string.appearance_cc_brightness
             else -> R.string.appearance_side_volume
-        }
-        val summaryRes = when (location) {
-            PercentLocation.CC_VOLUME -> R.string.appearance_cc_volume_summary
-            PercentLocation.CC_BRIGHTNESS -> R.string.appearance_cc_brightness_summary
-            else -> R.string.appearance_side_volume_summary
         }
         val followSummaryRes = if (location == PercentLocation.CC_BRIGHTNESS) {
             R.string.brightness_follow_icon_summary
@@ -107,7 +148,6 @@ internal fun featureSpecs(): List<OptionSpec> {
             key = PercentLocation.entryKey(location),
             type = OptionType.ARROW,
             titleRes = titleRes,
-            summaryRes = summaryRes,
         )
         specs += OptionSpec(
             key = PercentLocation.masterKey(location),
@@ -136,14 +176,16 @@ internal fun featureSpecs(): List<OptionSpec> {
             type = OptionType.DROPDOWN,
             titleRes = R.string.percent_font_weight,
             summaryRes = R.string.percent_font_weight_summary,
-            defaultString = "normal",
+            defaultString = "black",
             entryResIds = listOf(
-                R.string.font_weight_default,
                 R.string.font_weight_light,
+                R.string.font_weight_default,
                 R.string.font_weight_medium,
+                R.string.font_weight_semibold,
                 R.string.font_weight_bold,
+                R.string.font_weight_black,
             ),
-            entryValues = listOf("normal", "light", "medium", "bold"),
+            entryValues = listOf("light", "normal", "medium", "semibold", "bold", "black"),
             targetPackages = systemUi,
         )
         specs += OptionSpec(
@@ -154,6 +196,24 @@ internal fun featureSpecs(): List<OptionSpec> {
             defaultBoolean = true,
             targetPackages = systemUi,
         )
+        if (location == PercentLocation.SIDE_VOLUME) {
+            specs += OptionSpec(
+                key = SIDE_INSIDE_KEY,
+                type = OptionType.SWITCH,
+                titleRes = R.string.side_volume_inside,
+                summaryRes = R.string.side_volume_inside_summary,
+                defaultBoolean = false,
+                targetPackages = systemUi,
+            )
+            specs += OptionSpec(
+                key = SIDE_LONGPRESS_KEY,
+                type = OptionType.SWITCH,
+                titleRes = R.string.side_volume_longpress,
+                summaryRes = R.string.side_volume_longpress_summary,
+                defaultBoolean = false,
+                targetPackages = systemUi,
+            )
+        }
     }
     return specs
 }

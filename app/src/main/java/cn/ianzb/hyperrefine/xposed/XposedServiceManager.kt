@@ -1,17 +1,14 @@
 package cn.ianzb.hyperrefine.xposed
 
-import android.os.Bundle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import cn.ianzb.hyperrefine.prefs.PrefsStore
-import io.github.libxposed.service.HookedTarget
-import io.github.libxposed.service.HotReloadResult
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 
 /**
- * LSPosed 服务绑定：作用域查询 / 主动申请、热重载触发、运行中目标查询。
+ * LSPosed 服务绑定：作用域查询 / 主动申请。
  */
 object XposedServiceManager {
 
@@ -80,6 +77,7 @@ object XposedServiceManager {
         scope = service?.scope ?: emptyList()
     }
 
+    @Suppress("unused")
     fun isInScope(packageName: String): Boolean = scope.contains(packageName)
 
     /**
@@ -108,35 +106,9 @@ object XposedServiceManager {
         })
     }
 
+    @Suppress("unused")
     fun removeScope(packages: List<String>) {
         service?.removeScope(packages)
         refreshScope()
     }
-
-    /**
-     * 触发目标进程热重载。
-     */
-    fun hotReload(packages: List<String>, onResult: ((String) -> Unit)? = null) {
-        val current = service
-        if (current == null) {
-            onResult?.invoke("service unavailable")
-            return
-        }
-        val targets = current.runningTargets.filter { target ->
-            packages.any { pkg -> target.processName == pkg || target.processName.startsWith("$pkg:") }
-        }
-        if (targets.isEmpty()) {
-            onResult?.invoke("no running target")
-            return
-        }
-        targets.forEach { target ->
-            current.hotReloadModule(target, Bundle(), object : XposedService.HotReloadCallback {
-                override fun onHotReloadResult(target: HookedTarget, result: HotReloadResult) {
-                    onResult?.invoke(result.status().name)
-                }
-            })
-        }
-    }
-
-    fun runningTargets(): List<HookedTarget> = service?.runningTargets ?: emptyList()
 }

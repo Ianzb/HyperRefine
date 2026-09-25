@@ -1,21 +1,18 @@
 package cn.ianzb.hyperrefine.hook.systemui
 
+import android.content.ContextWrapper
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
+import java.util.WeakHashMap
 
 /**
  * SystemUI 插件 ClassLoader 捕获器。
  *
  * HyperOS 的控制中心 / 音量面板类位于 MIUISystemUIPlugin（`miui.systemui.plugin`）插件中，
  * 由 SystemUI 的 `PluginInstance$PluginFactory` 在插件加载时创建独立 ClassLoader。
+ * 本类在插件上下文创建后捕获该 ClassLoader，探测到目标类后分发给各功能 Hook。
  *
- * 捕获方式（两者互补，保证热重载 / 后开启开关也能生效）：
- * 1. **入口 hook**：挂 `PluginFactory.createPluginContext` / `createClassLoader`，捕获后续新加载的插件；
- * 2. **宿主恢复**：通过 `Dependency.get(PluginManager)` 遍历 `PluginManagerImpl.pluginMap` →
- *    `PluginActionManager.pluginInstances` → `PluginInstance.getPlugin()` 读取**已加载**插件的 ClassLoader。
- *
- * 由于热重载会重载模块代码（本对象状态重置），仅靠入口 hook 无法覆盖「插件早于开关加载」的场景，
- * 故每次 [register] 都做一次宿主恢复并补发回调。
+ * 说明：插件 ClassLoader 仅在进程内插件加载时创建一次，故开启开关后需**重启系统界面**生效。
  *
  * 定位思路参考 HyperCeiler / Hyper5GSwitch，未复用其代码。
  */
@@ -28,38 +25,30 @@ object PluginLoader {
 
     private val callbacks = LinkedHashMap<String, (ClassLoader) -> Unit>()
 
-    private val knownPluginClassLoaders = LinkedHashSet<ClassLoader>()
+    private val knownPluginClassLoaders = mutableListOf<ClassLoader>()
 
-    /** 已向某插件 ClassLoader 分发过的回调键，避免同一代次重复安装。 */
-    private val dispatched = HashSet<Pair<String, ClassLoader>>()
-
-    /**
-     * 进程就绪时无条件安装入口 hook，并尝试从宿主恢复已加载插件的 ClassLoader。
-     *
-     * 与功能开关无关，确保「先加载插件、后开启开关 + 热重载」也能补装。
-     */
-    @Synchronized
-    fun bootstrap(systemClassLoader: ClassLoader) {
-        installEntryHooks(systemClassLoader)
-        seedFromHost(systemClassLoader)
-    }
+    private val entryHookedClassLoaders = WeakHashMap<ClassLoader, Boolean>()
 
     /**
-     * 注册插件就绪回调（按 [key] 去重，热重载时以新回调覆盖）。
-     *
-     * 注册时立即尝试宿主恢复并补发，覆盖插件已加载的情况。
+     * 注册插件就绪回调（按 [key] 去重，以新回调覆盖）。
+     * 若插件已经加载，立即补发一次。
      */
     @Synchronized
     fun register(key: String, systemClassLoader: ClassLoader, callback: (ClassLoader) -> Unit) {
         callbacks[key] = callback
-        seedFromHost(systemClassLoader)
-        knownPluginClassLoaders.toList().forEach { pluginCl -> dispatch(key, callback, pluginCl) }
+        knownPluginClassLoaders.toList().forEach { pluginCl ->
+            runCatching { callback(pluginCl) }
+                .onFailure { HookHelper.log("PluginLoader: late dispatch failed for $key", it) }
+        }
+        installEntryHooks(systemClassLoader)
     }
 
     private fun installEntryHooks(systemClassLoader: ClassLoader) {
+        if (entryHookedClassLoaders[systemClassLoader] == true) return
+        entryHookedClassLoaders[systemClassLoader] = true
         val factory = Reflect.findClassIfExists(FACTORY_CLASS, systemClassLoader)
         if (factory == null) {
-            HookHelper.log("PluginLoader: $FACTORY_CLASS not found, entry hooks disabled")
+            HookHelper.log("PluginLoader: $FACTORY_CLASS not found, plugin hooks disabled")
             return
         }
         var hooked = false
@@ -77,89 +66,22 @@ object PluginLoader {
     private fun onEntryResult(result: Any?) {
         val pluginCl = when (result) {
             is ClassLoader -> result
-            is android.content.ContextWrapper -> result.classLoader
+            is ContextWrapper -> result.classLoader
             else -> return
         } ?: return
-        registerPluginClassLoader(pluginCl)
-    }
-
-    private fun registerPluginClassLoader(pluginCl: ClassLoader) {
         if (!isPluginClassLoader(pluginCl)) return
         synchronized(this) {
+            if (knownPluginClassLoaders.any { it === pluginCl }) return
+            if (knownPluginClassLoaders.size >= 4) knownPluginClassLoaders.removeAt(0)
             knownPluginClassLoaders.add(pluginCl)
         }
         HookHelper.log("PluginLoader: plugin classloader captured")
-        callbacks.entries.toList().forEach { (key, callback) -> dispatch(key, callback, pluginCl) }
-    }
-
-    private fun dispatch(key: String, callback: (ClassLoader) -> Unit, pluginCl: ClassLoader) {
-        val token = key to pluginCl
-        synchronized(this) {
-            if (!dispatched.add(token)) return
+        callbacks.values.toList().forEach { callback ->
+            runCatching { callback(pluginCl) }
+                .onFailure { HookHelper.log("PluginLoader: dispatch failed", it) }
         }
-        runCatching { callback(pluginCl) }
-            .onFailure { HookHelper.log("PluginLoader: dispatch failed for $key", it) }
     }
 
     private fun isPluginClassLoader(cl: ClassLoader): Boolean =
         runCatching { Class.forName(PROBE_CLASS, false, cl) }.isSuccess
-
-    private fun seedFromHost(systemClassLoader: ClassLoader) {
-        recoverPluginClassLoaders(systemClassLoader).forEach { pluginCl ->
-            if (isPluginClassLoader(pluginCl)) {
-                synchronized(this) { knownPluginClassLoaders.add(pluginCl) }
-            }
-        }
-    }
-
-    /** 从宿主的 PluginManager 中恢复已加载插件的 ClassLoader。 */
-    private fun recoverPluginClassLoaders(hostClassLoader: ClassLoader): List<ClassLoader> = runCatching {
-        val manager = resolvePluginManager(hostClassLoader) ?: return emptyList()
-
-        val out = LinkedHashSet<ClassLoader>()
-        val pluginMap = runCatching { Reflect.getObjectField(manager, "pluginMap") }.getOrNull() as? Map<*, *>
-            ?: return emptyList()
-        pluginMap.values.forEach { value ->
-            val actionManagers: List<Any?> = (value as? Iterable<*>)?.toList() ?: listOf(value)
-            actionManagers.forEach { actionManager ->
-                collectInstances(actionManager, out)
-            }
-        }
-        if (out.isNotEmpty()) {
-            HookHelper.log("PluginLoader: recovered ${out.size} plugin classloader(s) from host")
-        }
-        out.toList()
-    }.onFailure {
-        HookHelper.log("PluginLoader: host recovery failed", it)
-    }.getOrDefault(emptyList())
-
-    /**
-     * 解析宿主 PluginManager 实例：
-     * - OS4：`Dependency.sDependency.mPluginManager`（`dagger.Lazy`）→ `get()`；
-     * - 旧版：静态 `Dependency.get(PluginManager::class.java)`（OS4 已无该方法）。
-     */
-    private fun resolvePluginManager(hostClassLoader: ClassLoader): Any? {
-        val dependency = Reflect.findClassIfExists("com.android.systemui.Dependency", hostClassLoader) ?: return null
-        val singleton = runCatching { Reflect.getStaticObjectField(dependency, "sDependency") }.getOrNull()
-        if (singleton != null) {
-            val lazy = runCatching { Reflect.getObjectField(singleton, "mPluginManager") }.getOrNull()
-            if (lazy != null) {
-                runCatching { Reflect.callMethod(lazy, "get") }.getOrNull()?.let { return it }
-            }
-        }
-        val pluginManager = Reflect.findClassIfExists("com.android.systemui.plugins.PluginManager", hostClassLoader) ?: return null
-        val get = Reflect.findMethodIfExists(dependency, "get", Class::class.java) ?: return null
-        return runCatching { get.invoke(null, pluginManager) }.getOrNull()
-    }
-
-    private fun collectInstances(actionManager: Any?, out: MutableSet<ClassLoader>) {
-        if (actionManager == null) return
-        val instances = runCatching { Reflect.getObjectField(actionManager, "pluginInstances") }.getOrNull() as? Iterable<*>
-            ?: return
-        instances.forEach { instance ->
-            if (instance == null) return@forEach
-            val plugin = runCatching { Reflect.callMethod(instance, "getPlugin") }.getOrNull() ?: return@forEach
-            plugin.javaClass.classLoader?.let { out.add(it) }
-        }
-    }
 }

@@ -112,7 +112,7 @@ unsafe extern "C" fn on_module_loaded(name: *const c_char, handle: *mut c_void) 
     if !lib_name.ends_with(TARGET_LIB) {
         return;
     }
-    // 幂等：热重载 / 重复加载时不要重复 hook。
+    // 幂等：重复加载时不要重复 hook。
     if !ORIGINAL.load(Ordering::Acquire).is_null() {
         return;
     }

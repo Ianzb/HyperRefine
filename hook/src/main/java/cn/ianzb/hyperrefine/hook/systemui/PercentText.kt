@@ -1,32 +1,38 @@
 package cn.ianzb.hyperrefine.hook.systemui
 
 import android.graphics.Color
-import android.graphics.PorterDuffColorFilter
+import android.graphics.Typeface
 import android.util.TypedValue
 import android.view.View
-import android.widget.ImageView
+import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.TextView
-import android.graphics.Typeface
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
-import java.util.WeakHashMap
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
  * 百分比数值文本的格式化与样式应用（字号 / 字重 / 字体颜色）。
  *
- * 字体颜色支持「实时跟随图标颜色」：读取音量条喇叭图标 / 亮度条太阳图标的当前颜色
- * （tint / colorFilter / 颜色字段），跟随关闭时恢复文本默认颜色。
+ * 字体颜色规则：
+ * - 关闭「跟随图标」：固定灰色（[GRAY_COLOR]，即图标低值 / 静音时的灰色）；
+ * - 开启「跟随图标」：优先取图标当前颜色（如侧边音量条的颜色资源），取不到时按进度判断——
+ *   低于 [HIGHLIGHT_RATIO] 用灰色，否则用图标高值彩色（`highlightColor`）。
  */
 object PercentText {
 
-    private const val RES_PACKAGE = "miui.systemui.plugin"
-
     private const val DEFAULT_SIZE = 13f
 
-    /** 各文本视图首次见到时的系统默认颜色，用于跟随关闭后恢复。 */
-    private val originalColors = WeakHashMap<TextView, Int>()
+    /** 图标低值 / 静音时的灰色（在插件 `color/toggle_slider_icon_color` #959595 基础上调亮）。 */
+    private const val GRAY_COLOR = 0xFFBFBFBF.toInt()
+
+    /** 图标由灰变彩的进度阈值（插件为 `0.12f`）。 */
+    private const val HIGHLIGHT_RATIO = 0.12f
+
+    /** 按字重缓存 Typeface，避免高频回调里反复 `Typeface.create`。 */
+    private val typefaceCache = ConcurrentHashMap<Int, Typeface>()
 
     fun percentText(value: Int, max: Int): String {
         if (max <= 0) return "0%"
@@ -45,10 +51,18 @@ object PercentText {
     }
 
     fun findViewByName(root: View, name: String): TextView? {
-        val id = root.resources.getIdentifier(name, "id", RES_PACKAGE)
-        if (id != 0) return root.findViewById<TextView>(id)
+        if (root is TextView && entryName(root) == name) return root
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) {
+                findViewByName(root.getChildAt(i), name)?.let { return it }
+            }
+        }
         return null
     }
+
+    /** 取视图 id 的资源名（避免使用已弃用的 `Resources.getIdentifier`）。 */
+    private fun entryName(view: View): String? =
+        runCatching { view.resources.getResourceEntryName(view.id) }.getOrNull()
 
     /** SeekBar 的当前值与最大值。 */
     fun progressOf(slider: Any?): Pair<Int, Int>? {
@@ -73,9 +87,9 @@ object PercentText {
      * 写入百分比文本并应用样式。
      *
      * @param pref 样式配置键前缀（如 `cc_volume`），读取 `*_font_size` / `*_font_weight` / `*_follow_icon`
-     * @param icon 跟随颜色的图标视图
-     * @param iconColorRes 图标颜色（颜色值或资源 id，可空）
-     * @param fallbackColor 跟随且取不到图标颜色时的兜底色
+     * @param icon 图标视图（用于解析颜色资源 id）
+     * @param iconColorRes 图标颜色（颜色资源 id 或字面量，可空）；提供时以它为准
+     * @param highlightColor 图标高值（彩色）颜色；无法获知图标颜色时按进度使用
      */
     fun show(
         tv: TextView,
@@ -84,63 +98,57 @@ object PercentText {
         pref: String,
         icon: View?,
         iconColorRes: Int? = null,
-        fallbackColor: Int,
+        highlightColor: Int,
     ) {
         val text = percentText(value, max)
         if (tv.text.toString() != text) tv.text = text
         if (tv.visibility != View.VISIBLE) tv.visibility = View.VISIBLE
 
         val size = HookPrefs.getFloat("${pref}_font_size", DEFAULT_SIZE).coerceIn(4f, 48f)
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size)
-        tv.typeface = Typeface.create(Typeface.DEFAULT, weightOf(HookPrefs.getString("${pref}_font_weight", "normal")), false)
+        val expectedPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, size, tv.resources.displayMetrics)
+        // 与视图当前值比较后再写入，避免拖动逐帧触发 measure/layout。
+        if (abs(tv.textSize - expectedPx) > 0.5f) tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size)
+        val typeface = typefaceFor(weightOf(HookPrefs.getString("${pref}_font_weight", "normal")))
+        if (tv.typeface !== typeface) tv.typeface = typeface
 
-        if (!originalColors.containsKey(tv)) {
-            originalColors[tv] = runCatching { tv.currentTextColor }.getOrDefault(Color.WHITE)
-        }
-        val follow = HookPrefs.getBoolean("${pref}_follow_icon", true)
-        val color = if (follow) {
-            readIconColor(icon, iconColorRes) ?: fallbackColor
-        } else {
-            originalColors[tv] ?: Color.WHITE
-        }
+        val color = textColor(pref, value, max, icon, iconColorRes, highlightColor)
         if (tv.currentTextColor != color) tv.setTextColor(color)
     }
 
-    /** 从 ColorFilter 读取颜色（PorterDuffColorFilter.getColor，经反射以兼容编译 SDK）。 */
-    private fun colorOfFilter(filter: android.graphics.ColorFilter?): Int? {
-        if (filter == null) return null
-        val color = runCatching { Reflect.callMethod(filter, "getColor") }.getOrNull() as? Int ?: return null
-        return if (Color.alpha(color) != 0) color else null
+    /** 计算文本颜色：关闭跟随固定灰色；开启跟随图标（低值灰色 / 高值彩色）。 */
+    private fun textColor(
+        pref: String,
+        value: Int,
+        max: Int,
+        icon: View?,
+        iconColorRes: Int?,
+        highlightColor: Int,
+    ): Int {
+        if (!HookPrefs.getBoolean("${pref}_follow_icon", true)) return GRAY_COLOR
+        resolveIconColor(icon, iconColorRes)?.let { return it }
+        val ratio = if (max > 0) value.toFloat() / max else 0f
+        return if (ratio < HIGHLIGHT_RATIO) GRAY_COLOR else highlightColor
+    }
+
+    /**
+     * 解析图标颜色：`iconColorRes` 为颜色资源 id 时解析为颜色，为字面量时直接使用；取不到返回 null。
+     */
+    private fun resolveIconColor(icon: View?, iconColorRes: Int?): Int? {
+        if (icon == null || iconColorRes == null || iconColorRes == 0) return null
+        val color = runCatching { icon.resources.getColor(iconColorRes, icon.context.theme) }.getOrNull()
+            ?: iconColorRes
+        return color.takeIf { Color.alpha(it) != 0 }
     }
 
     fun weightOf(weight: String?): Int = when (weight) {
         "light" -> 300
         "medium" -> 500
+        "semibold" -> 600
         "bold" -> 700
+        "black" -> 900
         else -> 400
     }
 
-    /** 读取图标当前颜色（实时跟随），取不到返回 null。 */
-    fun readIconColor(icon: View?, iconColorRes: Int?): Int? {
-        if (iconColorRes != null && iconColorRes != 0) {
-            val color = if (iconColorRes ushr 24 == 0 && icon != null) {
-                runCatching { icon.resources.getColor(iconColorRes, icon.context.theme) }.getOrNull()
-            } else {
-                iconColorRes
-            }
-            if (color != null && Color.alpha(color) != 0) return color
-        }
-        if (icon is ImageView) {
-            icon.imageTintList?.defaultColor?.let { if (Color.alpha(it) != 0) return it }
-            colorOfFilter(icon.colorFilter)?.let { return it }
-            colorOfFilter(icon.drawable?.colorFilter)?.let { return it }
-        }
-        if (icon != null) {
-            for (name in arrayOf("getCurrentColor", "getColor", "getIconColor")) {
-                val value = runCatching { Reflect.callMethod(icon, name) }.getOrNull() as? Int ?: continue
-                if (Color.alpha(value) != 0) return value
-            }
-        }
-        return null
-    }
+    private fun typefaceFor(weight: Int): Typeface =
+        typefaceCache.getOrPut(weight) { Typeface.create(Typeface.DEFAULT, weight, false) }
 }

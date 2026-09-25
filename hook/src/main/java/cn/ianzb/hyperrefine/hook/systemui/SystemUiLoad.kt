@@ -13,9 +13,6 @@ class SystemUiLoad : BaseLoad() {
     override val targetPackages: List<String> = listOf(TARGET_PACKAGE)
 
     override fun onPackageLoaded(target: PackageTarget) {
-        // 无条件安装插件 ClassLoader 入口 hook 并尝试恢复已加载插件，
-        // 保证「插件先加载、开关后开启 + 热重载」时也能补装成员 hook。
-        target.classLoader?.let { PluginLoader.bootstrap(it) }
         initHook(CcVolumePercentHook(), HookPrefs.getBoolean(CcVolumePercentHook.KEY, false))
         initHook(CcBrightnessPercentHook(), HookPrefs.getBoolean(CcBrightnessPercentHook.KEY, false))
         initHook(SideVolumePercentHook(), HookPrefs.getBoolean(SideVolumePercentHook.KEY, false))

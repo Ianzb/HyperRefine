@@ -29,6 +29,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * 二级页面模板脚手架：顶栏返回、背景模糊、主题等模块配置统一在此处理。
+ *
+ * @param topBarActions 顶栏右侧扩展槽（如「重启应用」入口），为空则不显示。
  */
 @Composable
 fun SubPageScaffold(

@@ -38,7 +38,7 @@ fun parsePackageList(raw: String): List<String> =
 /**
  * 包名列表卡片：点击后弹出多行输入对话框。
  *
- * 输入内容会在页面右上角生成「快捷操作」按钮，用于批量热重载 / 重启这些应用。
+ * 输入内容会在页面右上角生成「重启应用」按钮，用于批量重启这些应用。
  */
 @Composable
 fun HookPackageListCard(

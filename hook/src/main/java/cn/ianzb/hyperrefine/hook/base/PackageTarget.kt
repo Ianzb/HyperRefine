@@ -1,8 +1,8 @@
 package cn.ianzb.hyperrefine.hook.base
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.pm.ApplicationInfo
-import android.os.Build
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
 import io.github.libxposed.api.XposedModuleInterface.SystemServerStartingParam
 
@@ -24,6 +24,7 @@ class PackageTarget(
 
     private val appVersion: Pair<String, Long> by lazy { resolveAppVersion() }
 
+    @SuppressLint("PrivateApi")
     private fun resolveAppVersion(): Pair<String, Long> {
         val application = runCatching {
             Class.forName("android.app.ActivityThread")
@@ -33,12 +34,7 @@ class PackageTarget(
         val pm = application?.packageManager ?: return "" to 0L
         return runCatching {
             val info = pm.getPackageInfo(packageName, 0)
-            val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                info.longVersionCode
-            } else {
-                @Suppress("DEPRECATION") info.versionCode.toLong()
-            }
-            (info.versionName ?: "") to code
+            (info.versionName ?: "") to info.longVersionCode
         }.getOrDefault("" to 0L)
     }
 
@@ -51,6 +47,7 @@ class PackageTarget(
             classLoader = param.classLoader,
         )
 
+        @Suppress("unused")
         fun fromSystemServer(param: SystemServerStartingParam): PackageTarget = PackageTarget(
             packageName = "android",
             processName = "system_server",
@@ -58,28 +55,5 @@ class PackageTarget(
             classLoader = param.classLoader,
             isSystemServer = true,
         )
-
-        /**
-         * 热重载后重建目标信息（新代码代次拿不到 PackageReadyParam）。
-         */
-        fun restored(
-            packageName: String,
-            processName: String,
-            applicationInfo: ApplicationInfo?,
-        ): PackageTarget = PackageTarget(
-            packageName = packageName,
-            processName = processName,
-            applicationInfo = applicationInfo,
-            classLoader = currentClassLoader(),
-        )
-
-        /**
-         * 尽力获取当前进程的 Application ClassLoader。
-         */
-        fun currentClassLoader(): ClassLoader? = runCatching {
-            val thread = Class.forName("android.app.ActivityThread")
-            val application = thread.getMethod("currentApplication").invoke(null) as? Application
-            application?.classLoader
-        }.getOrNull() ?: Thread.currentThread().contextClassLoader
     }
 }

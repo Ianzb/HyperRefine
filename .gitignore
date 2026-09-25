@@ -15,3 +15,4 @@
 local.properties
 /.idea/
 /hook/build/
+/release.keystore

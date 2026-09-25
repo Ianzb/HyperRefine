@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
@@ -22,7 +23,8 @@ class AppearanceActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.feature_appearance
 
-    override val showSystemUiActions: Boolean = true
+    override val topBarActions: (@Composable () -> Unit)? =
+        { QuickActionsAction(listOf("com.android.systemui")) }
 
     @Composable
     override fun SubPageContent(
@@ -36,7 +38,6 @@ class AppearanceActivity : BaseSubPageActivity() {
         }
         val section = HookSection(
             titleRes = R.string.percent_display_section,
-            titleEn = "Percentage",
             specs = entries.map { it.second },
         )
         LazyColumn(

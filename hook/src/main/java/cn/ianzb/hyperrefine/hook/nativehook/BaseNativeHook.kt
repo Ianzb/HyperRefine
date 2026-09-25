@@ -9,7 +9,7 @@ import cn.ianzb.hyperrefine.hook.rule.VersionContext
  * 单条原生 hook 规则基类，与 [cn.ianzb.hyperrefine.hook.base.BaseHook] 对称。
  *
  * 子类只需声明 [libraryName]；实际 hook 逻辑在原生库导出的 `native_init` 中完成，
- * 本类负责把它接入模板的“开关配置 + 状态上报 + 热重载 + 版本筛选”链路。
+ * 本类负责把它接入模板的“开关配置 + 状态上报 + 版本筛选”链路。
  *
  * ```kotlin
  * class HomeTweaksNative : BaseNativeHook() {

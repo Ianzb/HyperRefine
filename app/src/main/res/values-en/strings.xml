@@ -8,8 +8,8 @@
     <string name="action_back">Back</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_confirm">Confirm</string>
-    <string name="search_hint">Search components</string>
-    <string name="search_empty">No matching component found</string>
+    <string name="search_hint">Search features</string>
+    <string name="search_empty">No matching feature found</string>
 
     <!-- Home -->
     <string name="home_status_title">Status Card</string>
@@ -62,10 +62,6 @@
     <string name="module_scope_request_summary">Request scope for target apps of all options</string>
     <string name="module_scope_request_success">Scope request submitted</string>
     <string name="module_scope_request_failed">Scope request failed: %s</string>
-<string name="module_hot_reload">Global Hot Reload</string>
-<string name="module_hot_reload_summary">Hot reload module code in all running targets</string>
-    <string name="module_hot_reload_no_target">No running target process</string>
-    <string name="module_hot_reload_result">Hot reload result: %s</string>
     <string name="module_clear_dexkit">Clear DexKit Cache</string>
     <string name="module_clear_dexkit_summary">Delete DexKit cache files of all scoped apps</string>
     <string name="module_clear_dexkit_success">DexKit cache cleared</string>
@@ -88,7 +84,6 @@
     <string name="device_type_fold">Foldable</string>
 
     <!-- Scope page -->
-    <string name="scope_hot_reload">Hot Reload</string>
     <string name="scope_restart">Restart</string>
     <string name="scope_restart_need_root">Restarting an app requires root</string>
     <string name="scope_safe_mode">Safe mode</string>
@@ -128,24 +123,20 @@
     <string name="hook_package_list_hint">Supports newline, comma, semicolon or space separators</string>
 
     <!-- Quick actions -->
-    <string name="quick_action_title">Quick Actions</string>
-    <string name="quick_action_summary">Hot reload or restart these apps</string>
-    <string name="quick_action_hot_reload_all">Hot Reload All</string>
-    <string name="quick_action_restart_all">Restart All</string>
+    <string name="quick_action_title">Restart Apps</string>
+    <string name="quick_action_select_all">Select All</string>
+    <string name="quick_action_deselect_all">Deselect All</string>
+    <string name="quick_action_restart">Restart</string>
 
     <!-- Features -->
     <string name="section_system_ui">System UI</string>
     <string name="feature_appearance">Appearance</string>
-    <string name="feature_appearance_summary">Volume / brightness bar percentage value display and other appearance tweaks</string>
 
-    <string name="appearance_cc_volume">Control center volume bar percentage</string>
-    <string name="appearance_cc_volume_summary">Show a percentage value on the control center volume bar</string>
-    <string name="appearance_cc_brightness">Control center brightness bar percentage</string>
-    <string name="appearance_cc_brightness_summary">Show a percentage value on the control center brightness bar</string>
-    <string name="appearance_side_volume">Side volume bar percentage</string>
-    <string name="appearance_side_volume_summary">Show a percentage value on the side volume bar summoned by volume keys</string>
+    <string name="appearance_cc_volume">Control center volume bar</string>
+    <string name="appearance_cc_brightness">Control center brightness bar</string>
+    <string name="appearance_side_volume">Side volume bar</string>
 
-    <string name="percent_display_section">Percentage value</string>
+    <string name="percent_display_section">Volume &amp; brightness bars</string>
     <string name="percent_switch_summary">Show a percentage value on the slider; style options appear after enabling</string>
     <string name="percent_style_section">Style</string>
     <string name="percent_font_size">Font size</string>
@@ -154,13 +145,21 @@
     <string name="percent_font_size_unit">dp</string>
     <string name="percent_font_weight">Font weight</string>
     <string name="percent_font_weight_summary">Adjust the font weight of the percentage value</string>
-    <string name="font_weight_default">Default (Regular)</string>
+    <string name="font_weight_default">Regular</string>
     <string name="font_weight_light">Light</string>
     <string name="font_weight_medium">Medium</string>
+    <string name="font_weight_semibold">Semibold</string>
     <string name="font_weight_bold">Bold</string>
+    <string name="font_weight_black">Black</string>
     <string name="percent_follow_icon">Follow icon color</string>
-    <string name="volume_follow_icon_summary">Follow the volume speaker icon blue in real time; turn off to use the default text color</string>
-    <string name="brightness_follow_icon_summary">Follow the brightness sun icon gold in real time; turn off to use the default text color</string>
+    <string name="volume_follow_icon_summary">Follow the volume icon: gray at low volume, blue otherwise; fixed gray when off</string>
+    <string name="brightness_follow_icon_summary">Follow the brightness icon: gray at low brightness, gold otherwise; fixed gray when off</string>
+    <string name="side_volume_interaction_section">Interaction</string>
+    <string name="side_volume_position_section">Display position</string>
+    <string name="side_volume_inside">Show percentage inside the bar</string>
+    <string name="side_volume_inside_summary">Off: floating above the volume area; On: inside the bar at the top</string>
+    <string name="side_volume_longpress">Long-press to open volume panel</string>
+    <string name="side_volume_longpress_summary">Long-press the bar to expand the volume panel and hide its three-dot button</string>
 
     <!-- Update -->
     <string name="check_update_on_launch">Check for Updates on Launch</string>
@@ -183,9 +182,9 @@
     <!-- About -->
     <string name="about">About</string>
     <string name="about_source_code">Source Code</string>
-    <string name="about_source_code_summary">https://github.com/your-name/HyperRefine</string>
+    <string name="about_source_code_summary">https://github.com/Ianzb/HyperRefine</string>
     <string name="about_telegram">Feedback</string>
-    <string name="about_telegram_summary">https://t.me/your-channel</string>
+    <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
     <string name="about_based_on">Based on MiuixGuiTemplate 0.4.0</string>
     <string name="license_lgpl">GNU LGPL v3.0</string>

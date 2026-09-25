@@ -31,12 +31,7 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
+            isMinifyEnabled = false
         }
     }
 
@@ -88,7 +83,7 @@ dependencies {
     implementation(libs.miuix.icons)
     implementation(libs.miuix.squircle)
     implementation(libs.miuix.navigation)
-    implementation(libs.material.icons.extended)
+    implementation(libs.material.icons.core)
     implementation(libs.haze)
 }
 

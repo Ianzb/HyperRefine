@@ -23,10 +23,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.CheckCircleOutline
-import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.RemoveCircleOutline
+import cn.ianzb.hyperrefine.ui.icons.CheckCircleOutlineIcon
+import cn.ianzb.hyperrefine.ui.icons.ErrorOutlineIcon
+import cn.ianzb.hyperrefine.ui.icons.RemoveCircleOutlineIcon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -53,6 +52,7 @@ import cn.ianzb.hyperrefine.ui.util.shouldShowSplitPane
 import cn.ianzb.hyperrefine.util.SystemVersionDetector
 import cn.ianzb.hyperrefine.xposed.XposedServiceManager
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.seconds
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -89,10 +89,15 @@ fun HomePageView(
     LaunchedEffect(rootPollActivated, rootPollChecked, rootPollAvailable) {
         if (rootPollActivated && rootPollChecked && !rootPollAvailable) {
             while (true) {
-                delay(3000)
+                delay(3.seconds)
                 XposedServiceManager.checkRoot()
             }
         }
+    }
+
+    // 每次切回主页时刷新作用域，保证授权变化能及时反映。
+    LaunchedEffect(refreshKey) {
+        XposedServiceManager.refreshScope()
     }
 
     Scaffold(
@@ -171,9 +176,9 @@ fun HomePageView(
                     }
                     // 未激活 = 叉号；已激活但无 Root = 圈中横线；正常 = 对号。
                     val statusIcon: ImageVector = when {
-                        !activated -> Icons.Rounded.ErrorOutline
-                        rootMissing -> Icons.Rounded.RemoveCircleOutline
-                        else -> Icons.Rounded.CheckCircleOutline
+                        !activated -> ErrorOutlineIcon
+                        rootMissing -> RemoveCircleOutlineIcon
+                        else -> CheckCircleOutlineIcon
                     }
 
                     val openScopeList = {
@@ -328,8 +333,8 @@ private fun StatusCard(
     iconTint: Color,
     statusColor: Color,
     onClick: () -> Unit,
-    compact: Boolean = false,
     modifier: Modifier = Modifier,
+    compact: Boolean = false,
 ) {
     val iconSize = if (compact) 100.dp else 170.dp
     val iconOffsetX = if (compact) 22.dp else 38.dp

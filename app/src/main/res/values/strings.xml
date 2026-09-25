@@ -136,6 +136,10 @@
     <string name="appearance_cc_brightness">亮度条</string>
     <string name="appearance_side_volume">侧边音量条</string>
 
+    <string name="percent_volume_title">音量条百分比</string>
+    <string name="percent_brightness_title">亮度条百分比</string>
+    <string name="percent_side_volume_title">侧边音量条百分比</string>
+
     <string name="section_device_center">融合设备中心</string>
     <string name="device_center_hide_more">隐藏省略号</string>
     <string name="device_center_hide_more_summary">隐藏融合设备中心末尾的「…」按钮，设备刚好占满一行时不再换行</string>

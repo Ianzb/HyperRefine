@@ -169,6 +169,12 @@ internal fun featureSpecs(): List<OptionSpec> {
         } else {
             R.string.volume_follow_icon_summary
         }
+        // 入口卡片用「音量条 / 亮度条」；开关标题保留「百分比」字样。
+        val switchTitleRes = when (location) {
+            PercentLocation.CC_VOLUME -> R.string.percent_volume_title
+            PercentLocation.CC_BRIGHTNESS -> R.string.percent_brightness_title
+            else -> R.string.percent_side_volume_title
+        }
         specs += OptionSpec(
             key = PercentLocation.entryKey(location),
             type = OptionType.ARROW,
@@ -177,7 +183,7 @@ internal fun featureSpecs(): List<OptionSpec> {
         specs += OptionSpec(
             key = PercentLocation.masterKey(location),
             type = OptionType.SWITCH,
-            titleRes = titleRes,
+            titleRes = switchTitleRes,
             summaryRes = R.string.percent_switch_summary,
             defaultBoolean = false,
             targetPackages = systemUi,

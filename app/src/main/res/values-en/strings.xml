@@ -136,6 +136,10 @@
     <string name="appearance_cc_brightness">Brightness bar</string>
     <string name="appearance_side_volume">Side volume bar</string>
 
+    <string name="percent_volume_title">Volume bar percentage</string>
+    <string name="percent_brightness_title">Brightness bar percentage</string>
+    <string name="percent_side_volume_title">Side volume bar percentage</string>
+
     <string name="section_device_center">Fusion Device Center</string>
     <string name="device_center_hide_more">Hide overflow</string>
     <string name="device_center_hide_more_summary">Hide the “…” button at the end of the device center so a full row of devices no longer wraps</string>

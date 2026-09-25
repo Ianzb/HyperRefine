@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    自动备份规则（Android 11 / API 30 及以下）。
+    见 https://developer.android.com/guide/topics/data/autobackup
+-->
+<full-backup-content>
+    <include domain="sharedpref" path="." />
+</full-backup-content>

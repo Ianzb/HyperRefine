@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 读取作用域内任意应用的信息（图标 / 名称 / 版本）需要包可见性 -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+
+    <application
+        android:name=".TemplateApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
+        android:theme="@style/Theme.HyperRefine">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.HyperRefine"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".LicenseActivity"
+            android:exported="false"
+            android:label="@string/third_party_licenses_title"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.features.AppearanceActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.features.PercentStyleActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.scope.ScopeListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.safemode.SafeModeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+    </application>
+
+</manifest>

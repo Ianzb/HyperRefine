@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    数据提取规则（Android 12 / API 31 及以上）。
+    见 https://developer.android.com/about/versions/12/backup-restore#xml-changes
+-->
+<data-extraction-rules>
+    <!-- 云备份：仅备份应用配置（SharedPreferences），避免恢复无意义的运行时数据 -->
+    <cloud-backup>
+        <include domain="sharedpref" path="." />
+    </cloud-backup>
+    <!-- 设备迁移（换机）：同样迁移应用配置 -->
+    <device-transfer>
+        <include domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

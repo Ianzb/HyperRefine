@@ -183,7 +183,7 @@
     <string name="about">About</string>
     <string name="about_source_code">Source Code</string>
     <string name="about_source_code_summary">https://github.com/Ianzb/HyperRefine</string>
-    <string name="about_telegram">Feedback</string>
+    <string name="about_telegram">Telegram Group</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
     <string name="about_based_on">Based on MiuixGuiTemplate 0.4.0</string>

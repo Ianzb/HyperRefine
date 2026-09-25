@@ -183,7 +183,7 @@
     <string name="about">关于</string>
     <string name="about_source_code">项目地址</string>
     <string name="about_source_code_summary">https://github.com/Ianzb/HyperRefine</string>
-    <string name="about_telegram">反馈渠道</string>
+    <string name="about_telegram">Telegram 群组</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">第三方许可证与致谢</string>
     <string name="about_based_on">Based on MiuixGuiTemplate 0.4.0</string>

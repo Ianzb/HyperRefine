@@ -24,7 +24,7 @@
 
 ### 变更
 
-- 同步脚手架最新提交（`MiuixGuiTemplate 0.4.0 @ 676f1fa`、`@ 1e4d741`、`@ 544a858`、`@ 7c4d665`、`@ 5b7c4cf`、`@ 4027e9c`、`@ 5f9ff8c`）：
+- 同步脚手架最新提交（`MiuixGuiTemplate 0.4.0 @ 676f1fa`、`@ 1e4d741`、`@ 544a858`、`@ 7c4d665`、`@ 5b7c4cf`、`@ 4027e9c`、`@ 5f9ff8c`、`@ 6a1eead`）：
   - `HookOptionsPage` 新增 `subPages` / `HookSubPage`（子页面功能并入功能页搜索）与 `topBarActions` 顶栏扩展槽
   - 新增通用 `QuickActionsAction`；`SubPageScaffold` / `BaseSubPageActivity` 新增 `topBarActions`
   - 新增 `ui/util/MiuixAnimations.kt`（`MiuixExpandSpec`，组件显隐统一 Miuix 弹簧动画）
@@ -35,6 +35,7 @@
   - 子页面搜索支持多级嵌套：`HookSubPage` 新增 `subPages`（递归），多级页面内功能可被父页搜索直达
 - 功能页小标题改为单语言（不再传 `titleEn`）；搜索文案「搜索组件」→「搜索功能」
 - 许可要求调整：衍生项目只需在应用内「关于」页保留 `Based on MiuixGuiTemplate <版本号>` 标注，不再要求在各自 `README.md` 中标注；同步更新 README 与二次开发指南
+- Telegram 群组文案：关于页「反馈渠道」改为「Telegram 群组」（英文 `Telegram Group`），README 顶部链接同步改为「Telegram 群组」；二次开发指南强调不要只写「反馈渠道 / 反馈方式」，以免用户看不出是 TG 群组
 - 按入口卡片文案规范去掉二级菜单入口卡片的小标题（含「外观」入口），描述性内容仅保留在二级页面内；相应删除 `feature_appearance_summary`
 - 移除自定义的 SystemUI 热重载机制（`PluginLoader` 宿主恢复 / bootstrap）：插件 ClassLoader 仅在插件加载时捕获一次，**开启开关后需重启系统界面生效**
 - 全局移除热重载功能：删除设置页「全局热重载」、作用域页与重启应用入口中的热重载，以及 `XposedServiceManager.hotReload`/`runningTargets`、`NativeHookHelper.reset`、`PackageTarget.restored`、`XposedEntry` 的 `onHotReloading`/`onHotReloaded` 与 `module.prop` 的 `autoHotReload`；仅保留「重启」（含 SystemUI 重启优化）

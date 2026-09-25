@@ -6,7 +6,7 @@
 
 ### 基于 Miuix 的 LSPosed 模块
 
-[接口文档](docs/API.md) | [原生 Hook 指南](docs/NATIVE_HOOK.md) | [二次开发指南](docs/CUSTOMIZE.md) | [模块开发工作流](docs/WORKFLOW.md) | [更新日志](changelog.md) | [反馈渠道](https://t.me/HyperRefine)
+[接口文档](docs/API.md) | [原生 Hook 指南](docs/NATIVE_HOOK.md) | [二次开发指南](docs/CUSTOMIZE.md) | [模块开发工作流](docs/WORKFLOW.md) | [更新日志](changelog.md) | [Telegram 群组](https://t.me/HyperRefine)
 
 ![Platform](https://img.shields.io/badge/Platform-Android-green)
 ![LSPosed](https://img.shields.io/badge/LSPosed-libxposed%20102-blue)

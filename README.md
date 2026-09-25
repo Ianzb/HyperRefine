@@ -41,6 +41,7 @@
 - **组件与 Hook 绑定** — 开关 / 箭头 / 下拉 / 滑块 / 复选框 / 单选 / 文本卡片，标题接入全局搜索
 - **Hook 状态展示** — 规则生效时标题显示为绿色、失败为红色，未应用时保持默认色（零额外占位）
 - **二级页面模板** — 独立 Activity，自动套用主题与背景模糊配置
+- **应用内检查更新** — 设置页「更新」分区支持「启动时自动检查」与手动检查；发现新版本弹窗展示版本对比与 Release 更新说明，确认后跳转 GitHub Release 下载页
 
 <br>
 
@@ -115,6 +116,7 @@ $env:KEY_PASSWORD="你的密钥密码"
 | `KEY_ALIAS` | 密钥别名 |
 | `KEY_PASSWORD` | 密钥密码 |
 | `CHANNEL_ID` / `BOT_TOKEN` | （可选）Telegram 推送；不需要时删除 `release.yml` 的「上传到Telegram」步骤 |
+| `MESSAGE_THREAD_ID` | （可选）多话题群（Forum）指定话题的 `message_thread_id`；不填则发到默认 / General 话题 |
 
 **4. 发布**：手动运行 `Release Build` 工作流并填写版本号（会自动 `versionCode` +1 并提交），或先改好 `versionName` 再推送 `v1.0.0` 形式的标签。
 

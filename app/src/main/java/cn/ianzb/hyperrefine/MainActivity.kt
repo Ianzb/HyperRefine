@@ -42,9 +42,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import cn.ianzb.hyperrefine.ui.component.UpdateDialog
 import cn.ianzb.hyperrefine.ui.component.liquid.IosLiquidGlassNavigationBar
 import cn.ianzb.hyperrefine.ui.screen.about.AboutPageContent
 import cn.ianzb.hyperrefine.ui.screen.features.FeaturesPageView
@@ -122,6 +124,47 @@ class MainActivity : ComponentActivity() {
             var isBlurEnabled by remember { mutableStateOf(savedSettings.isBlurEnabled) }
             var checkUpdateOnLaunch by remember { mutableStateOf(savedSettings.checkUpdateOnLaunch) }
 
+            var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+            var isCheckingUpdate by remember { mutableStateOf(false) }
+            val uriHandler = LocalUriHandler.current
+            val scope = rememberCoroutineScope()
+
+            LaunchedEffect(Unit) {
+                if (checkUpdateOnLaunch) {
+                    UpdateChecker.checkForUpdate(this@MainActivity)
+                        .onSuccess { info -> if (info.hasUpdate) updateInfo = info }
+                }
+            }
+
+            fun checkUpdate() {
+                if (isCheckingUpdate) return
+                isCheckingUpdate = true
+                scope.launch {
+                    val result = UpdateChecker.checkForUpdate(this@MainActivity)
+                    isCheckingUpdate = false
+                    result.fold(
+                        onSuccess = { info ->
+                            if (info.hasUpdate) {
+                                updateInfo = info
+                            } else {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    getString(R.string.update_latest),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                        onFailure = {
+                            Toast.makeText(
+                                this@MainActivity,
+                                getString(R.string.update_check_failed),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                    )
+                }
+            }
+
             fun persistState() {
                 AppSettings.save(
                     this@MainActivity,
@@ -142,19 +185,25 @@ class MainActivity : ComponentActivity() {
                     isLiquidGlass = isLiquidGlass,
                     isBlurEnabled = isBlurEnabled,
                     checkUpdateOnLaunch = checkUpdateOnLaunch,
+                    isCheckingUpdate = isCheckingUpdate,
                     onThemeModeChange = { themeMode = it; persistState() },
                     onFloatingNavbarChange = { isFloatingNavbar = it; persistState() },
                     onLiquidGlassChange = { isLiquidGlass = it; persistState() },
                     onBlurEnabledChange = { isBlurEnabled = it; persistState() },
                     onCheckUpdateOnLaunchChange = { checkUpdateOnLaunch = it; persistState() },
-                    onCheckUpdate = {
-                        Toast.makeText(
-                            this@MainActivity,
-                            getString(R.string.update_check_placeholder),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
+                    onCheckUpdate = { checkUpdate() },
                 )
+
+                updateInfo?.let { info ->
+                    UpdateDialog(
+                        info = info,
+                        onDismissRequest = { updateInfo = null },
+                        onConfirm = {
+                            updateInfo = null
+                            runCatching { uriHandler.openUri(info.releaseUrl) }
+                        },
+                    )
+                }
             }
         }
     }
@@ -167,6 +216,7 @@ private fun MainScreen(
     isLiquidGlass: Boolean,
     isBlurEnabled: Boolean,
     checkUpdateOnLaunch: Boolean,
+    isCheckingUpdate: Boolean,
     onThemeModeChange: (ColorSchemeMode) -> Unit,
     onFloatingNavbarChange: (Boolean) -> Unit,
     onLiquidGlassChange: (Boolean) -> Unit,
@@ -283,7 +333,7 @@ private fun MainScreen(
                         checkUpdateOnLaunch = checkUpdateOnLaunch,
                         onCheckUpdateOnLaunchChange = onCheckUpdateOnLaunchChange,
                         onCheckUpdate = onCheckUpdate,
-                        isCheckingUpdate = false,
+                        isCheckingUpdate = isCheckingUpdate,
                         extraBottomPadding = navBarHeight,
                     )
                     3 -> AboutPageContent(

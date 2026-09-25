@@ -19,6 +19,7 @@
   - 侧边音量条额外配置：百分比位置（音量区域上方悬浮 / 音量条内部上方）、长按打开音量面板并隐藏三个点按钮（避免与百分比数值重叠，默认关闭、常显于页面最前）
 - **多级页面搜索**：功能页搜索支持多级嵌套（`HookSubPage.subPages` 递归），「功能页 → 外观 → 各位置」深处的功能均可被搜索直达（摘要显示「外观 / 控制中心音量条」路径，命中直接打开对应页面）
 - **CI / Release 工作流**：新增 `.github/workflows/ci.yml`（Debug 构建 + Artifact）与 `release.yml`（签名 Release + GitHub Release + 可选 Telegram）；`app/build.gradle.kts` 增加基于环境变量的 `signingConfigs.release` 与 arm64-v8a ABI 拆分；`release.keystore` 与 GitHub Secrets 配置见 [README · 发布与 CI](README.md#发布与-ci)
+- **应用内检查更新**：新增 `UpdateChecker`（请求 GitHub Releases API，比较语义化版本）与 `UpdateDialog`；设置页「更新」分区支持启动时自动检查与手动检查，发现新版本弹窗展示当前 / 最新版本与 Release 更新说明，确认后跳转 GitHub Release 下载页；替换原有的占位 Toast，`AndroidManifest` 增加 `INTERNET` 权限
 - 全局灰色百分比调亮（`#959595` → `#BFBFBF`）
 - 作用域：`com.android.systemui`（系统界面）、`com.miui.home`（系统桌面占位 `HomeLoad`）；不再申请 `system`（系统本体）作用域
 
@@ -36,6 +37,7 @@
 - 功能页小标题改为单语言（不再传 `titleEn`）；搜索文案「搜索组件」→「搜索功能」
 - 许可要求调整：衍生项目只需在应用内「关于」页保留 `Based on MiuixGuiTemplate <版本号>` 标注，不再要求在各自 `README.md` 中标注；同步更新 README 与二次开发指南
 - Telegram 群组文案：关于页「反馈渠道」改为「Telegram 群组」（英文 `Telegram Group`），README 顶部链接同步改为「Telegram 群组」；二次开发指南强调不要只写「反馈渠道 / 反馈方式」，以免用户看不出是 TG 群组
+- Telegram 发布支持话题：`release.yml` 新增可选 Secret `MESSAGE_THREAD_ID`，用于把 APK 发到多话题群（Forum）的指定话题（不填则发默认 / General 话题）
 - 按入口卡片文案规范去掉二级菜单入口卡片的小标题（含「外观」入口），描述性内容仅保留在二级页面内；相应删除 `feature_appearance_summary`
 - 移除自定义的 SystemUI 热重载机制（`PluginLoader` 宿主恢复 / bootstrap）：插件 ClassLoader 仅在插件加载时捕获一次，**开启开关后需重启系统界面生效**
 - 全局移除热重载功能：删除设置页「全局热重载」、作用域页与重启应用入口中的热重载，以及 `XposedServiceManager.hotReload`/`runningTargets`、`NativeHookHelper.reset`、`PackageTarget.restored`、`XposedEntry` 的 `onHotReloading`/`onHotReloaded` 与 `module.prop` 的 `autoHotReload`；仅保留「重启」（含 SystemUI 重启优化）

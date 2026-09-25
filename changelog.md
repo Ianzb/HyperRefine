@@ -25,6 +25,7 @@
 
 ### 变更
 
+- **精简包体**：Release 启用 R8 代码 / 资源压缩并新增 `proguard-rules.pro`（保留 libxposed 入口与 DexKit 反射类）；R8 自动裁剪 `material-icons-extended` 中未使用的上千图标，Release APK 约 50MB → 约 4MB
 - 同步脚手架最新提交（`MiuixGuiTemplate 0.4.0 @ 676f1fa`、`@ 1e4d741`、`@ 544a858`、`@ 7c4d665`、`@ 5b7c4cf`、`@ 4027e9c`、`@ 5f9ff8c`、`@ 6a1eead`）：
   - `HookOptionsPage` 新增 `subPages` / `HookSubPage`（子页面功能并入功能页搜索）与 `topBarActions` 顶栏扩展槽
   - 新增通用 `QuickActionsAction`；`SubPageScaffold` / `BaseSubPageActivity` 新增 `topBarActions`

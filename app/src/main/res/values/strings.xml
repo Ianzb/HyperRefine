@@ -130,11 +130,15 @@
 
     <!-- Features -->
     <string name="section_system_ui">系统界面</string>
-    <string name="feature_appearance">外观</string>
+    <string name="feature_control_center">控制中心</string>
 
-    <string name="appearance_cc_volume">控制中心音量条</string>
-    <string name="appearance_cc_brightness">控制中心亮度条</string>
+    <string name="appearance_cc_volume">音量条</string>
+    <string name="appearance_cc_brightness">亮度条</string>
     <string name="appearance_side_volume">侧边音量条</string>
+
+    <string name="section_device_center">融合设备中心</string>
+    <string name="device_center_hide_more">隐藏省略号</string>
+    <string name="device_center_hide_more_summary">隐藏融合设备中心末尾的「…」按钮，设备刚好占满一行时不再换行</string>
 
     <string name="percent_display_section">音量条与亮度条</string>
     <string name="percent_switch_summary">开启后在对应进度条上显示百分比数值，开启后可配置显示样式</string>

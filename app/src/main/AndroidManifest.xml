@@ -39,7 +39,7 @@
             android:label="@string/third_party_licenses_title"
             android:theme="@style/Theme.HyperRefine" />
         <activity
-            android:name=".ui.screen.features.AppearanceActivity"
+            android:name=".ui.screen.features.ControlCenterActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity

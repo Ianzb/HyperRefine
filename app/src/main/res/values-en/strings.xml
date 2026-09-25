@@ -130,11 +130,15 @@
 
     <!-- Features -->
     <string name="section_system_ui">System UI</string>
-    <string name="feature_appearance">Appearance</string>
+    <string name="feature_control_center">Control center</string>
 
-    <string name="appearance_cc_volume">Control center volume bar</string>
-    <string name="appearance_cc_brightness">Control center brightness bar</string>
+    <string name="appearance_cc_volume">Volume bar</string>
+    <string name="appearance_cc_brightness">Brightness bar</string>
     <string name="appearance_side_volume">Side volume bar</string>
+
+    <string name="section_device_center">Fusion Device Center</string>
+    <string name="device_center_hide_more">Hide overflow</string>
+    <string name="device_center_hide_more_summary">Hide the “…” button at the end of the device center so a full row of devices no longer wraps</string>
 
     <string name="percent_display_section">Volume &amp; brightness bars</string>
     <string name="percent_switch_summary">Show a percentage value on the slider; style options appear after enabling</string>

@@ -1,5 +1,6 @@
 package cn.ianzb.hyperrefine.ui.screen.features
 
+import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,7 +19,7 @@ import cn.ianzb.hyperrefine.ui.component.pref.HookSubPage
 import cn.ianzb.hyperrefine.xposed.HookStatusReader
 
 /**
- * 功能页：模块全部功能入口（系统界面 → 外观 → 各功能）。
+ * 功能页：模块全部功能入口（系统界面 → 控制中心 / 侧边音量条）。
  *
  * 页面布局由通用组件 [HookOptionsPage] 提供。
  */
@@ -29,33 +30,46 @@ fun FeaturesPageView(
 ) {
     val context = LocalContext.current
     val specs = remember { featureSpecs() }
+    val sideVolumeEntry = PercentLocation.entryKey(PercentLocation.SIDE_VOLUME)
     val sections = remember(specs) {
         listOf(
             HookSection(
                 titleRes = R.string.section_system_ui,
-                specs = listOf(specByKey(specs, KEY_APPEARANCE)),
+                specs = listOf(
+                    specByKey(specs, KEY_CONTROL_CENTER),
+                    specByKey(specs, sideVolumeEntry),
+                ),
             ),
         )
     }
-    // 外观为二级页，各位置功能页为三级页：通过嵌套 subPages 让搜索直达多级功能。
+    // 控制中心 / 侧边音量条为二级页，各自的样式页为三级页：通过嵌套 subPages 让搜索直达多级功能。
     val subPages = remember(specs) {
         listOf(
             HookSubPage(
-                titleRes = R.string.feature_appearance,
-                specs = PercentLocation.all().map { specByKey(specs, PercentLocation.entryKey(it)) },
-                onOpen = { context.startActivity(Intent(context, AppearanceActivity::class.java)) },
-                subPages = PercentLocation.all().map { location ->
+                titleRes = R.string.feature_control_center,
+                specs = listOf(
+                    specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_BRIGHTNESS)),
+                    specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_VOLUME)),
+                    specByKey(specs, KEY_DEVICE_CENTER_HIDE_MORE),
+                ),
+                onOpen = { context.startActivity(Intent(context, ControlCenterActivity::class.java)) },
+                subPages = listOf(
                     HookSubPage(
-                        titleRes = appearanceTitleRes(location),
-                        specs = locationSpecs(specs, location),
-                        onOpen = {
-                            context.startActivity(
-                                Intent(context, PercentStyleActivity::class.java)
-                                    .putExtra(PercentStyleActivity.EXTRA_LOCATION, location)
-                            )
-                        },
-                    )
-                },
+                        titleRes = R.string.appearance_cc_brightness,
+                        specs = locationSpecs(specs, PercentLocation.CC_BRIGHTNESS),
+                        onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.CC_BRIGHTNESS)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.appearance_cc_volume,
+                        specs = locationSpecs(specs, PercentLocation.CC_VOLUME),
+                        onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.CC_VOLUME)) },
+                    ),
+                ),
+            ),
+            HookSubPage(
+                titleRes = R.string.appearance_side_volume,
+                specs = locationSpecs(specs, PercentLocation.SIDE_VOLUME),
+                onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.SIDE_VOLUME)) },
             ),
         )
     }
@@ -70,16 +84,26 @@ fun FeaturesPageView(
         subPages = subPages,
         isBlurEnabled = isBlurEnabled,
         extraBottomPadding = extraBottomPadding,
-        onArrowClick = {
-            context.startActivity(Intent(context, AppearanceActivity::class.java))
+        onArrowClick = { spec ->
+            when (spec.key) {
+                KEY_CONTROL_CENTER ->
+                    context.startActivity(Intent(context, ControlCenterActivity::class.java))
+                sideVolumeEntry ->
+                    context.startActivity(percentStyleIntent(context, PercentLocation.SIDE_VOLUME))
+            }
         },
         topBarActions = { QuickActionsAction(listOf("com.android.systemui")) },
     )
 }
 
-const val KEY_APPEARANCE = "feature_appearance"
+const val KEY_CONTROL_CENTER = "feature_control_center"
+const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
 const val SIDE_INSIDE_KEY = "side_volume_inside"
 const val SIDE_LONGPRESS_KEY = "side_volume_longpress"
+
+private fun percentStyleIntent(context: Context, location: String): Intent =
+    Intent(context, PercentStyleActivity::class.java)
+        .putExtra(PercentStyleActivity.EXTRA_LOCATION, location)
 
 /** 位置标识：与配置键前缀一致。 */
 object PercentLocation {
@@ -96,13 +120,6 @@ object PercentLocation {
 
 private fun specByKey(specs: List<OptionSpec>, key: String): OptionSpec =
     specs.first { it.key == key }
-
-/** 各位置页面标题（二级 / 三级页面共用）。 */
-private fun appearanceTitleRes(location: String): Int = when (location) {
-    PercentLocation.CC_BRIGHTNESS -> R.string.appearance_cc_brightness
-    PercentLocation.SIDE_VOLUME -> R.string.appearance_side_volume
-    else -> R.string.appearance_cc_volume
-}
 
 /** 各位置页面内（三级页面）的配置项，用于多级搜索直达。 */
 private fun locationSpecs(specs: List<OptionSpec>, location: String): List<OptionSpec> {
@@ -128,9 +145,17 @@ internal fun featureSpecs(): List<OptionSpec> {
     val systemUi = listOf("com.android.systemui")
     val specs = mutableListOf(
         OptionSpec(
-            key = KEY_APPEARANCE,
+            key = KEY_CONTROL_CENTER,
             type = OptionType.ARROW,
-            titleRes = R.string.feature_appearance,
+            titleRes = R.string.feature_control_center,
+        ),
+        OptionSpec(
+            key = KEY_DEVICE_CENTER_HIDE_MORE,
+            type = OptionType.SWITCH,
+            titleRes = R.string.device_center_hide_more,
+            summaryRes = R.string.device_center_hide_more_summary,
+            defaultBoolean = false,
+            targetPackages = systemUi,
         ),
     )
     PercentLocation.all().forEach { location ->

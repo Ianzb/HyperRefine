@@ -17,11 +17,11 @@ import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 
 /**
- * 外观子页：音量条 / 亮度条百分比数值显示的三个平级功能入口。
+ * 控制中心子页：控制中心亮度条 / 音量条百分比数值显示入口，以及融合设备中心相关功能。
  */
-class AppearanceActivity : BaseSubPageActivity() {
+class ControlCenterActivity : BaseSubPageActivity() {
 
-    override val titleRes: Int = R.string.feature_appearance
+    override val titleRes: Int = R.string.feature_control_center
 
     override val topBarActions: (@Composable () -> Unit)? =
         { QuickActionsAction(listOf("com.android.systemui")) }
@@ -33,12 +33,16 @@ class AppearanceActivity : BaseSubPageActivity() {
     ) {
         val context = LocalContext.current
         val scrollBehavior = LocalSubPageScrollBehavior.current
-        val entries = PercentLocation.all().map { location ->
+        val entries = listOf(PercentLocation.CC_BRIGHTNESS, PercentLocation.CC_VOLUME).map { location ->
             location to featureSpec(PercentLocation.entryKey(location))
         }
-        val section = HookSection(
+        val displaySection = HookSection(
             titleRes = R.string.percent_display_section,
             specs = entries.map { it.second },
+        )
+        val deviceSection = HookSection(
+            titleRes = R.string.section_device_center,
+            specs = listOf(featureSpec(KEY_DEVICE_CENTER_HIDE_MORE)),
         )
         LazyColumn(
             modifier = Modifier
@@ -56,7 +60,7 @@ class AppearanceActivity : BaseSubPageActivity() {
             contentPadding = contentPadding,
         ) {
             item {
-                HookSectionCard(section) {
+                HookSectionCard(displaySection) {
                     entries.forEach { (location, spec) ->
                         HookOptionView(
                             spec = spec,
@@ -68,6 +72,11 @@ class AppearanceActivity : BaseSubPageActivity() {
                             },
                         )
                     }
+                }
+            }
+            item {
+                HookSectionCard(deviceSection) {
+                    deviceSection.specs.forEach { HookOptionView(it) }
                 }
             }
         }

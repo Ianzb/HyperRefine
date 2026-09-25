@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/icon.png" width="140" alt="HyperRefine" />
+
 # HyperRefine
 
 ### 基于 Miuix 的 LSPosed 模块

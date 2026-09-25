@@ -10,6 +10,7 @@ import androidx.core.content.edit
  * - 物理存储：普通 SharedPreferences
  * - 跨进程：同步镜像到 LSPosed 远程偏好（hook 进程只读）
  */
+@Suppress("unused")
 object PrefsStore {
 
     const val PREFS_NAME = "hyperrefine_prefs"
@@ -97,6 +98,7 @@ object PrefsStore {
                 is Int -> putInt(storageKey, value)
                 is Long -> putLong(storageKey, value)
                 is Float -> putFloat(storageKey, value)
+                is Double -> putFloat(storageKey, value.toFloat())
                 is String -> putString(storageKey, value)
                 is Set<*> -> putStringSet(storageKey, value.filterIsInstance<String>().toSet())
                 else -> putString(storageKey, value.toString())

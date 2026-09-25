@@ -131,9 +131,12 @@ fun SettingsPageView(
                 val json = reader.readText()
                 reader.close()
                 inputStream?.close()
-                ConfigBackup.importJson(json)
-                Toast.makeText(context, resources.getString(R.string.import_success), Toast.LENGTH_SHORT).show()
-                activity?.recreate()
+                if (ConfigBackup.importJson(json)) {
+                    Toast.makeText(context, resources.getString(R.string.import_success), Toast.LENGTH_SHORT).show()
+                    activity?.recreate()
+                } else {
+                    Toast.makeText(context, resources.getString(R.string.import_failed), Toast.LENGTH_SHORT).show()
+                }
             } catch (_: Exception) {
                 Toast.makeText(context, resources.getString(R.string.import_failed), Toast.LENGTH_SHORT).show()
             }

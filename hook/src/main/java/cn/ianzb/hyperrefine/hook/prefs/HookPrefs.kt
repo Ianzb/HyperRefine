@@ -8,8 +8,9 @@ import android.content.SharedPreferences
  * 数据由 App 侧写入 LSPosed 远程偏好，hook 进程通过
  * [io.github.libxposed.api.XposedInterface.getRemotePreferences] 读取。
  *
- * 键名需与 App 侧 [PrefsStore] 保持一致（统一加 `prefs_key_` 前缀）。
+ * 键名需与 App 侧 `PrefsStore` 保持一致（统一加 `prefs_key_` 前缀）。
  */
+@Suppress("unused")
 object HookPrefs {
 
     /** 远程偏好分组名，需与 App 侧保持一致。 */
@@ -27,23 +28,32 @@ object HookPrefs {
     private fun key(key: String): String =
         if (key.startsWith(KEY_PREFIX)) key else KEY_PREFIX + key
 
+    private inline fun <T> safe(defaultValue: T, read: (SharedPreferences) -> T): T {
+        val target = prefs ?: return defaultValue
+        return try {
+            read(target)
+        } catch (_: ClassCastException) {
+            defaultValue
+        }
+    }
+
     fun getBoolean(key: String, defaultValue: Boolean = false): Boolean =
-        prefs?.getBoolean(key(key), defaultValue) ?: defaultValue
+        safe(defaultValue) { it.getBoolean(key(key), defaultValue) }
 
     fun getString(key: String, defaultValue: String? = null): String? =
-        prefs?.getString(key(key), defaultValue) ?: defaultValue
+        safe(defaultValue) { it.getString(key(key), defaultValue) }
 
     fun getInt(key: String, defaultValue: Int = 0): Int =
-        prefs?.getInt(key(key), defaultValue) ?: defaultValue
+        safe(defaultValue) { it.getInt(key(key), defaultValue) }
 
     fun getLong(key: String, defaultValue: Long = 0L): Long =
-        prefs?.getLong(key(key), defaultValue) ?: defaultValue
+        safe(defaultValue) { it.getLong(key(key), defaultValue) }
 
     fun getFloat(key: String, defaultValue: Float = 0f): Float =
-        prefs?.getFloat(key(key), defaultValue) ?: defaultValue
+        safe(defaultValue) { it.getFloat(key(key), defaultValue) }
 
     fun getStringSet(key: String, defaultValue: Set<String> = emptySet()): Set<String> =
-        prefs?.getStringSet(key(key), defaultValue) ?: defaultValue
+        safe(defaultValue) { it.getStringSet(key(key), defaultValue) ?: defaultValue }
 
     fun getAll(): Map<String, *> = prefs?.all ?: emptyMap<String, Any>()
 }

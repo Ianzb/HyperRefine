@@ -127,10 +127,19 @@
     <string name="quick_action_select_all">全选</string>
     <string name="quick_action_deselect_all">全不选</string>
     <string name="quick_action_restart">重启</string>
+    <string name="quick_action_restart_success">重启成功</string>
 
     <!-- Features -->
     <string name="section_system_ui">系统界面</string>
     <string name="feature_control_center">控制中心</string>
+
+    <string name="section_security_center">安全服务</string>
+    <string name="fast_charge_notify">快充加速通知</string>
+    <string name="section_notifications">通知</string>
+    <string name="fast_charge_notify_enter">隐藏进入快充加速提醒</string>
+    <string name="fast_charge_notify_enter_summary">隐藏接入充电器且电量低于设定值时的进入提醒</string>
+    <string name="fast_charge_notify_exit">隐藏退出快充加速提醒</string>
+    <string name="fast_charge_notify_exit_summary">隐藏快充加速过程中的退出提醒</string>
 
     <string name="appearance_cc_volume">音量条</string>
     <string name="appearance_cc_brightness">亮度条</string>
@@ -199,7 +208,7 @@
     <string name="about_telegram">Telegram 群组</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">第三方许可证与致谢</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.4.0</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.4.1</string>
     <string name="license_lgpl">GNU LGPL v3.0</string>
     <string name="license_lgpl_summary">查看完整协议文本</string>
     <string name="third_party_licenses_title">第三方许可证与致谢</string>

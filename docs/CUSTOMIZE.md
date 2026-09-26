@@ -350,7 +350,7 @@ HookOptionsPage(
 ### 7.6 显隐动画与顶栏重启应用
 
 - **显隐动画**：所有组件出现 / 隐藏统一使用 Miuix 标准弹簧 `MiuixExpandSpec`（`ui/util/MiuixAnimations.kt`），即 `expandVertically(animationSpec = MiuixExpandSpec)` / `shrinkVertically(animationSpec = MiuixExpandSpec)`，禁止使用默认或自定义时长。详见 [接口文档](API.md) 5.6。
-- **顶栏重启应用**：批量「重启」入口统一为 `Refresh`（重启）图标 → `QuickActionDialog`。`HookOptionsPage` 自动生成；二级页面通过 `BaseSubPageActivity.topBarActions` 注入 `QuickActionsAction(packages)`，不要自行实现按钮样式。对话框固定标题「重启应用」且**无小标题**，应用列表用 `Card` 圆角容器，每行 `CheckboxPreference`（`checkboxLocation = End`，默认全选），底部左「全选 / 全不选」（全选时显示「全不选」）+ 右「重启」（无勾选禁用）。完整规范见 [接口文档](API.md) 5.6。
+- **顶栏重启应用**：批量「重启」入口统一为 `Refresh`（重启）图标 → `QuickActionDialog`。`HookOptionsPage` 自动生成；二级页面通过 `BaseSubPageActivity.topBarActions` 注入 `QuickActionsAction(packages)`，不要自行实现按钮样式。对话框固定标题「重启应用」且**无小标题**，应用列表用 `Card` 圆角容器，每行 `CheckboxPreference`（`checkboxLocation = End`，默认全选），底部左「全选 / 全不选」（全选时显示「全不选」）+ 右「重启」（无勾选禁用），重启完成后弹出成功提示（`quick_action_restart_success`）。完整规范见 [接口文档](API.md) 5.6。
 
 ---
 

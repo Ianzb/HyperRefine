@@ -19,7 +19,7 @@ import cn.ianzb.hyperrefine.ui.component.pref.HookSubPage
 import cn.ianzb.hyperrefine.xposed.HookStatusReader
 
 /**
- * 功能页：模块全部功能入口（系统界面 → 控制中心 / 侧边音量条）。
+ * 功能页：模块全部功能入口（系统界面 → 控制中心 / 侧边音量条；安全服务 → 快充加速通知）。
  *
  * 页面布局由通用组件 [HookOptionsPage] 提供。
  */
@@ -40,9 +40,15 @@ fun FeaturesPageView(
                     specByKey(specs, sideVolumeEntry),
                 ),
             ),
+            HookSection(
+                titleRes = R.string.section_security_center,
+                specs = listOf(
+                    specByKey(specs, KEY_SECURITY_CENTER),
+                ),
+            ),
         )
     }
-    // 控制中心 / 侧边音量条为二级页，各自的样式页为三级页：通过嵌套 subPages 让搜索直达多级功能。
+    // 控制中心 / 侧边音量条为二级页，各自的样式页为三级页；安全服务下功能为二级页：通过嵌套 subPages 让搜索直达多级功能。
     val subPages = remember(specs) {
         listOf(
             HookSubPage(
@@ -71,6 +77,11 @@ fun FeaturesPageView(
                 specs = locationSpecs(specs, PercentLocation.SIDE_VOLUME),
                 onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.SIDE_VOLUME)) },
             ),
+            HookSubPage(
+                titleRes = R.string.fast_charge_notify,
+                specs = securityCenterSpecs(specs),
+                onOpen = { context.startActivity(Intent(context, SecurityCenterActivity::class.java)) },
+            ),
         )
     }
 
@@ -88,16 +99,21 @@ fun FeaturesPageView(
             when (spec.key) {
                 KEY_CONTROL_CENTER ->
                     context.startActivity(Intent(context, ControlCenterActivity::class.java))
+                KEY_SECURITY_CENTER ->
+                    context.startActivity(Intent(context, SecurityCenterActivity::class.java))
                 sideVolumeEntry ->
                     context.startActivity(percentStyleIntent(context, PercentLocation.SIDE_VOLUME))
             }
         },
-        topBarActions = { QuickActionsAction(listOf("com.android.systemui")) },
+        topBarActions = { QuickActionsAction(listOf("com.android.systemui", "com.miui.securitycenter")) },
     )
 }
 
 const val KEY_CONTROL_CENTER = "feature_control_center"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
+const val KEY_SECURITY_CENTER = "feature_security_center"
+const val KEY_FAST_CHARGE_ENTER = "security_center_fast_charge_enter_notify"
+const val KEY_FAST_CHARGE_EXIT = "security_center_fast_charge_exit_notify"
 const val SIDE_INSIDE_KEY = "side_volume_inside"
 const val SIDE_LONGPRESS_KEY = "side_volume_longpress"
 
@@ -136,6 +152,13 @@ private fun locationSpecs(specs: List<OptionSpec>, location: String): List<Optio
     return keys.map { specByKey(specs, it) }
 }
 
+/** 安全服务二级页（快充加速通知）内的配置项，用于功能页搜索直达。 */
+private fun securityCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, KEY_FAST_CHARGE_ENTER),
+        specByKey(specs, KEY_FAST_CHARGE_EXIT),
+    )
+
 /** 按键取功能配置项（供各功能子页复用同一份声明）。 */
 fun featureSpec(key: String): OptionSpec =
     featureSpecs().first { it.key == key }
@@ -143,6 +166,7 @@ fun featureSpec(key: String): OptionSpec =
 /** 功能页的全部配置项（App 启动时注册，供全局搜索与作用域申请使用）。 */
 internal fun featureSpecs(): List<OptionSpec> {
     val systemUi = listOf("com.android.systemui")
+    val securityCenter = listOf("com.miui.securitycenter")
     val specs = mutableListOf(
         OptionSpec(
             key = KEY_CONTROL_CENTER,
@@ -156,6 +180,27 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = R.string.device_center_hide_more_summary,
             defaultBoolean = false,
             targetPackages = systemUi,
+        ),
+        OptionSpec(
+            key = KEY_SECURITY_CENTER,
+            type = OptionType.ARROW,
+            titleRes = R.string.fast_charge_notify,
+        ),
+        OptionSpec(
+            key = KEY_FAST_CHARGE_ENTER,
+            type = OptionType.SWITCH,
+            titleRes = R.string.fast_charge_notify_enter,
+            summaryRes = R.string.fast_charge_notify_enter_summary,
+            defaultBoolean = false,
+            targetPackages = securityCenter,
+        ),
+        OptionSpec(
+            key = KEY_FAST_CHARGE_EXIT,
+            type = OptionType.SWITCH,
+            titleRes = R.string.fast_charge_notify_exit,
+            summaryRes = R.string.fast_charge_notify_exit_summary,
+            defaultBoolean = false,
+            targetPackages = securityCenter,
         ),
     )
     PercentLocation.all().forEach { location ->

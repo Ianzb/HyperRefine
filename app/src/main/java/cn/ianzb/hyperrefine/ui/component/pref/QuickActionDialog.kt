@@ -61,7 +61,7 @@ fun QuickActionDialog(
         when {
             targets.isEmpty() -> Unit
             targets.any { AppRestarter.isSystemPackage(it) } -> pendingRestart = targets
-            else -> coroutineScope.launch { targets.forEach { restartPackage(context, it) } }
+            else -> coroutineScope.launch { restartPackages(context, targets) }
         }
     }
 
@@ -122,7 +122,7 @@ fun QuickActionDialog(
         SystemRestartConfirmDialog(
             onConfirm = {
                 pendingRestart = null
-                coroutineScope.launch { targets.forEach { restartPackage(context, it) } }
+                coroutineScope.launch { restartPackages(context, targets) }
             },
             onDismiss = { pendingRestart = null },
         )
@@ -135,15 +135,17 @@ private fun resolveLabel(context: Context, packageName: String): String = runCat
     context.packageManager.getApplicationLabel(info).toString()
 }.getOrDefault(packageName)
 
-private suspend fun restartPackage(context: Context, packageName: String) {
-    val ok = withContext(Dispatchers.IO) {
-        AppRestarter.restart(context, packageName)
+private suspend fun restartPackages(context: Context, packages: List<String>) {
+    if (packages.isEmpty()) return
+    val results = packages.map { packageName ->
+        withContext(Dispatchers.IO) {
+            AppRestarter.restart(context, packageName)
+        }
     }
-    if (!ok) {
-        Toast.makeText(
-            context,
-            context.getString(R.string.scope_restart_need_root),
-            Toast.LENGTH_SHORT,
-        ).show()
+    val message = if (results.all { it }) {
+        R.string.quick_action_restart_success
+    } else {
+        R.string.scope_restart_need_root
     }
+    Toast.makeText(context, context.getString(message), Toast.LENGTH_SHORT).show()
 }

@@ -127,10 +127,19 @@
     <string name="quick_action_select_all">Select All</string>
     <string name="quick_action_deselect_all">Deselect All</string>
     <string name="quick_action_restart">Restart</string>
+    <string name="quick_action_restart_success">Restarted</string>
 
     <!-- Features -->
     <string name="section_system_ui">System UI</string>
     <string name="feature_control_center">Control center</string>
+
+    <string name="section_security_center">Security</string>
+    <string name="fast_charge_notify">Fast-charge notification</string>
+    <string name="section_notifications">Notifications</string>
+    <string name="fast_charge_notify_enter">Hide enter fast-charge reminder</string>
+    <string name="fast_charge_notify_enter_summary">Hide the enter reminder shown when the charger is connected and the battery is below the set level</string>
+    <string name="fast_charge_notify_exit">Hide exit fast-charge reminder</string>
+    <string name="fast_charge_notify_exit_summary">Hide the exit reminder shown while fast charging is boosted</string>
 
     <string name="appearance_cc_volume">Volume bar</string>
     <string name="appearance_cc_brightness">Brightness bar</string>
@@ -199,7 +208,7 @@
     <string name="about_telegram">Telegram Group</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.4.0</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.4.1</string>
     <string name="license_lgpl">GNU LGPL v3.0</string>
     <string name="license_lgpl_summary">View full license text</string>
     <string name="third_party_licenses_title">Third Party Licenses &amp; Credits</string>

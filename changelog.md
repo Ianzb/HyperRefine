@@ -1,5 +1,20 @@
 # 更新日志
 
+## 1.0.2
+
+> 发布于 2026-09-26
+
+### 新增
+
+- **隐藏快充加速通知**（适配 HyperOS 4，目标 `com.miui.securitycenter`，功能页「安全服务 → 快充加速通知」二级页）：隐藏 90W 及以上快充机型在快充加速时由安全服务在「省电与电池重要通知」（`com.miui.powercenter.high`）类别下发布的通知。**「进入提醒」与「退出提醒」各自独立开关与状态**；手机与平板功能一致、仅混淆类名不同，统一用 DexKit 按字符串特征定位，不写死类名
+- **重启成功提示**：`QuickActionDialog` 批量重启完成后弹出 `quick_action_restart_success`（「重启成功」），缺少 Root 时仍提示 `scope_restart_need_root`
+
+### 变更
+
+- 功能页新增「安全服务」分组，其功能收进二级页 `SecurityCenterActivity`（入口卡片 + 功能页搜索直达）
+- 基于脚手架更新至 **MiuixGuiTemplate 0.4.1**（`about_based_on` 同步）
+- 「顶栏重启应用」成功提示规范纳入脚手架，并随 **MiuixGuiTemplate 0.4.1** 发布（`docs/API.md` 5.6、`docs/CUSTOMIZE.md` 7.6）
+
 ## 1.0.1
 
 > 发布于 2026-09-25

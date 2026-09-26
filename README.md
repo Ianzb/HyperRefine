@@ -14,19 +14,20 @@
 
 </div>
 
-**HyperRefine** 是一个 **LSPosed 模块**项目，基于 [libxposed API 102](https://libxposed.github.io/api/index-all.html) 与 [Miuix](https://github.com/compose-miuix-ui/miuix) Compose 组件库构建，使用 [MiuixGuiTemplate](https://github.com/Ianzb/MiuixGuiTemplate) 脚手架（`Based on MiuixGuiTemplate 0.4.0`）创建，提供完整的 Hook 二次封装接口与可复用 UI 组件。当前 Hook 目标为**系统界面**（`com.android.systemui`）：控制中心音量条 / 亮度条与侧边音量条的百分比数值显示；另预留系统桌面（`com.miui.home`）占位。
+**HyperRefine** 是一个 **LSPosed 模块**项目，基于 [libxposed API 102](https://libxposed.github.io/api/index-all.html) 与 [Miuix](https://github.com/compose-miuix-ui/miuix) Compose 组件库构建，使用 [MiuixGuiTemplate](https://github.com/Ianzb/MiuixGuiTemplate) 脚手架（`Based on MiuixGuiTemplate 0.4.1`）创建，提供完整的 Hook 二次封装接口与可复用 UI 组件。当前 Hook 目标为**系统界面**（`com.android.systemui`）：控制中心音量条 / 亮度条与侧边音量条的百分比数值显示；以及**安全服务**（`com.miui.securitycenter`）：隐藏快充加速通知；另预留系统桌面（`com.miui.home`）占位。
 
 <br>
 
 # 功能
 
-**模块功能**（目标应用 `com.android.systemui`）
+**模块功能**（目标应用 `com.android.systemui` / `com.miui.securitycenter`）
 
 - **音量条 / 亮度条百分比数值显示**（适配 HyperOS 4）— 控制中心音量条 / 控制中心亮度条（含二级亮度条）/ 侧边音量条三处独立显示百分比数值
   - 三处各自独立配置：开关、字号、字重、颜色
   - 字号 8–24（默认 13）；字重：细体 / 常规 / 中等 / 半粗 / 粗体 / 特粗（默认特粗）
   - 颜色跟随图标：低值灰色、高值彩色；关闭跟随则固定灰色
   - 侧边音量条附加：百分比位置（音量区域上方悬浮 / 音量条内部上方）、长按打开音量面板并隐藏三个点按钮（默认关闭）
+- **隐藏快充加速通知**（适配 HyperOS 4，目标 `com.miui.securitycenter`）— 隐藏 90W 及以上快充机型在快充加速时由安全服务发布的快充加速通知（「省电与电池重要通知」类别）；「进入提醒」与「退出提醒」各自独立开关
 - **多级页面搜索** — 功能页搜索支持多级嵌套（「系统界面 → 外观 → 各位置」），摘要显示父 / 子路径，命中直接打开对应页面
 
 **底层框架**（构建于脚手架 MiuixGuiTemplate）

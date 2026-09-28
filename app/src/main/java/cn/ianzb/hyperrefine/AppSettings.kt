@@ -11,6 +11,7 @@ data class AppSettings(
     val isBlurEnabled: Boolean = true,
     val checkUpdateOnLaunch: Boolean = true,
     val language: String = "",
+    val hideLauncherIcon: Boolean = false,
 ) {
     fun toJson(): String {
         val json = JSONObject()
@@ -20,6 +21,7 @@ data class AppSettings(
         json.put("isBlurEnabled", isBlurEnabled)
         json.put("checkUpdateOnLaunch", checkUpdateOnLaunch)
         json.put("language", language)
+        json.put("hideLauncherIcon", hideLauncherIcon)
         return json.toString(2)
     }
 
@@ -34,6 +36,7 @@ data class AppSettings(
                     isBlurEnabled = obj.optBoolean("isBlurEnabled", true),
                     checkUpdateOnLaunch = obj.optBoolean("checkUpdateOnLaunch", true),
                     language = obj.optString("language", ""),
+                    hideLauncherIcon = obj.optBoolean("hideLauncherIcon", false),
                 )
             } catch (_: Exception) {
                 AppSettings()
@@ -46,6 +49,7 @@ data class AppSettings(
         private const val KEY_LIQUID_GLASS = "liquid_glass"
         private const val KEY_BLUR_ENABLED = "blur_enabled"
         private const val KEY_CHECK_UPDATE_ON_LAUNCH = "check_update_on_launch"
+        private const val KEY_HIDE_LAUNCHER_ICON = "hide_launcher_icon"
 
         fun load(context: Context): AppSettings {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -57,6 +61,7 @@ data class AppSettings(
                 isBlurEnabled = prefs.getBoolean(KEY_BLUR_ENABLED, true),
                 checkUpdateOnLaunch = prefs.getBoolean(KEY_CHECK_UPDATE_ON_LAUNCH, true),
                 language = language,
+                hideLauncherIcon = prefs.getBoolean(KEY_HIDE_LAUNCHER_ICON, false),
             )
         }
 
@@ -67,6 +72,7 @@ data class AppSettings(
                 putBoolean(KEY_LIQUID_GLASS, settings.isLiquidGlass)
                 putBoolean(KEY_BLUR_ENABLED, settings.isBlurEnabled)
                 putBoolean(KEY_CHECK_UPDATE_ON_LAUNCH, settings.checkUpdateOnLaunch)
+                putBoolean(KEY_HIDE_LAUNCHER_ICON, settings.hideLauncherIcon)
             }
             // Restore language
             val lang = LocaleHelper.Language.entries.find { it.code == settings.language } ?: LocaleHelper.Language.SYSTEM

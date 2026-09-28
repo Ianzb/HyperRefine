@@ -109,6 +109,9 @@ class MainActivity : ComponentActivity() {
 
         val savedSettings = AppSettings.load(this)
 
+        // 同步桌面图标可见状态，避免偏好与系统组件状态不一致。
+        LauncherIconController.apply(this, savedSettings.hideLauncherIcon)
+
         // 覆盖 XML 主题的窗口背景，兼容「系统浅色但应用内手动强制深色」的情况，避免启动白屏闪烁。
         applyWindowBackground(savedSettings.themeMode)
 
@@ -123,6 +126,7 @@ class MainActivity : ComponentActivity() {
             var isLiquidGlass by remember { mutableStateOf(savedSettings.isLiquidGlass) }
             var isBlurEnabled by remember { mutableStateOf(savedSettings.isBlurEnabled) }
             var checkUpdateOnLaunch by remember { mutableStateOf(savedSettings.checkUpdateOnLaunch) }
+            var hideLauncherIcon by remember { mutableStateOf(savedSettings.hideLauncherIcon) }
 
             var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
             var isCheckingUpdate by remember { mutableStateOf(false) }
@@ -174,6 +178,7 @@ class MainActivity : ComponentActivity() {
                         isLiquidGlass = isLiquidGlass,
                         isBlurEnabled = isBlurEnabled,
                         checkUpdateOnLaunch = checkUpdateOnLaunch,
+                        hideLauncherIcon = hideLauncherIcon,
                     )
                 )
             }
@@ -185,12 +190,18 @@ class MainActivity : ComponentActivity() {
                     isLiquidGlass = isLiquidGlass,
                     isBlurEnabled = isBlurEnabled,
                     checkUpdateOnLaunch = checkUpdateOnLaunch,
+                    hideLauncherIcon = hideLauncherIcon,
                     isCheckingUpdate = isCheckingUpdate,
                     onThemeModeChange = { themeMode = it; persistState() },
                     onFloatingNavbarChange = { isFloatingNavbar = it; persistState() },
                     onLiquidGlassChange = { isLiquidGlass = it; persistState() },
                     onBlurEnabledChange = { isBlurEnabled = it; persistState() },
                     onCheckUpdateOnLaunchChange = { checkUpdateOnLaunch = it; persistState() },
+                    onHideLauncherIconChange = {
+                        hideLauncherIcon = it
+                        LauncherIconController.apply(this@MainActivity, it)
+                        persistState()
+                    },
                     onCheckUpdate = { checkUpdate() },
                 )
 
@@ -216,12 +227,14 @@ private fun MainScreen(
     isLiquidGlass: Boolean,
     isBlurEnabled: Boolean,
     checkUpdateOnLaunch: Boolean,
+    hideLauncherIcon: Boolean,
     isCheckingUpdate: Boolean,
     onThemeModeChange: (ColorSchemeMode) -> Unit,
     onFloatingNavbarChange: (Boolean) -> Unit,
     onLiquidGlassChange: (Boolean) -> Unit,
     onBlurEnabledChange: (Boolean) -> Unit,
     onCheckUpdateOnLaunchChange: (Boolean) -> Unit,
+    onHideLauncherIconChange: (Boolean) -> Unit,
     onCheckUpdate: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -332,6 +345,8 @@ private fun MainScreen(
                         onBlurEnabledChange = onBlurEnabledChange,
                         checkUpdateOnLaunch = checkUpdateOnLaunch,
                         onCheckUpdateOnLaunchChange = onCheckUpdateOnLaunchChange,
+                        hideLauncherIcon = hideLauncherIcon,
+                        onHideLauncherIconChange = onHideLauncherIconChange,
                         onCheckUpdate = onCheckUpdate,
                         isCheckingUpdate = isCheckingUpdate,
                         extraBottomPadding = navBarHeight,

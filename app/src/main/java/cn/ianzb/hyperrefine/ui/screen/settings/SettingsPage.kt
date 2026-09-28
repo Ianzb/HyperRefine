@@ -79,6 +79,8 @@ fun SettingsPageView(
     onLiquidGlassChange: (Boolean) -> Unit,
     isBlurEnabled: Boolean,
     onBlurEnabledChange: (Boolean) -> Unit,
+    hideLauncherIcon: Boolean,
+    onHideLauncherIconChange: (Boolean) -> Unit,
     checkUpdateOnLaunch: Boolean,
     onCheckUpdateOnLaunchChange: (Boolean) -> Unit,
     onCheckUpdate: () -> Unit,
@@ -325,6 +327,13 @@ fun SettingsPageView(
                                     summary = stringResource(R.string.blur_enabled_summary),
                                     checked = isBlurEnabled,
                                     onCheckedChange = onBlurEnabledChange
+                                )
+
+                                SwitchPreference(
+                                    title = stringResource(R.string.hide_launcher_icon),
+                                    summary = stringResource(R.string.hide_launcher_icon_summary),
+                                    checked = hideLauncherIcon,
+                                    onCheckedChange = onHideLauncherIconChange
                                 )
                             }
                         }

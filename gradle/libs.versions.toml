@@ -42,7 +42,8 @@ miuix-preference = { group = "top.yukonga.miuix.kmp", name = "miuix-preference-a
 miuix-icons = { group = "top.yukonga.miuix.kmp", name = "miuix-icons-android", version.ref = "miuix" }
 miuix-squircle = { group = "top.yukonga.miuix.kmp", name = "miuix-squircle-android", version.ref = "miuix" }
 miuix-navigation = { group = "top.yukonga.miuix.kmp", name = "miuix-nav-android", version.ref = "miuix" }
-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "materialIcons" }
+# 别名为 2 段（避免 IDE 对三段版本目录访问器的解析问题），实际坐标为 material-icons-core
+material-icons = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "materialIcons" }
 
 haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
 

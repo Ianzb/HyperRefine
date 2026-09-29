@@ -3,20 +3,20 @@ package cn.ianzb.hyperrefine.ui.screen.features
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.hook.connect.ConnectKeys
+import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.prefs.OptionType
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionsPage
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
 import cn.ianzb.hyperrefine.ui.component.pref.HookSubPage
-import cn.ianzb.hyperrefine.xposed.HookStatusReader
 
 /**
  * 功能页：模块全部功能入口（系统界面 → 控制中心 / 侧边音量条；安全服务 → 快充加速通知）。
@@ -46,6 +46,12 @@ fun FeaturesPageView(
                     specByKey(specs, KEY_SECURITY_CENTER),
                 ),
             ),
+            HookSection(
+                titleRes = R.string.section_device_connect,
+                specs = listOf(
+                    specByKey(specs, KEY_DEVICE_CONNECT),
+                ),
+            ),
         )
     }
     // 控制中心 / 侧边音量条为二级页，各自的样式页为三级页；安全服务下功能为二级页：通过嵌套 subPages 让搜索直达多级功能。
@@ -57,6 +63,7 @@ fun FeaturesPageView(
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_BRIGHTNESS)),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_VOLUME)),
                     specByKey(specs, KEY_DEVICE_CENTER_HIDE_MORE),
+                    specByKey(specs, KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
                 ),
                 onOpen = { context.startActivity(Intent(context, ControlCenterActivity::class.java)) },
                 subPages = listOf(
@@ -82,11 +89,12 @@ fun FeaturesPageView(
                 specs = securityCenterSpecs(specs),
                 onOpen = { context.startActivity(Intent(context, SecurityCenterActivity::class.java)) },
             ),
+            HookSubPage(
+                titleRes = R.string.device_connect,
+                specs = deviceConnectSpecs(specs),
+                onOpen = { context.startActivity(Intent(context, DeviceConnectActivity::class.java)) },
+            ),
         )
-    }
-
-    LaunchedEffect(Unit) {
-        HookStatusReader.refresh()
     }
 
     HookOptionsPage(
@@ -101,17 +109,30 @@ fun FeaturesPageView(
                     context.startActivity(Intent(context, ControlCenterActivity::class.java))
                 KEY_SECURITY_CENTER ->
                     context.startActivity(Intent(context, SecurityCenterActivity::class.java))
+                KEY_DEVICE_CONNECT ->
+                    context.startActivity(Intent(context, DeviceConnectActivity::class.java))
                 sideVolumeEntry ->
                     context.startActivity(percentStyleIntent(context, PercentLocation.SIDE_VOLUME))
             }
         },
-        topBarActions = { QuickActionsAction(listOf("com.android.systemui", "com.miui.securitycenter")) },
+        topBarActions = {
+            QuickActionsAction(
+                listOf(
+                    "com.android.systemui",
+                    "com.miui.securitycenter",
+                    "com.milink.service",
+                    "com.xiaomi.mirror",
+                )
+            )
+        },
     )
 }
 
 const val KEY_CONTROL_CENTER = "feature_control_center"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
+const val KEY_DEVICE_CENTER_LANDSCAPE_RIGHT = "device_center_landscape_right"
 const val KEY_SECURITY_CENTER = "feature_security_center"
+const val KEY_DEVICE_CONNECT = "feature_device_connect"
 const val KEY_FAST_CHARGE_ENTER = "security_center_fast_charge_enter_notify"
 const val KEY_FAST_CHARGE_EXIT = "security_center_fast_charge_exit_notify"
 const val SIDE_INSIDE_KEY = "side_volume_inside"
@@ -159,6 +180,14 @@ private fun securityCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, KEY_FAST_CHARGE_EXIT),
     )
 
+/** 设备互联二级页内的配置项（三个开关），用于功能页搜索直达。 */
+fun deviceConnectSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, ConnectKeys.CROSS_DEVICE_NOTIFICATION),
+        specByKey(specs, ConnectKeys.PORTRAIT_STREAMING),
+        specByKey(specs, ConnectKeys.MILINK_MULTI_CHANNEL),
+    )
+
 /** 按键取功能配置项（供各功能子页复用同一份声明）。 */
 fun featureSpec(key: String): OptionSpec =
     featureSpecs().first { it.key == key }
@@ -167,6 +196,8 @@ fun featureSpec(key: String): OptionSpec =
 internal fun featureSpecs(): List<OptionSpec> {
     val systemUi = listOf("com.android.systemui")
     val securityCenter = listOf("com.miui.securitycenter")
+    // 设备互联三项目标包：任一功能开启都同时申请 MiLink 与小米互联，避免 mirror 未授权导致流转/竖屏失效。
+    val connect = listOf("com.milink.service", "com.xiaomi.mirror")
     val specs = mutableListOf(
         OptionSpec(
             key = KEY_CONTROL_CENTER,
@@ -180,6 +211,17 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = R.string.device_center_hide_more_summary,
             defaultBoolean = false,
             targetPackages = systemUi,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_DEVICE_CENTER_LANDSCAPE_RIGHT,
+            type = OptionType.SWITCH,
+            titleRes = R.string.device_center_landscape_right,
+            summaryRes = R.string.device_center_landscape_right_summary,
+            defaultBoolean = false,
+            targetPackages = systemUi,
+            deviceScope = setOf(DeviceType.PHONE),
+            showStatus = true,
         ),
         OptionSpec(
             key = KEY_SECURITY_CENTER,
@@ -193,6 +235,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = R.string.fast_charge_notify_enter_summary,
             defaultBoolean = false,
             targetPackages = securityCenter,
+            showStatus = true,
         ),
         OptionSpec(
             key = KEY_FAST_CHARGE_EXIT,
@@ -201,6 +244,41 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = R.string.fast_charge_notify_exit_summary,
             defaultBoolean = false,
             targetPackages = securityCenter,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_DEVICE_CONNECT,
+            type = OptionType.ARROW,
+            titleRes = R.string.device_connect,
+        ),
+        OptionSpec(
+            key = ConnectKeys.CROSS_DEVICE_NOTIFICATION,
+            type = OptionType.SWITCH,
+            titleRes = R.string.connect_cross_device_notification,
+            summaryRes = R.string.connect_cross_device_notification_summary,
+            defaultBoolean = false,
+            targetPackages = connect,
+            deviceScope = setOf(DeviceType.PAD),
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = ConnectKeys.PORTRAIT_STREAMING,
+            type = OptionType.SWITCH,
+            titleRes = R.string.connect_portrait_streaming,
+            summaryRes = R.string.connect_portrait_streaming_summary,
+            defaultBoolean = false,
+            targetPackages = connect,
+            deviceScope = setOf(DeviceType.PAD),
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = ConnectKeys.MILINK_MULTI_CHANNEL,
+            type = OptionType.SWITCH,
+            titleRes = R.string.connect_milink_multi_channel,
+            summaryRes = R.string.connect_milink_multi_channel_summary,
+            defaultBoolean = false,
+            targetPackages = connect,
+            showStatus = true,
         ),
     )
     PercentLocation.all().forEach { location ->
@@ -232,7 +310,9 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = R.string.percent_switch_summary,
             defaultBoolean = false,
             targetPackages = systemUi,
+            showStatus = true,
         )
+        // 百分比样式子配置项（由所属开关控制显隐）。
         specs += OptionSpec(
             key = "${location}_font_size",
             type = OptionType.SLIDER,

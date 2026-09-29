@@ -66,6 +66,10 @@
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity
+            android:name=".ui.screen.features.DeviceConnectActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
             android:name=".ui.screen.scope.ScopeListActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
@@ -73,6 +77,15 @@
             android:name=".ui.screen.safemode.SafeModeActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
+        <!-- 接收目标进程的 Hook 生效回报。来源经发送者 UID / 包名 / 版本校验。 -->
+        <receiver
+            android:name=".xposed.HookStatusReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="cn.ianzb.hyperrefine.action.HOOKS_ACTIVE" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

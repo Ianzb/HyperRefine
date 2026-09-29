@@ -20,7 +20,6 @@ class XposedEntry : XposedModule() {
         HookHelper.init(this)
         HookPrefs.init(getRemotePreferences(HookPrefs.GROUP))
         SafeModeManager.init(this)
-        HookStatusWriter.init(this)
         HookHelper.log("module loaded in ${param.processName}")
     }
 

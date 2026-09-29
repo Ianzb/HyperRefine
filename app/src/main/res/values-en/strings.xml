@@ -58,6 +58,8 @@
     <string name="module_status_summary_inactive">Not activated</string>
     <string name="module_status_summary_no_root">Activated (No Root)</string>
     <string name="module_status_root_hint">Root not granted, restart and other features unavailable</string>
+    <string name="hook_status_applied">Active</string>
+    <string name="hook_status_not_applied">Inactive</string>
     <string name="module_scope">Scope</string>
     <string name="module_scope_count">%d apps authorized</string>
     <string name="module_scope_request">Request All Scopes</string>
@@ -94,11 +96,6 @@
     <string name="restart_system_confirm_title">Restart System</string>
     <string name="restart_system_confirm_message">The target includes system processes. Restarting will reboot the device. Continue?</string>
     <string name="restart_system_confirm_action">Restart</string>
-
-    <!-- Hook status -->
-    <string name="hook_status_success">Applied</string>
-    <string name="hook_status_failed">Failed</string>
-    <string name="hook_status_not_applied">Not applied</string>
 
     <!-- Slider -->
     <string name="hook_slider_current">Current: %1$s</string>
@@ -143,6 +140,16 @@
     <string name="fast_charge_notify_exit">Hide exit fast-charge reminder</string>
     <string name="fast_charge_notify_exit_summary">Hide the exit reminder shown while fast charging is boosted</string>
 
+    <string name="section_device_connect">Device connectivity</string>
+    <string name="device_connect">Device connectivity</string>
+    <string name="section_connect_features">Cross-device streaming</string>
+    <string name="connect_cross_device_notification">Unlock cross-device notification flow</string>
+    <string name="connect_cross_device_notification_summary">View notifications from your other devices on the tablet (tablets only)</string>
+    <string name="connect_portrait_streaming">Allow portrait app streaming on tablet</string>
+    <string name="connect_portrait_streaming_summary">Stream apps in portrait on the tablet (tablets only)</string>
+    <string name="connect_milink_multi_channel">Multi-device streaming</string>
+    <string name="connect_milink_multi_channel_summary">Let your phone stream to multiple tablets at once</string>
+
     <string name="appearance_cc_volume">Volume bar</string>
     <string name="appearance_cc_brightness">Brightness bar</string>
     <string name="appearance_side_volume">Side volume bar</string>
@@ -154,6 +161,8 @@
     <string name="section_device_center">Fusion Device Center</string>
     <string name="device_center_hide_more">Hide overflow</string>
     <string name="device_center_hide_more_summary">Hide the “…” button at the end of the device center so a full row of devices no longer wraps</string>
+    <string name="device_center_landscape_right">Landscape device center on right</string>
+    <string name="device_center_landscape_right_summary">In phone landscape, move the fusion device center from the left to the right side of Control Center (phones only)</string>
 
     <string name="percent_display_section">Volume &amp; brightness bars</string>
     <string name="percent_switch_summary">Show a percentage value on the slider; style options appear after enabling</string>
@@ -210,7 +219,7 @@
     <string name="about_telegram">Telegram Group</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.4.3</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.5.0</string>
     <string name="license_lgpl">GNU LGPL v3.0</string>
     <string name="license_lgpl_summary">View full license text</string>
     <string name="third_party_licenses_title">Third Party Licenses &amp; Credits</string>

@@ -34,7 +34,7 @@ fun HookTextCard(
     spec: OptionSpec,
     modifier: Modifier = Modifier,
 ) {
-    val enabled = rememberDependencyEnabled(spec)
+    val enabled = rememberOptionEnabled(spec)
     val value = ConfigState.string(spec.key, spec.defaultString)
     var showDialog by remember { mutableStateOf(false) }
     val notSet = stringResource(R.string.hook_text_not_set)
@@ -45,7 +45,6 @@ fun HookTextCard(
         onClick = { if (enabled) showDialog = true },
         enabled = enabled,
         modifier = modifier,
-        titleColor = HookStatusTitleColor(spec),
     )
 
     if (showDialog) {

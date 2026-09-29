@@ -42,7 +42,10 @@ class ControlCenterActivity : BaseSubPageActivity() {
         )
         val deviceSection = HookSection(
             titleRes = R.string.section_device_center,
-            specs = listOf(featureSpec(KEY_DEVICE_CENTER_HIDE_MORE)),
+            specs = listOf(
+                featureSpec(KEY_DEVICE_CENTER_HIDE_MORE),
+                featureSpec(KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
+            ),
         )
         LazyColumn(
             modifier = Modifier

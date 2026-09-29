@@ -83,7 +83,7 @@
 3. 声明 `OptionSpec` 并接入**功能页**（`ui/screen/features/FeaturesPage.kt`），配置键两端一致；
 4. 功能位于子页面时，继承 `BaseSubPageActivity` 并在 `AndroidManifest.xml` 注册，再把子页配置项通过 `HookSubPage` 传入父页 `HookOptionsPage(subPages = ...)`，使其可被功能页搜索直达；
 5. 更新 `META-INF/xposed/scope.list`；
-6. 构建并在 LSPosed 中验证，页面标题变绿即生效。
+6. 构建并在 LSPosed 中验证功能生效（启用开关并重启目标应用）。
 
 ### 1.6 页面组织规范
 

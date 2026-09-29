@@ -1,3 +1,4 @@
+<!--suppress HtmlDeprecatedAttribute, HtmlDeprecatedTag -->
 <div align="center">
 
 <img src="docs/icon.png" width="140" alt="HyperRefine" />
@@ -14,7 +15,7 @@
 
 </div>
 
-**HyperRefine** 是一个 **LSPosed 模块**项目，基于 [libxposed API 102](https://libxposed.github.io/api/index-all.html) 与 [Miuix](https://github.com/compose-miuix-ui/miuix) Compose 组件库构建，使用 [MiuixGuiTemplate](https://github.com/Ianzb/MiuixGuiTemplate) 脚手架（`Based on MiuixGuiTemplate 0.4.1`）创建，提供完整的 Hook 二次封装接口与可复用 UI 组件。当前 Hook 目标为**系统界面**（`com.android.systemui`）：控制中心音量条 / 亮度条与侧边音量条的百分比数值显示；以及**安全服务**（`com.miui.securitycenter`）：隐藏快充加速通知；另预留系统桌面（`com.miui.home`）占位。
+**HyperRefine** 是一个 **LSPosed 模块**项目，基于 [libxposed API 102](https://libxposed.github.io/api/index-all.html) 与 [Miuix](https://github.com/compose-miuix-ui/miuix) Compose 组件库构建，使用 [MiuixGuiTemplate](https://github.com/Ianzb/MiuixGuiTemplate) 脚手架（`Based on MiuixGuiTemplate 0.5.0`）创建，提供完整的 Hook 二次封装接口与可复用 UI 组件。当前 Hook 目标为**系统界面**（`com.android.systemui`）：控制中心音量条 / 亮度条与侧边音量条的百分比数值显示；**安全服务**（`com.miui.securitycenter`）：隐藏快充加速通知；**MiLink 与小米互联**（`com.milink.service` / `com.xiaomi.mirror`）：设备互联三项功能；另预留系统桌面（`com.miui.home`）占位。
 
 <br>
 
@@ -28,19 +29,25 @@
   - 颜色跟随图标：低值灰色、高值彩色；关闭跟随则固定灰色
   - 侧边音量条附加：百分比位置（音量区域上方悬浮 / 音量条内部上方）、长按打开音量面板并隐藏三个点按钮（默认关闭）
 - **隐藏快充加速通知**（适配 HyperOS 4，目标 `com.miui.securitycenter`）— 隐藏 90W 及以上快充机型在快充加速时由安全服务发布的快充加速通知（「省电与电池重要通知」类别）；「进入提醒」与「退出提醒」各自独立开关
+- **设备互联**（适配 HyperOS 4，目标 `com.milink.service` / `com.xiaomi.mirror`，移植自 [HyperConnectToolkit](https://github.com/silverpoetry/HyperConnectToolkit)，Apache-2.0）— 功能页「设备互联」二级页集中以下功能，顶栏可一键重启目标服务：
+  - **解锁跨设备通知流转**（仅平板）— 纠正平板本机能力误判，通知点击复用原生 `PIN_APP` 流转路径
+  - **允许平板竖屏流转应用**（仅平板）— 纠正首包横竖尺寸倒置，并允许目标画面按完整方向运行
+  - **MiLink Multi-Channel** — AndroidPad 共享通道上限 1 → 2，需在手机上开启同名选项
+- **Hook 生效状态** — 所有由目标进程安装的 Hook 功能，其配置项副标题显示「已生效 / 未生效」（需重启目标进程后刷新）
+- **横屏融合设备中心右置**（适配 HyperOS 4，仅手机）— 手机横屏时把融合设备中心从控制中心左侧移到右侧（非手机设备上该开关禁用灰显）
 - **多级页面搜索** — 功能页搜索支持多级嵌套（「系统界面 → 外观 → 各位置」），摘要显示父 / 子路径，命中直接打开对应页面
 
 **底层框架**（构建于脚手架 MiuixGuiTemplate）
 
 - **Hook 封装** — `hookBefore` / `hookAfter` / `hookReplace` / `intercept` / `findAndHook*` / `hookAll*` / `hookClassInitializer` / `invokeOriginal`，统一句柄管理
-- **原生 Hook 封装** — `NativeHookHelper` / `BaseNativeHook` / `BaseLoad.initNativeHook`，与 JavaHook 对称的一键接入（声明、加载、开关、状态、安全兜底）；面向 Rust 应用（`flutter_rust_bridge` / 纯 Rust 库），详见[原生 Hook 指南](docs/NATIVE_HOOK.md)
+- **原生 Hook 封装** — `NativeHookHelper` / `BaseNativeHook` / `BaseLoad.initNativeHook`，与 JavaHook 对称的一键接入（声明、加载、开关、安全兜底）；面向 Rust 应用（`flutter_rust_bridge` / 纯 Rust 库），详见[原生 Hook 指南](docs/NATIVE_HOOK.md)
 - **版本 / 设备筛选** — 统一的 `HookVersionGate` 与 `deviceScope`：版本支持 `>` `<`、多重规则（AND/OR），可按 Android / HyperOS / MIUI / 应用版本；设备支持手机 / 平板 / 折叠屏区分，默认各设备通用，并可在设置中手动覆盖当前设备类型
 - **安全模式** — 设置页「模块」分区声明安全模式状态并提供入口，二级页逐应用开关安全模式并查看崩溃计数
 - **主动申请作用域** — 启用选项时自动为未授权目标申请作用域
 - **DexKit 缓存** — 带 JSON 持久化、版本失效校验与文件锁的 DexKit 缓存，支持 Root 清空
 - **统一配置系统** — 自定义键名、默认值、持久化、跨进程镜像、JSON 导出导入
 - **组件与 Hook 绑定** — 开关 / 箭头 / 下拉 / 滑块 / 复选框 / 单选 / 文本卡片，标题接入全局搜索
-- **Hook 状态展示** — 规则生效时标题显示为绿色、失败为红色，未应用时保持默认色（零额外占位）
+- **设备独占控制** — 配置项声明 `deviceScope`（手机 / 平板 / 折叠屏）后，非白名单设备上**禁用灰显不隐藏**，切换「当前设备类型」实时生效；hook 侧同步跳过
 - **二级页面模板** — 独立 Activity，自动套用主题与背景模糊配置
 - **应用内检查更新** — 设置页「更新」分区支持「启动时自动检查」与手动检查；发现新版本弹窗展示版本对比与 Release 更新说明，确认后跳转 GitHub Release 下载页
 
@@ -131,7 +138,7 @@ $env:KEY_PASSWORD="你的密钥密码"
 2. 新建 `BaseLoad` 并在 `HookEntryRegistry` 中登记目标包（当前为 `SystemUiLoad` → `com.android.systemui`；`HomeLoad` → `com.miui.home` 为占位）。
 3. 新建 `BaseHook` 实现具体 Hook 逻辑，必要时用 DexKit 定位成员。
 4. 在 `featureSpecs()`（或自定义注册处）声明 `OptionSpec`，UI 会自动渲染对应组件；子页面功能可用 `HookSubPage` 并入功能页搜索。
-5. 构建并在 LSPosed 中验证，页面标题变绿即生效。
+5. 构建并在 LSPosed 中验证功能生效（启用开关并重启目标应用）。
 
 > **需要修改的完整清单（图标、链接、模块元数据、Hook、配置项等）见 [二次开发指南](docs/CUSTOMIZE.md)。**
 

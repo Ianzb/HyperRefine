@@ -3,7 +3,6 @@
 package cn.ianzb.hyperrefine.hook.nativehook
 
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
-import cn.ianzb.hyperrefine.hook.xposed.HookStatusWriter
 
 /**
  * 原生 hook 库描述。
@@ -37,8 +36,7 @@ data class NativeLibrarySpec(
  *
  * 职责：
  * - 在受控时机用 `System.loadLibrary` 把原生库载入目标进程；
- * - 库名归一化、重复加载去重、异常兜底与日志；
- * - 把加载结果写入 [HookStatusWriter]，与 Java hook 共用同一套状态 / 安全模式链路。
+ * - 库名归一化、重复加载去重、异常兜底与日志。
  *
  * 用法（在 `BaseLoad.onPackageLoaded` 中一行即可，配置键与 UI 联动）：
  * ```
@@ -70,12 +68,11 @@ object NativeHookHelper {
             loaded.add(name)
             specs[name] = spec
         }
-        HookStatusWriter.record(spec.key, ok)
         if (ok) HookHelper.log("${spec.key}: native library loaded: ${spec.libraryName}")
         return ok
     }
 
-    /** 便捷重载；`required` 仅影响日志与状态记录语义。 */
+    /** 便捷重载；`required` 仅影响日志语义。 */
     @Synchronized
     fun load(
         libraryName: String,

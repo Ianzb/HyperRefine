@@ -18,6 +18,10 @@ class SystemUiLoad : BaseLoad() {
         initHook(CcBrightnessPercentHook(), HookPrefs.getBoolean(CcBrightnessPercentHook.KEY, false))
         initHook(SideVolumePercentHook(), HookPrefs.getBoolean(SideVolumePercentHook.KEY, false))
         initHook(DeviceCenterMoreHook(), HookPrefs.getBoolean(DeviceCenterMoreHook.KEY, false))
+        initHook(
+            DeviceCenterLandscapeRightHook(),
+            HookPrefs.getBoolean(DeviceCenterLandscapeRightHook.KEY, false),
+        )
     }
 
     companion object {

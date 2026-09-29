@@ -1,5 +1,30 @@
 # 更新日志
 
+## 1.1.0
+
+> 发布于 2026-09-29
+
+### 新增
+
+- **横屏融合设备中心右置**（适配 HyperOS 4，仅手机；目标 `com.android.systemui` + 控制中心插件类）：手机横屏时，控制中心按 `MainPanelContent.getRightOrLeft()` 把组件分入左右两列，融合设备中心入口（`DeviceCenterEntryController`）默认恒为左列；开启后覆盖其 `getRightOrLeft()` 返回 `true`，把融合设备中心移到右列。竖向布局不查询该方法，天然只在横屏生效。入口：功能页「控制中心 → 融合设备中心 → 横屏融合设备中心右置」
+- **统一的「设备独占」API**：`OptionSpec.deviceScope: Set<DeviceType>?` + `rememberOptionEnabled(spec)`（依赖项 ∧ 设备白名单）。仅某类设备可用的功能在其它设备形态上**禁用灰显、不隐藏**；读取 `ConfigState`，切换「设置 → 当前设备类型」后实时刷新；所有 Hook 卡片统一改用 `rememberOptionEnabled` 作为 `enabled`
+- **「设备互联」页面**：功能页新增二级页，集中三项目标 `com.milink.service` / `com.xiaomi.mirror` 的功能（新增精准作用域与 `MiLinkLoad` / `XiaomiMirrorLoad`）：
+  - **解锁跨设备通知流转**（平板）：`com.milink.service:ui` 本机设备发现纠正 + `com.milink.crossdeviceservice` 通知点击复用原生 `PIN_APP` 流转并吞掉重复被动串流命令
+  - **允许平板竖屏流转应用**（平板）：纠正 reason-9 首包横竖尺寸倒置，并放开目标 sink Activity 的方向策略
+  - **MiLink Multi-Channel**：AndroidPad 共享通道上限 1 → 2，并仅在原生返回 `HostNotBound(215)` 时补做官方 Host 绑定
+- **Hook 生效状态（广播回报）**：`BaseLoad` 完成注册后，目标进程合并已安装配置键**定向广播**回报；App 侧经发送者 UID / 包名 / 版本校验后按版本 + 开机号作用域持久化，`OptionSpec.showStatus` 在副标题显示「已生效 / 未生效」。已适配全部 Hook 功能（百分比显示、融合设备中心、快充通知、设备互联）；替代此前因 hook 侧只读而失效的状态提示
+
+### 变更
+
+- **移除 Hook 状态提示（标题染色）功能**：libxposed 远程文件为「App 写、Hook 读」，Hook 侧 `XposedInterface.openRemoteFile` 在 Vector 等新框架上明确为**只读**，原 `HookStatusWriter` 从 Hook 侧写入必然失败，状态始终为空、标题从不染色，故整体移除：删除 `HookStatusWriter` / `HookStatusReader` / `HookStatus` 枚举，移除 `OptionSpec.hookId` / `statusId` / `demoStatus`、`rememberHookStatus` / `HookStatusTitleColor`、各卡片 `titleColor` 染色、`hook_status_*` 字符串及 `BaseLoad` / `NativeHookHelper` / `XposedEntry` 中的状态写入调用
+- 移除状态说明相关文档（`docs/API.md`、`docs/NATIVE_HOOK.md`、`docs/WORKFLOW.md`、`README.md` 同步），并新增「设备独占」API 文档
+- 基于脚手架更新至 **MiuixGuiTemplate 0.5.0**（`about_based_on` 同步），并同步其「Hook 生效状态」机制
+- 移植 [HyperConnectToolkit](https://github.com/silverpoetry/HyperConnectToolkit)（Apache-2.0）的设备互联三项功能，来源与许可已在应用内「第三方许可」页登记
+
+### 修复
+
+- **安全模式（崩溃循环保护）在 libxposed 上失效**：远程偏好对 hooked app 为**只读**，原 `SafeModeManager` 从 hook 侧写入必然抛 `UnsupportedOperationException`（被吞后静默失效，且每个进程刷一条 ERROR）。改为：hook 侧仅**只读** `safe_mode_<pkg>`；App 侧根据「目标进程成功装载 hook」的回报记录启动、窗口内重复启动累计为疑似崩溃，达到阈值（普通 3 / 关键 2）后把 `safe_mode_<pkg>` 回写远程偏好；hook 下次启动读到即跳过全部 hook。手动开关与重置同样回写
+
 ## 1.0.2
 
 > 发布于 2026-09-26

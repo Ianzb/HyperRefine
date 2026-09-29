@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -153,6 +152,12 @@ private val licenseSections: List<LicenseSection> = listOf(
     LicenseSection(
         titleRes = R.string.licenses_section_refs,
         libraries = listOf(
+            LibraryInfo(
+                "HyperConnectToolkit",
+                "-",
+                "Apache-2.0，设备互联功能移植",
+                "https://github.com/silverpoetry/HyperConnectToolkit",
+            ),
             LibraryInfo(
                 "HyperCeiler",
                 "-",

@@ -42,10 +42,20 @@ class PackageTarget(
 
         fun from(param: PackageReadyParam): PackageTarget = PackageTarget(
             packageName = param.packageName,
-            processName = param.applicationInfo.processName ?: param.packageName,
+            processName = currentProcessName() ?: param.applicationInfo.processName ?: param.packageName,
             applicationInfo = param.applicationInfo,
             classLoader = param.classLoader,
         )
+
+        /**
+         * 当前进程名（非 `applicationInfo.processName`）。
+         *
+         * `applicationInfo.processName` 是该应用声明的**默认**进程名，对所有进程都相同，
+         * 无法用于按进程路由（如 `com.milink.service:ui` / `:core` / `com.milink.crossdeviceservice`）。
+         */
+        private fun currentProcessName(): String? = runCatching {
+            Application.getProcessName()
+        }.getOrNull()
 
         @Suppress("unused")
         fun fromSystemServer(param: SystemServerStartingParam): PackageTarget = PackageTarget(

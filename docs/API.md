@@ -32,7 +32,7 @@
 | **JavaHook** | ART 方法调用 | `XposedModule` | `HookHelper` + `BaseHook` | `META-INF/xposed/java_init.list` |
 | **NativeHook** | 机器码 / 符号 / 函数表 | `native_init` | `NativeHookHelper` + `BaseNativeHook` | `META-INF/xposed/native_init.list` |
 
-两者共用同一套「开关配置、状态上报、安全模式、版本筛选」链路；区别仅在于 Hook 代码写在 Java/Kotlin 还是原生库。选择依据见 [原生 Hook 指南 · 两种 Hook 的区别](NATIVE_HOOK.md#0-两种-hook-的区别)。
+两者共用同一套「开关配置、安全模式、版本筛选、设备筛选」链路；区别仅在于 Hook 代码写在 Java/Kotlin 还是原生库。选择依据见 [原生 Hook 指南 · 两种 Hook 的区别](NATIVE_HOOK.md#0-两种-hook-的区别)。
 
 ### 1.1 `HookHelper`
 
@@ -185,7 +185,7 @@ class PackageTarget(
 
 | 回调 | 说明 |
 |---|---|
-| `onModuleLoaded` | 初始化 `HookHelper` / `HookPrefs` / `HookStatusWriter` |
+| `onModuleLoaded` | 初始化 `HookHelper` / `HookPrefs` / `SafeModeManager` |
 | `onPackageReady` | 按包分发 `BaseLoad.onPackageReady`（开机 / 冷启动即应用） |
 | `onSystemServerStarting` | 预留 system_server 支持 |
 
@@ -308,6 +308,22 @@ hook 代码内需要按设备分支时，直接读 `DeviceContext.current.type`�
 
 **手动覆盖**：设置页「模块 → 当前设备类型」提供 `默认（<模块判定>）` / `手机` / `平板` / `折叠屏` 四项。覆盖值存于配置键 `device_type`（`auto` / `phone` / `pad` / `fold`），经 `PrefsStore` 同步到远程偏好，hook 进程由 `DeviceContext.current` 读取生效；`默认` 即使用 `DeviceContext.detected`。修改后需重启目标进程。
 
+### 1.13 设备互联功能（`connect` 包）
+
+包名：`cn.ianzb.hyperrefine.hook.connect`。移植自 [HyperConnectToolkit](https://github.com/silverpoetry/HyperConnectToolkit)（Apache-2.0，见应用内「第三方许可」页），目标为 `com.milink.service` 与 `com.xiaomi.mirror`。
+
+| 类 | 目标进程 | 作用 |
+|---|---|---|
+| `MiLinkLoad` | `com.milink.service`（按进程路由） | 分发以下三条 |
+| `MiLinkDiscoveryHook` | `com.milink.service:ui` | 本机发现前置检查的 Cast 位深度绕过（仅平板） |
+| `MiLinkNotificationFlowHook` | `com.milink.crossdeviceservice` | 通知点击桥接为原生 `PIN_APP`，并吞掉成对的重复被动串流命令（仅平板） |
+| `MiLinkMultiChannelHook` | `com.milink.service:core` | 通道上限 1 → 2 + `HostNotBound(215)` 官方绑定修复 |
+| `XiaomiMirrorLoad` / `PortraitStreamingHook` | `com.xiaomi.mirror` | 首包尺寸纠正 + sink Activity 方向放开（仅平板） |
+
+- 纯判定逻辑抽到 `CompatibilityPolicy`，结构适配器为 `ChannelLimitPolicy` / `HostBindingRepair` / `NotificationClickSession`，便于独立测试。
+- 各功能为独立 `BaseHook`：反射解析失败即抛错、不安装、不回报状态（fail-closed 失败隔离）。
+- 配置键统一定义在 `ConnectKeys`（与 App 侧 `OptionSpec.key` 共用）。
+
 ---
 
 ## 2. DexKit 缓存（`:hook`）
@@ -406,6 +422,8 @@ data class OptionSpec(
     val entryResIds: List<Int> = emptyList(),   // 下拉 / 单选选项文本
     val entryValues: List<String> = emptyList(),
     val targetPackages: List<String> = emptyList(),
+    val deviceScope: Set<DeviceType>? = null,   // 设备形态白名单；空 = 各设备通用（非白名单设备禁用不隐藏）
+    val showStatus: Boolean = false,            // 副标题展示 Hook 生效状态（已生效 / 未生效）
     val dependsOn: String? = null,              // 依赖键（绑定机制）
     val dependsOnValue: Boolean = true,
     val masterKey: String? = null,              // 滑块主开关键
@@ -415,8 +433,6 @@ data class OptionSpec(
     val sliderDecimals: Int = 0,
     val sliderUnitRes: Int = 0,
     val sliderValueLabelRes: Int = 0,           // 数值类型说明（滑块行左侧）
-    val hookId: String? = null,
-    val demoStatus: HookStatus? = null,         // 仅示例/预览：强制状态（驱动标题染色），非空时覆盖真实状态
 )
 ```
 
@@ -435,9 +451,9 @@ data class OptionSpec(
 | `masterKey` | SLIDER | 主开关键，控制滑块显隐与生效 |
 | `sliderMin/Max/Step/Decimals` | SLIDER | 范围、步长、小数位 |
 | `sliderUnitRes` / `sliderValueLabelRes` | SLIDER | 单位、数值类型说明 |
-| `targetPackages` | 全部 | 目标包，用于作用域申请与状态判断 |
-| `hookId` | 全部 | 状态上报标识，默认取 `key` |
-| `demoStatus` | 全部 | 仅示例/预览用：强制指定状态（成功/失败/未应用），用于展示状态效果 |
+| `targetPackages` | 全部 | 目标包，用于作用域申请 |
+| `deviceScope` | 全部 | 设备形态白名单（`PHONE` / `PAD` / `FOLD`）；非白名单设备上组件**禁用灰显不隐藏**，更改「当前设备类型」后实时刷新。空 = 各设备通用 |
+| `showStatus` | SWITCH / CHECKBOX | 在副标题末尾展示该键在目标进程的 Hook 生效状态（见 [4.5 Hook 生效状态](#45-hook-生效状态广播回报)），目标进程重启后刷新 |
 
 ### 3.2 `OptionRegistry`
 
@@ -543,30 +559,7 @@ object XposedServiceManager {
 }
 ```
 
-### 4.2 `HookStatusReader`
-
-```kotlin
-object HookStatusReader {
-    fun refresh()                       // 读取远程状态文件并合并
-    fun statusOf(hookId: String): Boolean?   // true 成功 / false 失败 / null 无记录
-    fun clear()
-}
-
-enum class HookStatus { SUCCESS, FAILED, NOT_APPLIED }
-```
-
-### 4.3 `HookStatusWriter`（`:hook`）
-
-```kotlin
-object HookStatusWriter {
-    fun init(module: XposedInterface)
-    fun startProcess(name: String)
-    fun record(hookId: String, success: Boolean)
-    fun flush()
-}
-```
-
-### 4.4 `RootHelper`
+### 4.2 `RootHelper`
 
 ```kotlin
 object RootHelper {
@@ -576,7 +569,7 @@ object RootHelper {
 }
 ```
 
-### 4.5 `AppRestarter`
+### 4.3 `AppRestarter`
 
 ```kotlin
 object AppRestarter {
@@ -592,7 +585,7 @@ object AppRestarter {
 - 系统目标（`system` / `android` / `system_server`）：执行 `reboot`。
 - 无 Root 时返回 `false`，调用方据此提示用户。
 
-### 4.6 `SafeModeReader`（Hook 兜底 / 安全模式）
+### 4.4 `SafeModeReader`（Hook 兜底 / 安全模式）
 
 Hook 进程通过 `:hook` 的 `SafeModeManager` 把崩溃记录写入远程偏好分组 `hyperrefine_safe_mode`，App 侧读取并支持重置。
 
@@ -617,13 +610,51 @@ object SafeModeReader {
 - `XposedEntry.onPackageReady` 与 `onSystemServerStarting` 均已接入，避免系统应用反复崩溃导致无法开机。
 - 作用域页会标注「安全模式」并提供一键恢复（`SafeModeReader.reset`）。
 
+### 4.5 Hook 生效状态（广播回报）
+
+判断某功能「是否真的在目标进程装上了 Hook」不能靠读远程偏好（Hook 侧只读）或「模块已启用」来猜，而应由**被注入的目标进程主动回报**。
+
+**Hook 侧（`:hook`，包 `...hook.status`）**
+
+```kotlin
+object HookStatusReporter {
+    fun markInstalled(key: String)                            // BaseLoad 安装成功后自动调用
+    fun flush(sourcePackage: String, sourceProcess: String)   // onPackageReady 末尾自动调用
+}
+```
+
+- `BaseLoad` 在每条 hook **安装成功后** `markInstalled(hook.key)`，并在 `onPackageReady` 末尾 `flush(...)`；无安装则自动跳过。
+- `flush` 通过 `ActivityThread.currentApplication()` 反射取目标进程 Application 作为发送上下文（不额外 hook `Application.attach`，减小失败面），把本进程已安装的键**合并为一次定向广播** `ACTION_HOOKS_ACTIVE` 发往 App。
+- Android 16+ 开启 `BroadcastOptions.setShareIdentityEnabled(true)`，使 App 侧可校验发送者 UID；协议常量见 `HookStatusContract`。
+
+**App 侧（`:app`，包 `...xposed`）**
+
+```kotlin
+object HookStatusStore {
+    val state: StateFlow<Set<String>>   // 当前生效的配置键集合（Compose 可观察）
+    fun initialize(context: Context)
+    fun isApplied(key: String): Boolean
+    fun record(context: Context, keys: Collection<String>)
+    fun removeKeys(context: Context, keys: Collection<String>)
+    fun clear(context: Context)
+}
+
+@Composable
+fun rememberHookApplied(key: String): Boolean   // 见 5.3
+```
+
+- `HookStatusReceiver` 校验：动作匹配 → 发送者身份可用（`sentFromUid`）→ `getPackagesForUid` 含来源包 → 模块 `versionCode` 一致（0 视为未知放行）→ 上报键为 App 已声明键子集。任一不满足即拒绝。
+- `HookStatusStore` 使用 **device-protected** 偏好，按 `versionCode` + `Settings.Global.BOOT_COUNT` 作用域：旧版本 / 上一次开机的证据自动丢弃。
+- **优化点**：不依赖系统签名级 `INTERACT_ACROSS_USERS` 权限（普通模块即可用），改用发送者 UID → 包集合校验防伪造；上报为**键集合**而非定长位掩码，天然支持任意数量与多进程功能合并。
+- 开关变更时卡片会 `removeKeys` 清除旧证据，需**重启目标进程**才会再次回报并显示「已生效」（libxposed 无法热卸载已注册的 hook）。
+
 ---
 
 ## 5. UI 组件（`:app`）
 
 包名：`cn.ianzb.hyperrefine.ui.component.pref`
 
-所有组件均基于 Miuix 组件库，并接入配置系统、多语言、依赖绑定、全局搜索与 Hook 状态。
+所有组件均基于 Miuix 组件库，并接入配置系统、多语言、依赖绑定、设备形态白名单与全局搜索。
 
 ### 5.1 组件一览
 
@@ -663,29 +694,29 @@ object SafeModeReader {
 ### 5.3 辅助接口
 
 ```kotlin
+@Composable fun rememberEffectiveDeviceType(): DeviceType
+@Composable fun rememberDeviceScopeEnabled(spec: OptionSpec): Boolean
 @Composable fun rememberDependencyEnabled(spec: OptionSpec): Boolean
-@Composable fun rememberHookStatus(spec: OptionSpec): HookStatus
-@Composable fun HookStatusTitleColor(spec: OptionSpec): BasicComponentColors
+@Composable fun rememberOptionEnabled(spec: OptionSpec): Boolean
+@Composable fun rememberHookApplied(key: String): Boolean
 @Composable fun hookSectionTitle(section: HookSection): String
 fun ensureScopeFor(spec: OptionSpec)
 ```
 
-- `rememberDependencyEnabled`：根据 `spec.dependsOn` / `spec.dependsOnValue` 返回是否启用；依赖项不满足时组件 `enabled = false`。
-- `rememberHookStatus`：计算当前状态（成功 / 失败 / 未应用）；若 `spec.demoStatus != null` 则直接返回该值。
-- `HookStatusTitleColor`：返回标题 `titleColor`（成功=绿色 / 失败=红色），未应用时返回默认标题色；零额外占位。
+- `rememberEffectiveDeviceType`：返回当前生效的设备形态（优先设置页「当前设备类型」覆盖值，否则用模块自动判定）。读取 `ConfigState`，更改设备类型后**实时刷新**。
+- `rememberDeviceScopeEnabled`：设备形态是否在 `spec.deviceScope` 白名单内；未声明白名单（null / 空）视为各设备通用。
+- `rememberDependencyEnabled`：根据 `spec.dependsOn` / `spec.dependsOnValue` 返回是否启用。
+- `rememberOptionEnabled`：**统一的组件可用性判定** = `rememberDependencyEnabled && rememberDeviceScopeEnabled`。所有 Hook 卡片以它作为 `enabled`，从而让设备独占功能在非白名单设备上**禁用灰显而不隐藏**。
 - `hookSectionTitle`：渲染分区标题；默认仅 `titleRes`，`titleEn` 非空时拼成 `中文（English）`（仅示例 / API 展示用，实际功能页应省略 `titleEn`）。
 - `ensureScopeFor`：为 `spec.targetPackages` 中未授权的包申请作用域。
-
-**状态判定顺序（`rememberHookStatus`）：**
-
-1. `spec.demoStatus != null` → 直接返回（仅示例 / 预览）。
-2. 模块未激活（`XposedServiceManager.isActivated == false`）→ `NOT_APPLIED`。
-3. `spec.targetPackages` 非空且都不在作用域内 → `NOT_APPLIED`。
-4. 否则查 `HookStatusReader.statusOf(spec.statusId)`：`true` → `SUCCESS`，`false` → `FAILED`，`null` → `NOT_APPLIED`。
 
 **绑定机制（`dependsOn`）：**
 
 `dependsOn = "masterKey"` 时，仅当 `masterKey` 的布尔值等于 `dependsOnValue`（默认 `true`）时组件才启用；否则置灰不可交互。
+
+**设备独占（`deviceScope`）：**
+
+在 `OptionSpec.deviceScope` 声明白名单（如 `setOf(DeviceType.PHONE)`）后，其它设备形态上组件保持可见但**禁用灰显**；用户切换「设置 → 当前设备类型」后立即生效。hook 侧由 `BaseHook.deviceScope` / `BaseNativeHook.deviceScope` 使用同一份设备形态（`DeviceContext.current`）同步跳过，保证 UI 与运行时一致。
 
 ### 5.4 通用页面 `HookOptionsPage`
 
@@ -836,7 +867,7 @@ HookSectionCard(
 | 组件行内边距 | `BasicComponentDefaults.InsideMargin`（16dp） | 由 Miuix 组件默认提供，不要覆盖 |
 | 页面顶/底内边距 | 使用 `Scaffold` 的 `innerPadding` + `extraBottomPadding` | 不要额外加固定 top 间距 |
 | 顶部搜索栏间距 | `Modifier.padding(top = 12.dp, bottom = 8.dp)` | 搜索栏与上方顶栏、下方首个分区的间距 |
-| 状态提示 | 标题颜色 `titleColor` | 成功=绿色标题，失败=红色标题，未应用保持默认色 |
+| 设备独占 | `OptionSpec.deviceScope` + `rememberOptionEnabled` | 非白名单设备上组件**禁用灰显不隐藏**；切换「当前设备类型」后实时生效 |
 | 二级页面 | 继承 `BaseSubPageActivity`，内容用 `SubPageScaffold` 提供的 `contentPadding` | 不要自行处理系统栏 / 顶栏间距 |
 
 **标题规范（强制）：** 实际功能页的分区标题使用**单一语言**（仅 `HookSection.titleRes`）。`titleEn` 仅为模板示例保留：非空时由 `HookSection(titleRes, specs, titleEn)` + `hookSectionTitle()` 拼成单行 `中文（English）`（例如 `开关卡片（SwitchPreference）`），用于展示 API 英文组件名；无论哪种情形都不得拆成「英文标题 + 中文副标题」两行。
@@ -879,16 +910,18 @@ AnimatedVisibility(
 
 ### 5.7 组件行为细则
 
-| 组件 | 配置写入 | 作用域申请 | 状态提示 | 备注 |
-|---|---|---|---|---|
-| `HookSwitchCard` | 开/关均写入 | 仅开启时 | 有 | 关=不 hook，开=hook |
-| `HookCheckboxCard` | 勾选/取消均写入 | 仅勾选时 | 有 | 语义同开关 |
-| `HookArrowCard` | 不写入 | 无 | 无 | 仅触发 `onClick` 跳转二级页 |
-| `HookDropdownCard` | 选中即写入 | 选中非默认项时 | 有 | 第一项为默认（不 hook） |
-| `HookRadioCard` | 选中即写入 | 选中非默认项时 | 有 | 右侧复选框，单选语义 |
-| `HookSliderCard` | 拖动/输入即写入 | 主开关开启时 | 有（主开关标题） | 见下方细则 |
-| `HookTextCard` | 确认时写入 | 无 | 有 | 弹窗输入 |
-| `HookOptionView` | 由具体组件决定 | 由具体组件决定 | 由具体组件决定 | 按 `type` 分发，`SPINNER` 复用下拉 |
+| 组件 | 配置写入 | 作用域申请 | 备注 |
+|---|---|---|---|
+| `HookSwitchCard` | 开/关均写入 | 仅开启时 | 关=不 hook，开=hook |
+| `HookCheckboxCard` | 勾选/取消均写入 | 仅勾选时 | 语义同开关 |
+| `HookArrowCard` | 不写入 | 无 | 仅触发 `onClick` 跳转二级页 |
+| `HookDropdownCard` | 选中即写入 | 选中非默认项时 | 第一项为默认（不 hook） |
+| `HookRadioCard` | 选中即写入 | 选中非默认项时 | 右侧复选框，单选语义 |
+| `HookSliderCard` | 拖动/输入即写入 | 主开关开启时 | 见下方细则 |
+| `HookTextCard` | 确认时写入 | 无 | 弹窗输入 |
+| `HookOptionView` | 由具体组件决定 | 由具体组件决定 | 按 `type` 分发，`SPINNER` 复用下拉 |
+
+> 所有卡片统一以 `enabled = rememberOptionEnabled(spec)` 渲染：`dependsOn` 或 `deviceScope` 不满足时**禁用灰显**（不隐藏）。
 
 **下拉 / 单选默认项约定：** `entryValues[0]` 为默认值（`defaultString` 应等于它），第一项文本建议形如「默认（中速）」，表示该状态下不 hook；选择非默认项才申请作用域。
 
@@ -900,7 +933,7 @@ AnimatedVisibility(
 
 **`HookTextCard` 细则：** 主界面为一行（标题 + 当前值摘要），点击弹出与滑块一致的对话框：当前值 / 默认值同行左右显示 + `TextField` + 取消 / 恢复默认 / 确定。
 
-**状态示例：** 通过 `OptionSpec.demoStatus` 可强制指定状态，仅用于示例 / 预览。功能页 `HookStatus` 分区演示了成功 / 失败 / 未应用三种状态。
+**设备独占：** 需要仅在特定设备形态显示 / 生效的功能，声明 `OptionSpec.deviceScope`；非白名单设备上组件保持可见但**禁用灰显**，hook 侧由 `BaseHook.deviceScope` / `BaseNativeHook.deviceScope` 用同一份设备形态同步跳过。示例：功能页「控制中心 → 融合设备中心 → 横屏融合设备中心右置」（`deviceScope = setOf(DeviceType.PHONE)`）。
 
 ---
 
@@ -1040,7 +1073,7 @@ Card { HookSwitchCard(spec) }
 启用开关时，`HookSwitchCard` 会：
 1. 写入配置（`ConfigState.set` → `PrefsStore` → 远程偏好）
 2. 自动 `ensureScopeFor(spec)` 申请作用域
-3. 标题颜色显示成功（绿色）/ 失败（红色）/ 未应用（默认色）
+3. 若声明了 `deviceScope`，非白名单设备上保持可见但禁用灰显
 
 ---
 
@@ -1053,13 +1086,12 @@ Card { HookSwitchCard(spec) }
 | 原生 Hook 封装 | `hook/.../hook/nativehook/NativeHookApi.kt`、`BaseNativeHook.kt` |
 | 原生入口契约 / 模板 | `hook/src/main/rust/nativehook/`（`src/lib.rs`、`Cargo.toml`） |
 | 反射工具 | `hook/.../hook/xposed/Reflect.kt` |
-| Hook 状态写入 | `hook/.../hook/xposed/HookStatusWriter.kt` |
 | 规则基类 | `hook/.../hook/base/BaseHook.kt`、`BaseLoad.kt`、`HookEntryRegistry.kt` |
 | Hook 配置读取 | `hook/.../hook/prefs/HookPrefs.kt` |
 | DexKit 缓存 | `hook/.../hook/dexkit/` |
 | 模块元数据 | `hook/src/main/resources/META-INF/xposed/{java_init.list,module.prop,scope.list}` |
 | 配置系统 | `app/.../prefs/` |
-| 服务与状态 | `app/.../xposed/XposedServiceManager.kt`、`HookStatusReader.kt`、`RootHelper.kt` |
+| 服务与状态 | `app/.../xposed/XposedServiceManager.kt`、`RootHelper.kt`、`SafeModeReader.kt` |
 | 组件 | `app/.../ui/component/pref/`（`HookCards.kt`、`HookDropdownCards.kt`、`HookSliderCard.kt`、`HookTextCard.kt`、`HookOptionView.kt`、`HookOptionSupport.kt`、`HookOptionsPage.kt`） |
 | 顶栏重启应用 | `app/.../ui/component/QuickActionsAction.kt` |
 | 显隐动画 | `app/.../ui/util/MiuixAnimations.kt`（`MiuixExpandSpec`） |

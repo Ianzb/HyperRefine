@@ -185,7 +185,7 @@ override fun onPackageLoaded(target: PackageTarget) {
 }
 ```
 
-- `NativeHookHelper`：库名归一化、`System.loadLibrary`、去重、异常兜底、状态上报。
+- `NativeHookHelper`：库名归一化、`System.loadLibrary`、去重、异常兜底、日志。
 - `BaseNativeHook`：`libraryName` / `key` / `required` / `description` / `versionGate` / `deviceScope` / `appliesTo(ctx)`。
 - 版本筛选 DSL 见 [接口文档 · 1.11](API.md#111-版本筛选hookversiongate)；设备筛选见 [接口文档 · 1.12](API.md#112-设备筛选devicescope)。
 - 设备类型默认由模块自动判定，也可在设置页「模块 → 当前设备类型」手动覆盖（`auto` / `phone` / `pad` / `fold`，经远程偏好下发，重启后生效）。
@@ -222,9 +222,9 @@ C ABI 导出 → inline hook；只有 Rust mangled 符号 → `rustfilt` 还原�
 
 `BaseNativeHook` + `initNativeHook(...)`；配置键与 `OptionSpec.key` 一致；需要按版本 / 设备区分时加 `versionGate` / `deviceScope`（默认各设备通用）。
 
-### Step 6 — 状态回传与安全兜底
+### Step 6 — 安全兜底
 
-加载结果写入 `HookStatusWriter`；关键应用重复崩溃会自动进入安全模式，可在「设置 → 模块 → 安全模式」逐项开关（见 [接口文档 6.3](API.md#63-safemodeactivity安全模式页)）。
+关键应用重复崩溃会自动进入安全模式，可在「设置 → 模块 → 安全模式」逐项开关（见 [接口文档 6.3](API.md#63-safemodeactivity安全模式页)）。
 
 ### Step 7 — 幂等性
 

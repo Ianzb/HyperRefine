@@ -4,8 +4,8 @@ import cn.ianzb.hyperrefine.hook.dexkit.DexKitCacheManager
 import cn.ianzb.hyperrefine.hook.nativehook.BaseNativeHook
 import cn.ianzb.hyperrefine.hook.rule.HookSkippedException
 import cn.ianzb.hyperrefine.hook.rule.VersionContext
+import cn.ianzb.hyperrefine.hook.status.HookStatusReporter
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
-import cn.ianzb.hyperrefine.hook.xposed.HookStatusWriter
 
 /**
  * 按目标包组织的一组 hook。
@@ -40,7 +40,6 @@ abstract class BaseLoad {
 
     fun onPackageReady(target: PackageTarget) {
         currentTarget = target
-        HookStatusWriter.startProcess(target.processName)
         pendingHooks.clear()
         pendingNativeHooks.clear()
         runCatching { onPackageLoaded(target) }
@@ -60,8 +59,10 @@ abstract class BaseLoad {
             if (enabled) installNative(hook)
         }
 
+        // 本进程完成注册后，合并上报已成功安装的配置键（无安装则自动跳过）。
+        HookStatusReporter.flush(target.packageName, target.processName)
+
         if (needsDexKit) runCatching { DexKitCacheManager.releaseBridge() }
-        HookStatusWriter.flush()
     }
 
     private fun install(hook: BaseHook) {
@@ -75,19 +76,17 @@ abstract class BaseLoad {
                     hook.dexKitInitInProgress = false
                 }
                 if (!ok) {
-                    HookStatusWriter.record(hook.key, false)
                     HookHelper.log("${hook.tag} skipped: initDexKit returned false")
                     return
                 }
             }
             val variant = hook.apply(target)
-            HookStatusWriter.record(hook.key, true)
             HookHelper.log("${hook.tag} hook success${variant?.let { " [$it]" } ?: ""} @ ${target.packageName}")
+            HookStatusReporter.markInstalled(hook.key)
         } catch (t: HookSkippedException) {
-            // 版本筛选未命中属于主动跳过：不写状态，UI 视为「未应用」。
+            // 版本 / 设备筛选未命中属于主动跳过。
             HookHelper.log("${hook.tag} skipped @ ${target.packageName}: ${t.message}")
         } catch (t: Throwable) {
-            HookStatusWriter.record(hook.key, false)
             HookHelper.log("${hook.tag} hook failed @ ${target.packageName}", t)
         }
     }
@@ -107,7 +106,6 @@ abstract class BaseLoad {
             HookHelper.log("native hook load failed: ${hook.libraryName} @ ${target.packageName}", t)
             false
         }
-        HookStatusWriter.record(hook.key, ok)
         if (ok) {
             HookHelper.log("native hook loaded: ${hook.libraryName} @ ${target.packageName}")
         } else if (hook.required) {

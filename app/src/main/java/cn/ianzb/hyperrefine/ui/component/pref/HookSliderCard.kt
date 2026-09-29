@@ -48,7 +48,7 @@ fun HookSliderCard(
     spec: OptionSpec,
     modifier: Modifier = Modifier,
 ) {
-    val enabled = rememberDependencyEnabled(spec)
+    val enabled = rememberOptionEnabled(spec)
     val masterKey = spec.masterKey
     val masterEnabled = if (masterKey != null) ConfigState.bool(masterKey, false) else true
     val value = ConfigState.float(spec.key, spec.defaultFloat)
@@ -66,7 +66,6 @@ fun HookSliderCard(
                     if (it) ensureScopeFor(spec)
                 },
                 enabled = enabled,
-                titleColor = HookStatusTitleColor(spec),
             )
         }
 

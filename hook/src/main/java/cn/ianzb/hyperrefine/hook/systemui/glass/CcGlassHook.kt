@@ -27,6 +27,7 @@ class CcGlassHook : BaseHook() {
         PluginLoader.register(key, systemCl) { pluginCl ->
             CcGlassApi.init(pluginCl)
             hookSecondaryPanels(pluginCl)
+            hookTiles(pluginCl)
             hookMoreButton(pluginCl)
             hookSideVolume(pluginCl)
         }
@@ -50,6 +51,43 @@ class CcGlassHook : BaseHook() {
                 CcGlassApi.apply(view, TOKEN_GLASS)
             }
         }.onFailure { HookHelper.log("$tag: hook more button failed", it) }
+    }
+
+    /**
+     * 亮度面板的圆形磁贴按钮：原状没有玻璃，这里在 `QSTileItemView.updateState` 之后补玻璃，
+     * 并在每次状态切换后重套（避免丢失）。开启态保留系统自带的白色遮罩，只给非开启态补玻璃。
+     */
+    private fun hookTiles(pluginCl: ClassLoader) {
+        val cls = Reflect.findClassIfExists(TILE_ITEM_CLASS, pluginCl) ?: run {
+            HookHelper.log("$tag: $TILE_ITEM_CLASS not found")
+            return
+        }
+        val method = cls.declaredMethods.firstOrNull {
+            it.name == "updateState" && it.parameterCount == 3
+        } ?: return
+        method.isAccessible = true
+        runCatching {
+            HookHelper.hookAfter(method) { param ->
+                if (!master() || !sub(CcGlassKeys.BRIGHTNESS)) return@hookAfter
+                val tile = param.thisObject as? View ?: return@hookAfter
+                if (!inBrightnessPanel(tile)) return@hookAfter
+                val on = (param.args.getOrNull(0)?.let {
+                    runCatching { Reflect.getObjectField(it, "state") }.getOrNull()
+                } as? Int) == 2
+                if (on) return@hookAfter
+                (call(tile, "getBlendTarget") as? View)?.let { glass(it) }
+            }
+            HookHelper.log("$tag: hooked brightness tiles")
+        }.onFailure { HookHelper.log("$tag: hook tiles failed", it) }
+    }
+
+    private fun inBrightnessPanel(view: View): Boolean {
+        var parent = view.parent
+        while (parent != null) {
+            if (parent is View && idName(parent) == "brightness_panel") return true
+            parent = parent.parent
+        }
+        return false
     }
 
     // ---------------- 二级面板（控制中心插件） ----------------
@@ -146,15 +184,16 @@ class CcGlassHook : BaseHook() {
         byClass(root, setOf("MiuiVolumeTimerSeekBar"))
     }
 
-    /** 静音/勿扰圆按钮：套玻璃并清除禁用时的深色背景（`miui_standard_btn`）。 */
+    /** 静音/勿扰圆按钮：套玻璃并清除禁用时的深色背景（`bg_blur` / `miui_standard_btn`）。 */
     private fun glassRinger(root: View?) {
         val v = root ?: return
         traverse(v) { child ->
             if (idName(child) == "bg_blur") {
-                glass(child)
+                child.background = null
                 traverse(child) { inner ->
                     if (idName(inner) == "miui_standard_btn") inner.background = null
                 }
+                glass(child)
             }
         }
     }
@@ -175,12 +214,22 @@ class CcGlassHook : BaseHook() {
         val wifi = type.contains("WIFI") && sub(CcGlassKeys.WLAN)
         val cell = type.contains("CELL") && sub(CcGlassKeys.MOBILE_DATA)
         if (!wifi && !cell) return
+        // 独立的卡片逐个套玻璃（彼此平行、不嵌套）：已连接/选中用激活玻璃保留强调色，其余用默认玻璃。
         val list = findList(root) as? ViewGroup
         if (list != null) {
-            // 其他 WLAN 的卡片组：整体一张圆角玻璃卡片。
-            glass(list)
-            // 已连接 / 已选中的单独卡片：单独一张玻璃卡片（在组卡片之上）。
-            forEachChild(list) { child -> if (child.isSelected) glass(child) }
+            forEachChild(list) { child ->
+                if (!child.isClickable) return@forEachChild
+                if (child is android.widget.TextView) return@forEachChild
+                child.background = null
+                val active = child.isSelected
+                CcGlassApi.applyStyle(
+                    child,
+                    CcGlassApi.colorBlend(
+                        if (active) "CC_DETAIL_PANEL_LIST_ISSELECTED_BLEND_COLORS" else "CC_DETAIL_PANEL_LIST_BLEND_COLORS"
+                    ),
+                    CcGlassApi.bionics(if (active) TOKEN_ACTIVATED else TOKEN_DEFAULT),
+                )
+            }
         }
         byId(root, setOf("more_button"))
     }
@@ -313,6 +362,8 @@ class CcGlassHook : BaseHook() {
 
         private const val SECONDARY_BASE =
             "miui.systemui.controlcenter.panel.secondary.SecondaryPanelControllerBase"
+        private const val TILE_ITEM_CLASS =
+            "miui.systemui.controlcenter.qs.tileview.QSTileItemView"
         private const val MORE_BUTTON_CLASS =
             "miui.systemui.controlcenter.widget.DetailPanelMoreButtonView"
         private const val SIDE_VOLUME_CONTROLLER =

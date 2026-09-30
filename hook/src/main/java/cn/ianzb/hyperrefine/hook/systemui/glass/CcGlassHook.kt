@@ -33,6 +33,22 @@ class CcGlassHook : BaseHook() {
     /** 已注册「动画结束重套」的图标动画对象。 */
     private val animEndHooked = java.util.WeakHashMap<Any, Boolean>()
 
+    /**
+     * 侧边音量已套玻璃的视图及其状态签名。
+     *
+     * 音量按键 / 拖动会高频触发 `updateVolumeColumnSliderH`，而每次都对全部音量列
+     * 反射套用模糊玻璃（`setMiViewBlurModeCompat` + `setMiBackgroundStyle`）代价极高，
+     * 会造成调整音量时明显卡顿。此处记录每个视图最近一次套用的签名，仅在
+     * 「面板重新展示」或「展开态变化」导致签名变化时重套，其余调用直接跳过。
+     */
+    private val sideVolumeApplied = java.util.WeakHashMap<View, Long>()
+
+    /** 侧边音量玻璃状态代次：每次面板重新展示 / 初始化时自增，强制重套一次。 */
+    private var sideVolumeGeneration = 0L
+
+    /** 视图 id 资源名缓存：`getResourceEntryName` 较慢，高频遍历中复用。 */
+    private val idNameCache = java.util.WeakHashMap<View, String>()
+
     override fun init() {
         val systemCl = target.classLoader ?: return
         CcGlassApi.initSystem(systemCl)
@@ -330,9 +346,13 @@ class CcGlassHook : BaseHook() {
         val cls = Reflect.findClassIfExists(SIDE_VOLUME_CONTROLLER, pluginCl) ?: return
         cls.declaredMethods.filter { it.name in SIDE_VOLUME_METHODS }.forEach { method ->
             method.isAccessible = true
+            // 面板重新展示 / 初始化属于低频结构事件，此时强制重套一次（覆盖主题 / 配置变化）。
+            val structural = method.name == "showVolumePanelH" || method.name == "initPanelView"
             runCatching {
                 HookHelper.hookAfter(method) { param ->
-                    applySideVolume(param.thisObject ?: return@hookAfter)
+                    val controller = param.thisObject ?: return@hookAfter
+                    if (structural) sideVolumeGeneration++
+                    applySideVolume(controller)
                 }
             }.onFailure { HookHelper.log("$tag: hook side volume ${method.name} failed", it) }
         }
@@ -340,30 +360,32 @@ class CcGlassHook : BaseHook() {
 
     private fun applySideVolume(controller: Any) {
         if (!master()) return
+        val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") }.getOrNull() as? Boolean ?: false
+        val signature = (sideVolumeGeneration shl 1) or (if (expanded) 1L else 0L)
         // 侧边二级菜单的**整体面板**背景：清掉系统兜底色后套柔光玻璃（与滑条同样的做法）。
         (call(controller, "getVolumeContentBg") as? View)?.let { v ->
             v.background = null
-            CcGlassApi.applyStyle(v, CcGlassApi.bionics(TOKEN_DEFAULT))
+            applyStyleOnce(v, signature)
         }
-        glassVolumeColumns(controller)
+        glassVolumeColumns(controller, signature)
         val ringer = call(controller, "getVolumeRingerModeLayout") as? View
-        glassRinger(ringer)
-        byClass(ringer, setOf(TIMER_SEEK_BAR_NAME))
+        glassRinger(ringer, signature)
+        byClass(ringer, setOf(TIMER_SEEK_BAR_NAME), signature)
     }
 
     /** 对音量控制器的所有音量列（含收起态使用的临时列 `mTempColumn`）套玻璃并清除深色底。 */
-    private fun glassVolumeColumns(controller: Any) {
+    private fun glassVolumeColumns(controller: Any, signature: Long) {
         val applyColumn: (Any?) -> Unit = { column ->
             val columnView = column?.let { call(it, "getView") as? View }
             if (columnView != null) {
-                glass(columnView)
+                glass(columnView, signature)
                 // 一次遍历同时清除深色底与滑条兜底色（侧边音量的滑条被系统铺了一层偏深的 flat 兜底色）。
                 traverse(columnView) { v ->
                     when (idName(v)) {
                         "volume_column_view", "volume_column_slider_bg_blend" -> v.background = null
                         "volume_column_slider" -> {
                             v.background = null
-                            CcGlassApi.applyStyle(v, CcGlassApi.bionics(TOKEN_DEFAULT))
+                            applyStyleOnce(v, signature)
                         }
                     }
                 }
@@ -393,7 +415,7 @@ class CcGlassHook : BaseHook() {
         }.onFailure { HookHelper.log("$tag: hook ringer buttons failed", it) }
     }
 
-    private fun glassRinger(root: View?) {
+    private fun glassRinger(root: View?, signature: Long? = null) {
         val view = root ?: return
         traverse(view) { child ->
             if (idName(child) != "bg_blur") return@traverse
@@ -407,7 +429,7 @@ class CcGlassHook : BaseHook() {
                 makeCircular(child)
             }
             if (child.background != null) child.background = null
-            glass(child)
+            glass(child, signature)
         }
     }
 
@@ -458,19 +480,36 @@ class CcGlassHook : BaseHook() {
     private fun getIntField(target: Any, name: String): Int? =
         runCatching { Reflect.getObjectField(target, name) as? Int }.getOrNull()
 
-    private fun glass(view: Any?) {
-        (view as? View)?.let { CcGlassApi.apply(it, TOKEN_GLASS) }
+    private fun glass(view: Any?, signature: Long? = null) {
+        val v = view as? View ?: return
+        applyOnce(v, signature) { CcGlassApi.apply(it, TOKEN_GLASS) }
     }
 
-    private fun byId(root: Any?, ids: Set<String>) {
+    /** 与 [glass] 相同，但使用一级界面同款 SDF 玻璃（`DEFAULT_GLASS_TOKEN`）。 */
+    private fun applyStyleOnce(view: View, signature: Long?) {
+        applyOnce(view, signature) { CcGlassApi.applyStyle(it, CcGlassApi.bionics(TOKEN_DEFAULT)) }
+    }
+
+    /**
+     * 仅在状态签名变化时执行 [apply]；[signature] 为 null 表示不缓存（低频路径）。
+     * 只有套用成功才记录，避免失败后永久跳过。
+     */
+    private fun applyOnce(view: View, signature: Long?, apply: (View) -> Boolean): Boolean {
+        if (signature != null && sideVolumeApplied[view] == signature) return false
+        val applied = apply(view)
+        if (applied && signature != null) sideVolumeApplied[view] = signature
+        return applied
+    }
+
+    private fun byId(root: Any?, ids: Set<String>, signature: Long? = null) {
         val view = root as? View ?: return
-        traverse(view) { child -> if (idName(child) in ids) glass(child) }
+        traverse(view) { child -> if (idName(child) in ids) glass(child, signature) }
     }
 
-    private fun byClass(root: Any?, classNames: Set<String>) {
+    private fun byClass(root: Any?, classNames: Set<String>, signature: Long? = null) {
         val view = root as? View ?: return
         traverse(view) { child ->
-            if (classNames.any { child.javaClass.simpleName == it }) glass(child)
+            if (classNames.any { child.javaClass.simpleName == it }) glass(child, signature)
         }
     }
 
@@ -496,10 +535,13 @@ class CcGlassHook : BaseHook() {
 
     private fun master(): Boolean = HookPrefs.getBoolean(CcGlassKeys.MASTER, false)
 
-    private fun idName(view: View): String =
-        runCatching {
-            if (view.id == View.NO_ID) "" else view.resources.getResourceEntryName(view.id)
-        }.getOrDefault("")
+    private fun idName(view: View): String {
+        if (view.id == View.NO_ID) return ""
+        idNameCache[view]?.let { return it }
+        val name = runCatching { view.resources.getResourceEntryName(view.id) }.getOrDefault("")
+        idNameCache[view] = name
+        return name
+    }
 
     companion object {
         const val KEY = "cc_glass"

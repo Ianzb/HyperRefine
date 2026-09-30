@@ -1,5 +1,13 @@
 # 更新日志
 
+## 1.2.1
+
+> 发布于 2026-09-30
+
+### 修复
+
+- **调整音量卡顿**（控制中心音量 / 侧边音量）：柔光玻璃挂在 `VolumePanelViewController.updateVolumeColumnSliderH` 这一高频回调上，每次都对全部音量列逐次反射重套模糊玻璃（`setMiViewBlurModeCompat` + `setMiBackgroundStyle`）并重走视图树，音量按键 / 拖动时重复执行数十次导致明显卡顿。改为以「面板重新展示 / 初始化」代次 + 展开态组成的状态签名缓存每个视图最近一次的套用结果，仅在签名变化（重新展示、展开态切换）时重套，其余调用直接跳过；并缓存视图 id 资源名，消除高频遍历中 `Resources.getResourceEntryName` 的开销。控制中心二级音量面板与侧边音量共用该类（`VolumePanelDelegate` 内直接实例化 `VolumePanelViewController`），同时受益
+
 ## 1.2.0
 
 > 发布于 2026-09-30

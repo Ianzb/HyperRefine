@@ -125,6 +125,7 @@ $env:KEY_PASSWORD="你的密钥密码"
 | `KEY_PASSWORD` | 密钥密码 |
 | `CHANNEL_ID` / `BOT_TOKEN` | （可选）Telegram 推送；不需要时删除 `release.yml` 的「上传到Telegram」步骤 |
 | `MESSAGE_THREAD_ID` | （可选）多话题群（Forum）指定话题的 `message_thread_id`；不填则发到默认 / General 话题 |
+| `TEST_MESSAGE_THREAD_ID` | （可选）测试版推送的话题 `message_thread_id`（同一群的另一个话题），与 `CHANNEL_ID` / `BOT_TOKEN` 配合使用；不填则跳过 CI 的「上传到Telegram」步骤 |
 
 **4. 发布**：手动运行 `Release Build` 工作流并填写版本号（会自动 `versionCode` +1 并提交），或先改好 `versionName` 再推送 `v1.0.0` 形式的标签。
 

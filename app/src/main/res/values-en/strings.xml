@@ -164,6 +164,26 @@
     <string name="device_center_landscape_right">Landscape device center on right</string>
     <string name="device_center_landscape_right_summary">In phone landscape, move the fusion device center from the left to the right side of Control Center (phones only)</string>
 
+    <string name="section_cc_glass">Glass material</string>
+    <string name="feature_cc_glass">Soft glass</string>
+    <string name="cc_glass_master">Enable soft glass</string>
+    <string name="cc_glass_master_summary">Apply the same soft glass as the first level to the buttons and cards in the secondary panels</string>
+    <string name="cc_glass_panel_section">Secondary panels</string>
+    <string name="cc_glass_side_volume">Side volume bar</string>
+    <string name="cc_glass_side_volume_summary">Soft glass for its buttons and cards</string>
+    <string name="cc_glass_cc_volume">Control center volume bar</string>
+    <string name="cc_glass_cc_volume_summary">Soft glass for its sliders and buttons</string>
+    <string name="cc_glass_brightness">Brightness bar</string>
+    <string name="cc_glass_brightness_summary">Soft glass for its slider and round buttons</string>
+    <string name="cc_glass_mobile_data">Mobile data</string>
+    <string name="cc_glass_mobile_data_summary">Soft glass for its detail cards</string>
+    <string name="cc_glass_wlan">WLAN</string>
+    <string name="cc_glass_wlan_summary">Soft glass for its detail cards</string>
+    <string name="cc_glass_media">Media player</string>
+    <string name="cc_glass_media_summary">Soft glass for its device cards</string>
+    <string name="cc_glass_debug">Debug log</string>
+    <string name="cc_glass_debug_summary">Dump each panel view tree to the log for troubleshooting (off by default)</string>
+
     <string name="percent_display_section">Volume &amp; brightness bars</string>
     <string name="percent_switch_summary">Show a percentage value on the slider; style options appear after enabling</string>
     <string name="percent_style_section">Style</string>

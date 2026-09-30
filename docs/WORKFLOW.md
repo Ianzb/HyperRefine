@@ -72,9 +72,18 @@
 1. 明确功能入口与调用链；优先静态分析（反编译 / DexKit），尽量减少真机操作。
 2. 用 `dumpsys package` / `pm path` 确认版本与安装路径，必要时经授权 `adb pull` 目标 APK。
 3. 通过 `logcat` / `uiautomator dump` 验证触发路径（需授权）。
-4. 产出类名、方法签名、字段、混淆映射等定位信息，并据此编写 Hook。
+4. 产出类名、方法签名、字段、混淆映射等定位信息，并据此编写 Hook；逆向产物与报告按 [1.5](#15-逆向产物与报告存放) 统一落盘到 `reverse_report/`。
 
-### 1.5 实现与验证
+### 1.5 逆向产物与报告存放
+
+所有逆向分析的中间产物与分析报告统一放在仓库根的 `reverse_report/`，**按目标应用（包名）分类**。该目录已通过 `.git/info/exclude` 本地忽略，**永不入库、不产生 git 痕迹**，以避免第三方应用代码 / 资源的版权与合规风险（不要 `git add -f` 强制提交）。
+
+- **目录约定**：`reverse_report/<包名>/`；通用 / 跨应用内容放 `reverse_report/_common/`。新增目标应用时新建 `<包名>/` 并登记到 `reverse_report/README.md`。
+- **默认落盘**（均不得提交）：`adb pull` 的 APK、反编译输出（jadx / apktool / smali）、DexKit 定位结果与 dex 转储、类名 / 方法签名 / 字段与混淆映射、Frida / hook 脚本、关键 `logcat` / `uiautomator dump` 抓取、分析笔记与最终报告。
+- **命名建议**：`<日期>-<主题>.<扩展名>`，如 `20260930-volume-method.txt`。
+- **内容边界**：只保留定位信息（包名、类名、方法签名、字段、必要反编译片段），不保存用户个人数据，不把第三方专有代码 / 资源复制进项目源码或可提交文件。
+
+### 1.6 实现与验证
 
 按 [二次开发指南](CUSTOMIZE.md) 第 6 节落地：
 
@@ -85,7 +94,7 @@
 5. 更新 `META-INF/xposed/scope.list`；
 6. 构建并在 LSPosed 中验证功能生效（启用开关并重启目标应用）。
 
-### 1.6 页面组织规范
+### 1.7 页面组织规范
 
 - **页面名用功能**：模板的示例页已按真实形态命名为「功能」页（`ui/screen/features/FeaturesPage.kt`，子页 `FeatureSubPageActivity.kt`）。新增页面沿用功能命名，不要以组件类型命名。
 - **小标题单语言**：功能页分区小标题只传 `HookSection.titleRes`，**不要传 `titleEn`**。`titleEn`（拼成 `中文（English）`）仅用于模板示例展示 API 英文组件名，英文名以[接口文档](API.md) 5.1 为准。
@@ -156,10 +165,36 @@
 
 ---
 
-## 4. 检查清单
+## 4. 构建与日志（避免命令卡死）
+
+> **警告**：不要用 PowerShell 管道截断长驻命令（Gradle / `adb logcat` 等）的输出，例如
+> `.\gradlew.bat ... 2>&1 | Select-Object -Last 80`。`Select-Object -Last` 会先缓冲整条输出流，
+> 而 Gradle 守护进程会一直保持 stdout 打开，导致命令长时间无输出、**看似卡死**（实际在等待流结束）。
+
+**推荐做法（二选一）**
+
+1. 直接运行，让终端 / 工具自行捕获与截断输出：
+   ```
+   .\gradlew.bat :hook:compileDebugKotlin :app:assembleDebug --console=plain
+   ```
+2. 需要落盘后再看尾部时，重定向到**临时目录**日志（勿提交），再读取尾部：
+   ```
+   .\gradlew.bat :hook:compileDebugKotlin :app:assembleDebug --console=plain *> "$env:TEMP\build.log"
+   Get-Content "$env:TEMP\build.log" -Tail 80
+   ```
+
+**其他约束**
+
+- `adb logcat` 用 `-d`（一次性 dump）或按标签过滤，避免 `Select-Object` 管道；需要持续观察时输出到文件再 `-Tail`。
+- 不要把构建日志、反编译产物写入会被提交的路径；逆向产物统一放 `reverse_report/`（已本地忽略，见 1.5）。
+
+---
+
+## 5. 检查清单
 
 - [ ] 涉及真机的 `adb` 操作均已获得用户明确授权，且在白名单内。
 - [ ] 未执行任何未授权 / 修改设备 / 读取隐私的命令。
+- [ ] 逆向产物与报告已按包名放入 `reverse_report/`，且未被提交到 git。
 - [ ] 复用的第三方代码已核对许可证并保留原始声明。
 - [ ] 无许可证 / 非开源参考已致谢，且未复制其代码。
 - [ ] `LicensePage.kt`、`README.md`、`docs/CUSTOMIZE.md`、`changelog.md` 已同步。

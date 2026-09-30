@@ -70,6 +70,10 @@
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity
+            android:name=".ui.screen.features.GlassActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
             android:name=".ui.screen.scope.ScopeListActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />

@@ -47,6 +47,10 @@ class ControlCenterActivity : BaseSubPageActivity() {
                 featureSpec(KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
             ),
         )
+        val glassSection = HookSection(
+            titleRes = R.string.section_cc_glass,
+            specs = listOf(featureSpec(KEY_CC_GLASS)),
+        )
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -80,6 +84,18 @@ class ControlCenterActivity : BaseSubPageActivity() {
             item {
                 HookSectionCard(deviceSection) {
                     deviceSection.specs.forEach { HookOptionView(it) }
+                }
+            }
+            item {
+                HookSectionCard(glassSection) {
+                    glassSection.specs.forEach {
+                        HookOptionView(
+                            spec = it,
+                            onArrowClick = {
+                                context.startActivity(Intent(context, GlassActivity::class.java))
+                            },
+                        )
+                    }
                 }
             }
         }

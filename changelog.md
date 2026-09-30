@@ -1,5 +1,11 @@
 # 更新日志
 
+## Unreleased
+
+### 新增
+
+- **控制中心「柔光玻璃」**（适配 HyperOS 4，目标 `com.android.systemui` 控制中心插件）：把控制中心二级面板的按钮与卡片接入系统同款玻璃材质接口（`miui.systemui.controlcenter.material.ControlCenterMaterialTokens` + `miui.systemui.ui.material.MaterialBackgroundExt.setMaterialBackground`）。总开关默认关闭，开启后出现各面板小开关（默认开启）：侧边音量条 / 控制中心音量 / 亮度 / 移动数据 / WLAN / 播放器。入口：功能页「控制中心 → 玻璃材质 → 柔光玻璃」
+
 ## 1.1.0
 
 > 发布于 2026-09-29

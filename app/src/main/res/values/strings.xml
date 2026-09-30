@@ -164,6 +164,26 @@
     <string name="device_center_landscape_right">横屏融合设备中心右置</string>
     <string name="device_center_landscape_right_summary">手机横屏时把融合设备中心从控制中心左侧移到右侧（仅手机可用）</string>
 
+    <string name="section_cc_glass">玻璃材质</string>
+    <string name="feature_cc_glass">柔光玻璃</string>
+    <string name="cc_glass_master">启用柔光玻璃</string>
+    <string name="cc_glass_master_summary">为二级面板中的按钮与卡片套用与一级界面一致的柔光玻璃材质</string>
+    <string name="cc_glass_panel_section">各二级面板</string>
+    <string name="cc_glass_side_volume">侧边音量条</string>
+    <string name="cc_glass_side_volume_summary">为其按钮与卡片套用柔光玻璃</string>
+    <string name="cc_glass_cc_volume">控制中心音量条</string>
+    <string name="cc_glass_cc_volume_summary">为其滑块与按钮套用柔光玻璃</string>
+    <string name="cc_glass_brightness">亮度条</string>
+    <string name="cc_glass_brightness_summary">为其滑块与圆形按钮套用柔光玻璃</string>
+    <string name="cc_glass_mobile_data">移动数据</string>
+    <string name="cc_glass_mobile_data_summary">为其详情卡片套用柔光玻璃</string>
+    <string name="cc_glass_wlan">WLAN</string>
+    <string name="cc_glass_wlan_summary">为其详情卡片套用柔光玻璃</string>
+    <string name="cc_glass_media">播放器</string>
+    <string name="cc_glass_media_summary">为其设备卡片套用柔光玻璃</string>
+    <string name="cc_glass_debug">调试日志</string>
+    <string name="cc_glass_debug_summary">输出各面板视图结构到日志，用于适配排查（默认关闭）</string>
+
     <string name="percent_display_section">音量条与亮度条</string>
     <string name="percent_switch_summary">开启后在对应进度条上显示百分比数值，开启后可配置显示样式</string>
     <string name="percent_style_section">显示样式</string>

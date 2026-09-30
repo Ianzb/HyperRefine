@@ -9,14 +9,15 @@ import java.lang.reflect.Method
  * 控制中心「柔光玻璃 / 玻璃材质」接口的反射门面。
  *
  * 两类接口：
- * 1. 材质 token 接口：`ControlCenterMaterialTokens` +
+ * 1. 材质 token：`ControlCenterMaterialTokens` +
  *    `MaterialBackgroundExt.setMaterialBackground(view, token, animate)`。
- * 2. 底层玻璃接口（一级界面卡片/图标同款）：
- *    `MiBackgroundStyle.setMiBackgroundStyle(view, blendToken, bionicsToken)` +
- *    `MiBlurCompat.setMiViewBlurModeCompat(view, 1)`；
- *    按状态选用 `DEFAULT_GLASS_TOKEN` / `ACTIVATED_GLASS_TOKEN` 实现强调色。
+ * 2. 底层玻璃（一级界面卡片 / 图标同款）：
+ *    `MiBackgroundStyle.setMiBackgroundStyle(view, blend, bionicsToken)` +
+ *    `MiBlurCompat.setMiViewBlurModeCompat(view, 1)`；按状态选用
+ *    `DEFAULT_GLASS_TOKEN` / `ACTIVATED_GLASS_TOKEN`。
+ * 3. 系统详情项同款：`com.miui.systemui.util.MiBlurCompat` 的模糊模式 + blend 色。
  *
- * 本类只调用系统自身接口，不复制任何系统代码。
+ * 本类只调用系统自身接口，不复制任何系统代码；类 / 方法查找结果均缓存。
  */
 object CcGlassApi {
 
@@ -25,7 +26,6 @@ object CcGlassApi {
     private const val MATERIAL_EXT_CLASS =
         "miui.systemui.ui.material.MaterialBackgroundExt"
     private const val MI_STYLE_CLASS = "miui.systemui.util.MiBackgroundStyle"
-    private const val COLOR_BLEND_CLASS = "miui.systemui.util.MiuiColorBlendToken"
     private const val BLUR_COMPAT_CLASS = "miui.systemui.util.MiBlurCompat"
     private const val SYSTEM_BLUR_CLASS = "com.miui.systemui.util.MiBlurCompat"
 
@@ -33,7 +33,6 @@ object CcGlassApi {
     private var applyMethod: Method? = null
 
     private var styleInstance: Any? = null
-    private var colorBlendInstance: Any? = null
     private var setBackgroundStyleMethod: Method? = null
     private var setViewBlurModeMethod: Method? = null
 
@@ -42,7 +41,6 @@ object CcGlassApi {
 
     private val tokenCache = HashMap<String, Any?>()
     private val bionicsCache = HashMap<String, Any?>()
-    private val blendCache = HashMap<String, Any?>()
 
     @Volatile
     private var initialized = false
@@ -54,47 +52,31 @@ object CcGlassApi {
         initialized = true
 
         runCatching {
-            val tokensCl = Reflect.findClassIfExists(TOKENS_CLASS, pluginCl)
-            if (tokensCl != null) tokensInstance = Reflect.getStaticObjectField(tokensCl, "INSTANCE")
-        }.onFailure { HookHelper.log("CcGlass: tokens init failed", it) }
+            Reflect.findClassIfExists(TOKENS_CLASS, pluginCl)?.let {
+                tokensInstance = Reflect.getStaticObjectField(it, "INSTANCE")
+            }
+            Reflect.findClassIfExists(MATERIAL_EXT_CLASS, pluginCl)?.let { extCl ->
+                applyMethod = extCl.declaredMethods
+                    .firstOrNull { it.name == "setMaterialBackground" && it.parameterCount == 3 }
+                    ?.also { it.isAccessible = true }
+            }
+            Reflect.findClassIfExists(MI_STYLE_CLASS, pluginCl)?.let { styleCl ->
+                styleInstance = Reflect.getStaticObjectField(styleCl, "INSTANCE")
+                setBackgroundStyleMethod = styleCl.declaredMethods
+                    .firstOrNull { it.name == "setMiBackgroundStyle" && it.parameterCount == 3 }
+                    ?.also { it.isAccessible = true }
+            }
+            Reflect.findClassIfExists(BLUR_COMPAT_CLASS, pluginCl)?.let { blurCl ->
+                setViewBlurModeMethod = blurCl.declaredMethods
+                    .firstOrNull { it.name == "setMiViewBlurModeCompat" && it.parameterCount == 2 }
+                    ?.also { it.isAccessible = true }
+            }
+        }.onFailure { HookHelper.log("CcGlass: init failed", it) }
 
-        runCatching {
-            val extCl = Reflect.findClassIfExists(MATERIAL_EXT_CLASS, pluginCl)
-            applyMethod = extCl?.declaredMethods
-                ?.firstOrNull { it.name == "setMaterialBackground" && it.parameterCount == 3 }
-                ?.also { it.isAccessible = true }
-        }.onFailure { HookHelper.log("CcGlass: material ext init failed", it) }
-
-        runCatching {
-            val styleCl = Reflect.findClassIfExists(MI_STYLE_CLASS, pluginCl)
-            styleInstance = styleCl?.let { Reflect.getStaticObjectField(it, "INSTANCE") }
-            setBackgroundStyleMethod = styleCl?.declaredMethods
-                ?.firstOrNull { it.name == "setMiBackgroundStyle" && it.parameterCount == 3 }
-                ?.also { it.isAccessible = true }
-        }.onFailure { HookHelper.log("CcGlass: mi style init failed", it) }
-
-        runCatching {
-            val blendCl = Reflect.findClassIfExists(COLOR_BLEND_CLASS, pluginCl)
-            colorBlendInstance = blendCl?.let { Reflect.getStaticObjectField(it, "INSTANCE") }
-        }.onFailure { HookHelper.log("CcGlass: color blend init failed", it) }
-
-        runCatching {
-            val blurCl = Reflect.findClassIfExists(BLUR_COMPAT_CLASS, pluginCl)
-            setViewBlurModeMethod = blurCl?.declaredMethods
-                ?.firstOrNull { it.name == "setMiViewBlurModeCompat" && it.parameterCount == 2 }
-                ?.also { it.isAccessible = true }
-        }.onFailure { HookHelper.log("CcGlass: blur compat init failed", it) }
-
-        HookHelper.log(
-            "CcGlass: init tokens=${tokensInstance != null} apply=${applyMethod != null} " +
-                "style=${setBackgroundStyleMethod != null} blur=${setViewBlurModeMethod != null}"
-        )
+        HookHelper.log("CcGlass: init apply=${applyMethod != null} style=${setBackgroundStyleMethod != null}")
     }
 
-    /**
-     * 初始化主 APK（systemui）里的 `com.miui.systemui.util.MiBlurCompat`，
-     * 用于 `QSDetailContent` 等系统组件同款玻璃（模糊模式 + blend 色）。
-     */
+    /** 初始化主 APK（systemui）里的 `com.miui.systemui.util.MiBlurCompat`（供详情项玻璃使用）。 */
     @Synchronized
     fun initSystem(systemCl: ClassLoader) {
         if (systemSetViewBlurMode != null) return
@@ -113,21 +95,18 @@ object CcGlassApi {
     }
 
     /**
-     * 系统同款玻璃：模糊模式 1 + 透明背景 + blend 色。
-     * 不改动视图的 outline，从而保留系统的分组圆角（共享一张圆角卡片）。
+     * 系统详情项同款玻璃：模糊模式 1 + 透明背景 + 系统 blend 色。
+     * 不改动视图的 outline，从而保留系统的分组圆角（整组共享一张圆角卡片）。
      */
     fun forceBlurGlass(view: View, blendColors: IntArray?): Boolean {
-        val m1 = systemSetViewBlurMode ?: return false
-        val m2 = systemSetBlendColorsNew ?: return false
+        val blur = systemSetViewBlurMode ?: return false
+        val blend = systemSetBlendColorsNew ?: return false
         return runCatching {
-            m1.invoke(null, 1, view)
+            blur.invoke(null, 1, view)
             view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
             val colors = blendColors ?: IntArray(0)
-            if (m2.parameterCount == 2) {
-                m2.invoke(null, view, colors)
-            } else {
-                m2.invoke(null, view, colors, 1.0f)
-            }
+            if (blend.parameterCount == 2) blend.invoke(null, view, colors)
+            else blend.invoke(null, view, colors, 1.0f)
             true
         }.getOrElse {
             HookHelper.log("CcGlass: forceBlurGlass failed", it)
@@ -135,24 +114,9 @@ object CcGlassApi {
         }
     }
 
-    /** 按 getter 名取材质 token，如 `DefaultContentBgMaterialToken`。 */
-    fun token(getterSuffix: String): Any? {
-        synchronized(tokenCache) {
-            if (tokenCache.containsKey(getterSuffix)) return tokenCache[getterSuffix]
-        }
-        val instance = tokensInstance ?: return null
-        val value = runCatching { Reflect.callMethod(instance, "get$getterSuffix") }.getOrNull()
-        if (value != null) synchronized(tokenCache) { tokenCache[getterSuffix] = value }
-        return value
-    }
-
-    /** 对视图应用指定材质 token。 */
+    /** 对视图应用指定材质 token（如 `DefaultContentBgMaterialToken`）。 */
     fun apply(view: View, getterSuffix: String): Boolean {
         val token = token(getterSuffix) ?: return false
-        return apply(view, token)
-    }
-
-    fun apply(view: View, token: Any): Boolean {
         applyMethod?.let { method ->
             return runCatching {
                 method.invoke(null, view, token, false)
@@ -162,41 +126,16 @@ object CcGlassApi {
                 false
             }
         }
-        return applyStyle(view, null, bionics("DEFAULT_GLASS_TOKEN"))
+        return applyStyle(view, bionics("DEFAULT_GLASS_TOKEN"))
     }
 
-    /** 取底层玻璃 token，如 `DEFAULT_GLASS_TOKEN` / `ACTIVATED_GLASS_TOKEN`。 */
-    fun bionics(getterSuffix: String): Any? {
-        synchronized(bionicsCache) {
-            if (bionicsCache.containsKey(getterSuffix)) return bionicsCache[getterSuffix]
-        }
-        val instance = styleInstance ?: return null
-        val value = runCatching { Reflect.callMethod(instance, "get$getterSuffix") }.getOrNull()
-        if (value != null) synchronized(bionicsCache) { bionicsCache[getterSuffix] = value }
-        return value
-    }
-
-    /** 取混合色 token，如 `CC_DETAIL_PANEL_LIST_BLEND_COLORS`。 */
-    fun colorBlend(getterSuffix: String): Any? {
-        synchronized(blendCache) {
-            if (blendCache.containsKey(getterSuffix)) return blendCache[getterSuffix]
-        }
-        val instance = colorBlendInstance ?: return null
-        val value = runCatching { Reflect.callMethod(instance, "get$getterSuffix") }.getOrNull()
-        if (value != null) synchronized(blendCache) { blendCache[getterSuffix] = value }
-        return value
-    }
-
-    /**
-     * 一级界面同款：设置模糊模式并套用玻璃（可带强调色 blend）。
-     * 强调色在 Bionics 模式下由 [bionicsToken] 决定。
-     */
-    fun applyStyle(view: View, blendToken: Any?, bionicsToken: Any?): Boolean {
-        val blurMethod = setViewBlurModeMethod ?: return false
-        val styleMethod = setBackgroundStyleMethod ?: return false
+    /** 一级界面同款：模糊模式 1 + SDF 柔光玻璃（强调色由 [bionicsToken] 决定）。 */
+    fun applyStyle(view: View, bionicsToken: Any?): Boolean {
+        val blur = setViewBlurModeMethod ?: return false
+        val style = setBackgroundStyleMethod ?: return false
         return runCatching {
-            blurMethod.invoke(null, view, 1)
-            styleMethod.invoke(null, view, blendToken, bionicsToken)
+            blur.invoke(null, view, 1)
+            style.invoke(null, view, null, bionicsToken)
             true
         }.getOrElse {
             HookHelper.log("CcGlass: applyStyle ${view.javaClass.simpleName} failed", it)
@@ -204,4 +143,19 @@ object CcGlassApi {
         }
     }
 
+    /** 按 getter 名取材质 token（带缓存）。 */
+    fun token(getterSuffix: String): Any? = cached(tokenCache, tokensInstance, "get$getterSuffix")
+
+    /** 取底层玻璃 token，如 `DEFAULT_GLASS_TOKEN` / `ACTIVATED_GLASS_TOKEN`（带缓存）。 */
+    fun bionics(getterSuffix: String): Any? = cached(bionicsCache, styleInstance, "get$getterSuffix")
+
+    private fun cached(cache: HashMap<String, Any?>, instance: Any?, getter: String): Any? {
+        synchronized(cache) {
+            if (cache.containsKey(getter)) return cache[getter]
+        }
+        if (instance == null) return null
+        val value = runCatching { Reflect.callMethod(instance, getter) }.getOrNull()
+        if (value != null) synchronized(cache) { cache[getter] = value }
+        return value
+    }
 }

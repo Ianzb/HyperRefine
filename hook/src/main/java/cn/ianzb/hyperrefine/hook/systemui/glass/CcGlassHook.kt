@@ -185,7 +185,7 @@ class CcGlassHook : BaseHook() {
                 target.setImageDrawable(combined)
             }
         } else {
-            CcGlassApi.applyStyle(target, null, CcGlassApi.bionics(TOKEN_DEFAULT))
+            CcGlassApi.applyStyle(target, CcGlassApi.bionics(TOKEN_DEFAULT))
         }
         registerTileAnimationEnd(iconView, target)
     }
@@ -243,7 +243,7 @@ class CcGlassHook : BaseHook() {
             view.background = null
             if (view.isSelected) {
                 // 顶部已连接卡片：激活柔光玻璃（白色玻璃 + 描边）。
-                CcGlassApi.applyStyle(view, null, CcGlassApi.bionics(TOKEN_ACTIVATED))
+                CcGlassApi.applyStyle(view, CcGlassApi.bionics(TOKEN_ACTIVATED))
             } else {
                 // 下方列表组：系统 blend 玻璃（由系统 `getBlendColorsArrayId` 提供色板）。
                 val content = Reflect.getObjectField(adapter, "this\$0") ?: return
@@ -302,13 +302,14 @@ class CcGlassHook : BaseHook() {
             child.post { if (master()) runCatching { applyDeviceCard(child) } }
             return
         }
-        val active = child.isSelected
         child.background = null
-        CcGlassApi.applyStyle(
-            child,
-            CcGlassApi.colorBlend(if (active) "CC_MIPLAY_PANEL_ACTIVE_BIONICS_COLORS" else "CC_TILE_DEFAULT_BLEND_COLORS"),
-            CcGlassApi.bionics(if (active) TOKEN_ACTIVATED else TOKEN_DEFAULT),
-        )
+        if (child.isSelected) {
+            // 当前设备：激活柔光玻璃（白色）。
+            CcGlassApi.applyStyle(child, CcGlassApi.bionics(TOKEN_ACTIVATED))
+        } else {
+            // 其它设备：与控制中心一级媒体卡片同款材质 token。
+            CcGlassApi.apply(child, "MediaItemToken")
+        }
     }
 
     // ---------------- 音量（控制中心 + 侧边） ----------------
@@ -342,7 +343,7 @@ class CcGlassHook : BaseHook() {
         // 侧边二级菜单的**整体面板**背景：清掉系统兜底色后套柔光玻璃（与滑条同样的做法）。
         (call(controller, "getVolumeContentBg") as? View)?.let { v ->
             v.background = null
-            CcGlassApi.applyStyle(v, null, CcGlassApi.bionics(TOKEN_DEFAULT))
+            CcGlassApi.applyStyle(v, CcGlassApi.bionics(TOKEN_DEFAULT))
         }
         glassVolumeColumns(controller)
         val ringer = call(controller, "getVolumeRingerModeLayout") as? View
@@ -362,7 +363,7 @@ class CcGlassHook : BaseHook() {
                         "volume_column_view", "volume_column_slider_bg_blend" -> v.background = null
                         "volume_column_slider" -> {
                             v.background = null
-                            CcGlassApi.applyStyle(v, null, CcGlassApi.bionics(TOKEN_DEFAULT))
+                            CcGlassApi.applyStyle(v, CcGlassApi.bionics(TOKEN_DEFAULT))
                         }
                     }
                 }

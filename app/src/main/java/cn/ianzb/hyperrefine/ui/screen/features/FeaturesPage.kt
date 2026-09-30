@@ -78,11 +78,6 @@ fun FeaturesPageView(
                         specs = locationSpecs(specs, PercentLocation.CC_VOLUME),
                         onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.CC_VOLUME)) },
                     ),
-                    HookSubPage(
-                        titleRes = R.string.feature_cc_glass,
-                        specs = ccGlassSpecs(specs),
-                        onOpen = { context.startActivity(Intent(context, GlassActivity::class.java)) },
-                    ),
                 ),
             ),
             HookSubPage(
@@ -139,7 +134,6 @@ const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
 const val KEY_DEVICE_CENTER_LANDSCAPE_RIGHT = "device_center_landscape_right"
 const val KEY_SECURITY_CENTER = "feature_security_center"
 const val KEY_DEVICE_CONNECT = "feature_device_connect"
-const val KEY_CC_GLASS = "feature_cc_glass"
 const val KEY_FAST_CHARGE_ENTER = "security_center_fast_charge_enter_notify"
 const val KEY_FAST_CHARGE_EXIT = "security_center_fast_charge_exit_notify"
 const val SIDE_INSIDE_KEY = "side_volume_inside"
@@ -194,10 +188,6 @@ fun deviceConnectSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, ConnectKeys.PORTRAIT_STREAMING),
         specByKey(specs, ConnectKeys.MILINK_MULTI_CHANNEL),
     )
-
-/** 柔光玻璃二级页内的配置项（总开关 + 各面板小开关 + 调试），用于功能页搜索直达。 */
-fun ccGlassSpecs(specs: List<OptionSpec>): List<OptionSpec> =
-    CcGlassKeys.all.map { key -> specByKey(specs, key) }
 
 /** 按键取功能配置项（供各功能子页复用同一份声明）。 */
 fun featureSpec(key: String): OptionSpec =
@@ -293,11 +283,6 @@ internal fun featureSpecs(): List<OptionSpec> {
         ),
     )
     specs += OptionSpec(
-        key = KEY_CC_GLASS,
-        type = OptionType.ARROW,
-        titleRes = R.string.feature_cc_glass,
-    )
-    specs += OptionSpec(
         key = CcGlassKeys.MASTER,
         type = OptionType.SWITCH,
         titleRes = R.string.cc_glass_master,
@@ -305,35 +290,6 @@ internal fun featureSpecs(): List<OptionSpec> {
         defaultBoolean = false,
         targetPackages = systemUi,
         showStatus = true,
-    )
-    val glassPanels = listOf(
-        Triple(CcGlassKeys.SIDE_VOLUME, R.string.cc_glass_side_volume, R.string.cc_glass_side_volume_summary),
-        Triple(CcGlassKeys.CC_VOLUME, R.string.cc_glass_cc_volume, R.string.cc_glass_cc_volume_summary),
-        Triple(CcGlassKeys.BRIGHTNESS, R.string.cc_glass_brightness, R.string.cc_glass_brightness_summary),
-        Triple(CcGlassKeys.MOBILE_DATA, R.string.cc_glass_mobile_data, R.string.cc_glass_mobile_data_summary),
-        Triple(CcGlassKeys.WLAN, R.string.cc_glass_wlan, R.string.cc_glass_wlan_summary),
-        Triple(CcGlassKeys.MEDIA, R.string.cc_glass_media, R.string.cc_glass_media_summary),
-    )
-    glassPanels.forEach { (key, title, summary) ->
-        specs += OptionSpec(
-            key = key,
-            type = OptionType.SWITCH,
-            titleRes = title,
-            summaryRes = summary,
-            defaultBoolean = true,
-            dependsOn = CcGlassKeys.MASTER,
-            targetPackages = systemUi,
-            showStatus = true,
-        )
-    }
-    specs += OptionSpec(
-        key = CcGlassKeys.DEBUG,
-        type = OptionType.SWITCH,
-        titleRes = R.string.cc_glass_debug,
-        summaryRes = R.string.cc_glass_debug_summary,
-        defaultBoolean = false,
-        dependsOn = CcGlassKeys.MASTER,
-        targetPackages = systemUi,
     )
     PercentLocation.all().forEach { location ->
         val titleRes = when (location) {

@@ -61,8 +61,18 @@ object Reflect {
         return method.invoke(null, *args)
     }
 
-    fun getObjectField(instance: Any, name: String): Any? =
-        findField(instance.javaClass, name).get(instance)
+    fun getObjectField(instance: Any, name: String): Any? {
+        var current: Class<*>? = instance.javaClass
+        while (current != null) {
+            val field = runCatching { current.getDeclaredField(name) }.getOrNull()
+            if (field != null) {
+                field.isAccessible = true
+                return field.get(instance)
+            }
+            current = current.superclass
+        }
+        throw NoSuchFieldException("${instance.javaClass.name}#$name")
+    }
 
     fun setObjectField(instance: Any, name: String, value: Any?) {
         findField(instance.javaClass, name).set(instance, value)

@@ -27,6 +27,7 @@ object CcGlassApi {
     private const val MI_STYLE_CLASS = "miui.systemui.util.MiBackgroundStyle"
     private const val COLOR_BLEND_CLASS = "miui.systemui.util.MiuiColorBlendToken"
     private const val BLUR_COMPAT_CLASS = "miui.systemui.util.MiBlurCompat"
+    private const val SYSTEM_BLUR_CLASS = "com.miui.systemui.util.MiBlurCompat"
 
     private var tokensInstance: Any? = null
     private var applyMethod: Method? = null
@@ -35,6 +36,9 @@ object CcGlassApi {
     private var colorBlendInstance: Any? = null
     private var setBackgroundStyleMethod: Method? = null
     private var setViewBlurModeMethod: Method? = null
+
+    private var systemSetViewBlurMode: Method? = null
+    private var systemSetBlendColorsNew: Method? = null
 
     private val tokenCache = HashMap<String, Any?>()
     private val bionicsCache = HashMap<String, Any?>()
@@ -85,6 +89,50 @@ object CcGlassApi {
             "CcGlass: init tokens=${tokensInstance != null} apply=${applyMethod != null} " +
                 "style=${setBackgroundStyleMethod != null} blur=${setViewBlurModeMethod != null}"
         )
+    }
+
+    /**
+     * 初始化主 APK（systemui）里的 `com.miui.systemui.util.MiBlurCompat`，
+     * 用于 `QSDetailContent` 等系统组件同款玻璃（模糊模式 + blend 色）。
+     */
+    @Synchronized
+    fun initSystem(systemCl: ClassLoader) {
+        if (systemSetViewBlurMode != null) return
+        runCatching {
+            val cls = Reflect.findClassIfExists(SYSTEM_BLUR_CLASS, systemCl) ?: return@runCatching
+            systemSetViewBlurMode = cls.declaredMethods
+                .firstOrNull { it.name == "setMiViewBlurModeCompat" && it.parameterCount == 2 }
+                ?.also { it.isAccessible = true }
+            systemSetBlendColorsNew = cls.declaredMethods
+                .firstOrNull { it.name == "setMiBackgroundBlendColorsNew\$default" && it.parameterCount == 2 }
+                ?.also { it.isAccessible = true }
+                ?: cls.declaredMethods
+                    .firstOrNull { it.name == "setMiBackgroundBlendColors" && it.parameterCount == 3 }
+                    ?.also { it.isAccessible = true }
+        }.onFailure { HookHelper.log("CcGlass: system blur init failed", it) }
+    }
+
+    /**
+     * 系统同款玻璃：模糊模式 1 + 透明背景 + blend 色。
+     * 不改动视图的 outline，从而保留系统的分组圆角（共享一张圆角卡片）。
+     */
+    fun forceBlurGlass(view: View, blendColors: IntArray?): Boolean {
+        val m1 = systemSetViewBlurMode ?: return false
+        val m2 = systemSetBlendColorsNew ?: return false
+        return runCatching {
+            m1.invoke(null, 1, view)
+            view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            val colors = blendColors ?: IntArray(0)
+            if (m2.parameterCount == 2) {
+                m2.invoke(null, view, colors)
+            } else {
+                m2.invoke(null, view, colors, 1.0f)
+            }
+            true
+        }.getOrElse {
+            HookHelper.log("CcGlass: forceBlurGlass failed", it)
+            false
+        }
     }
 
     /** 按 getter 名取材质 token，如 `DefaultContentBgMaterialToken`。 */
@@ -155,4 +203,5 @@ object CcGlassApi {
             false
         }
     }
+
 }

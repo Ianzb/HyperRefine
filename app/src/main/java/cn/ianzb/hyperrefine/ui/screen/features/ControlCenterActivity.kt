@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
@@ -49,7 +50,7 @@ class ControlCenterActivity : BaseSubPageActivity() {
         )
         val glassSection = HookSection(
             titleRes = R.string.section_cc_glass,
-            specs = listOf(featureSpec(KEY_CC_GLASS)),
+            specs = listOf(featureSpec(CcGlassKeys.MASTER)),
         )
         LazyColumn(
             modifier = Modifier
@@ -88,14 +89,7 @@ class ControlCenterActivity : BaseSubPageActivity() {
             }
             item {
                 HookSectionCard(glassSection) {
-                    glassSection.specs.forEach {
-                        HookOptionView(
-                            spec = it,
-                            onArrowClick = {
-                                context.startActivity(Intent(context, GlassActivity::class.java))
-                            },
-                        )
-                    }
+                    glassSection.specs.forEach { HookOptionView(it) }
                 }
             }
         }

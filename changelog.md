@@ -1,15 +1,17 @@
 # 更新日志
 
-## Unreleased
+## 1.2.0
+
+> 发布于 2026-09-30
 
 ### 新增
 
 - **控制中心「柔光玻璃」**（适配 HyperOS 4，目标 `com.android.systemui` 控制中心插件）：把控制中心二级面板的按钮与卡片接入系统同款柔光玻璃，统一由**一个总开关**（默认关闭）控制，入口：功能页「控制中心 → 柔光玻璃」。覆盖：
-  - **亮度二级**：大亮度条轨道 + 三个圆形按钮（开启态=系统白色遮罩，关闭态=默认玻璃；切换 / 深浅色变化后自动重套）
-  - **WLAN / 移动数据 / 蓝牙详情**：顶部已连接卡片（激活玻璃，白色+描边）与下方列表组（系统 blend 玻璃，按组内位置共享一张圆角卡片），以及「更多设置」按钮
-  - **控制中心音量 / 侧边音量**：音量条、静音 / 勿扰圆按钮（去深色底、保持圆形）、定时静音 / 勿扰滑块
-  - **播放器**：设备卡片
-  - 说明：全部反射调用系统自身接口（`MaterialBackgroundExt` / `MiBackgroundStyle` / `MiBlurCompat` / `QSTileItemIconView` 等），不复制任何系统代码；仅在总开关开启时挂载 Hook，避免空转
+    - **亮度二级**：大亮度条轨道 + 三个圆形按钮（开启态=系统白色遮罩，关闭态=默认玻璃；切换 / 深浅色变化后自动重套）
+    - **WLAN / 移动数据 / 蓝牙详情**：顶部已连接卡片（激活玻璃，白色+描边）与下方列表组（系统 blend 玻璃，按组内位置共享一张圆角卡片），以及「更多设置」按钮
+    - **控制中心音量 / 侧边音量**：音量条、静音 / 勿扰圆按钮（去深色底、保持圆形）、定时静音 / 勿扰滑块
+    - **播放器**：设备卡片
+    - 说明：全部反射调用系统自身接口（`MaterialBackgroundExt` / `MiBackgroundStyle` / `MiBlurCompat` / `QSTileItemIconView` 等），不复制任何系统代码；仅在总开关开启时挂载 Hook，避免空转
 
 ## 1.1.0
 
@@ -20,9 +22,9 @@
 - **横屏融合设备中心右置**（适配 HyperOS 4，仅手机；目标 `com.android.systemui` + 控制中心插件类）：手机横屏时，控制中心按 `MainPanelContent.getRightOrLeft()` 把组件分入左右两列，融合设备中心入口（`DeviceCenterEntryController`）默认恒为左列；开启后覆盖其 `getRightOrLeft()` 返回 `true`，把融合设备中心移到右列。竖向布局不查询该方法，天然只在横屏生效。入口：功能页「控制中心 → 融合设备中心 → 横屏融合设备中心右置」
 - **统一的「设备独占」API**：`OptionSpec.deviceScope: Set<DeviceType>?` + `rememberOptionEnabled(spec)`（依赖项 ∧ 设备白名单）。仅某类设备可用的功能在其它设备形态上**禁用灰显、不隐藏**；读取 `ConfigState`，切换「设置 → 当前设备类型」后实时刷新；所有 Hook 卡片统一改用 `rememberOptionEnabled` 作为 `enabled`
 - **「设备互联」页面**：功能页新增二级页，集中三项目标 `com.milink.service` / `com.xiaomi.mirror` 的功能（新增精准作用域与 `MiLinkLoad` / `XiaomiMirrorLoad`）：
-  - **解锁跨设备通知流转**（平板）：`com.milink.service:ui` 本机设备发现纠正 + `com.milink.crossdeviceservice` 通知点击复用原生 `PIN_APP` 流转并吞掉重复被动串流命令
-  - **允许平板竖屏流转应用**（平板）：纠正 reason-9 首包横竖尺寸倒置，并放开目标 sink Activity 的方向策略
-  - **MiLink Multi-Channel**：AndroidPad 共享通道上限 1 → 2，并仅在原生返回 `HostNotBound(215)` 时补做官方 Host 绑定
+    - **解锁跨设备通知流转**（平板）：`com.milink.service:ui` 本机设备发现纠正 + `com.milink.crossdeviceservice` 通知点击复用原生 `PIN_APP` 流转并吞掉重复被动串流命令
+    - **允许平板竖屏流转应用**（平板）：纠正 reason-9 首包横竖尺寸倒置，并放开目标 sink Activity 的方向策略
+    - **MiLink Multi-Channel**：AndroidPad 共享通道上限 1 → 2，并仅在原生返回 `HostNotBound(215)` 时补做官方 Host 绑定
 - **Hook 生效状态（广播回报）**：`BaseLoad` 完成注册后，目标进程合并已安装配置键**定向广播**回报；App 侧经发送者 UID / 包名 / 版本校验后按版本 + 开机号作用域持久化，`OptionSpec.showStatus` 在副标题显示「已生效 / 未生效」。已适配全部 Hook 功能（百分比显示、融合设备中心、快充通知、设备互联）；替代此前因 hook 侧只读而失效的状态提示
 
 ### 变更
@@ -75,11 +77,11 @@
 - 应用图标：白色背景 + HyperOS 组件蓝圆润切割宝石（含刻面与星光点缀）
 - 功能页（替换脚手架示例页）：系统界面 → 外观 → 三个平级功能入口
 - **音量条 / 亮度条百分比数值显示**（适配 HyperOS 4，目标 `com.android.systemui` + 控制中心插件类）：
-  - 控制中心音量条百分比数值显示
-  - 控制中心亮度条百分比数值显示（含二级亮度条）
-  - 侧边音量条百分比数值显示（按音量键呼出，含展开态各栏）
-  - 三处独立配置：开关、字号、字重（细体 / 常规 / 中等 / 半粗 / 粗体 / 特粗，默认粗体）、字体颜色跟随图标（低值灰色、高值彩色；关闭后固定灰色）
-  - 侧边音量条额外配置：百分比位置（音量区域上方悬浮 / 音量条内部上方）、长按打开音量面板并隐藏三个点按钮（避免与百分比数值重叠，默认关闭、常显于页面最前）
+    - 控制中心音量条百分比数值显示
+    - 控制中心亮度条百分比数值显示（含二级亮度条）
+    - 侧边音量条百分比数值显示（按音量键呼出，含展开态各栏）
+    - 三处独立配置：开关、字号、字重（细体 / 常规 / 中等 / 半粗 / 粗体 / 特粗，默认粗体）、字体颜色跟随图标（低值灰色、高值彩色；关闭后固定灰色）
+    - 侧边音量条额外配置：百分比位置（音量区域上方悬浮 / 音量条内部上方）、长按打开音量面板并隐藏三个点按钮（避免与百分比数值重叠，默认关闭、常显于页面最前）
 - **多级页面搜索**：功能页搜索支持多级嵌套（`HookSubPage.subPages` 递归），「功能页 → 外观 → 各位置」深处的功能均可被搜索直达（摘要显示「外观 / 控制中心音量条」路径，命中直接打开对应页面）
 - **CI / Release 工作流**：新增 `.github/workflows/ci.yml`（Debug 构建 + Artifact）与 `release.yml`（签名 Release + GitHub Release + 可选 Telegram）；`app/build.gradle.kts` 增加基于环境变量的 `signingConfigs.release` 与 arm64-v8a ABI 拆分；`release.keystore` 与 GitHub Secrets 配置见 [README · 发布与 CI](README.md#发布与-ci)
 - **应用内检查更新**：新增 `UpdateChecker`（请求 GitHub Releases API，比较语义化版本）与 `UpdateDialog`；设置页「更新」分区支持启动时自动检查与手动检查，发现新版本弹窗展示当前 / 最新版本与 Release 更新说明，确认后跳转 GitHub Release 下载页；替换原有的占位 Toast，`AndroidManifest` 增加 `INTERNET` 权限
@@ -90,14 +92,14 @@
 
 - **精简包体**：移除体积巨大的 `material-icons-extended`（约 83MB 的类），改用 `material-icons-core`，并在 `ui/icons/StatusIcons.kt` 内联原本使用的 3 个 Rounded 图标（外观不变）；Release APK 约 50MB → 约 32MB。（曾尝试 Release 启用 R8，但会破坏 libxposed hook 加载，故未启用）
 - 同步脚手架最新提交（`MiuixGuiTemplate 0.4.0 @ 676f1fa`、`@ 1e4d741`、`@ 544a858`、`@ 7c4d665`、`@ 5b7c4cf`、`@ 4027e9c`、`@ 5f9ff8c`、`@ 6a1eead`）：
-  - `HookOptionsPage` 新增 `subPages` / `HookSubPage`（子页面功能并入功能页搜索）与 `topBarActions` 顶栏扩展槽
-  - 新增通用 `QuickActionsAction`；`SubPageScaffold` / `BaseSubPageActivity` 新增 `topBarActions`
-  - 新增 `ui/util/MiuixAnimations.kt`（`MiuixExpandSpec`，组件显隐统一 Miuix 弹簧动画）
-  - 新增 `AppRestarter.restartSystemUi()`；`restart()` 对 `com.android.systemui` 特判（结束进程由系统自动拉起）
-  - 新增 `BaseHook.target` 注入（`init()` 内可用 `target.classLoader`）
-  - 右上角统一为「重启应用」：`MiuixIcons.Refresh` 图标 → `QuickActionDialog`（标题「重启应用」且无小标题，应用列表用 `Card` 圆角容器 + `CheckboxPreference`（对勾在右、默认全选），底部「全选 / 全不选」+「重启」，无勾选时禁用）
-  - 文档新增「入口卡片文案」规范（二级菜单入口尽量不加小标题、大标题用总结性名词短语）
-  - 子页面搜索支持多级嵌套：`HookSubPage` 新增 `subPages`（递归），多级页面内功能可被父页搜索直达
+    - `HookOptionsPage` 新增 `subPages` / `HookSubPage`（子页面功能并入功能页搜索）与 `topBarActions` 顶栏扩展槽
+    - 新增通用 `QuickActionsAction`；`SubPageScaffold` / `BaseSubPageActivity` 新增 `topBarActions`
+    - 新增 `ui/util/MiuixAnimations.kt`（`MiuixExpandSpec`，组件显隐统一 Miuix 弹簧动画）
+    - 新增 `AppRestarter.restartSystemUi()`；`restart()` 对 `com.android.systemui` 特判（结束进程由系统自动拉起）
+    - 新增 `BaseHook.target` 注入（`init()` 内可用 `target.classLoader`）
+    - 右上角统一为「重启应用」：`MiuixIcons.Refresh` 图标 → `QuickActionDialog`（标题「重启应用」且无小标题，应用列表用 `Card` 圆角容器 + `CheckboxPreference`（对勾在右、默认全选），底部「全选 / 全不选」+「重启」，无勾选时禁用）
+    - 文档新增「入口卡片文案」规范（二级菜单入口尽量不加小标题、大标题用总结性名词短语）
+    - 子页面搜索支持多级嵌套：`HookSubPage` 新增 `subPages`（递归），多级页面内功能可被父页搜索直达
 - 功能页小标题改为单语言（不再传 `titleEn`）；搜索文案「搜索组件」→「搜索功能」
 - 许可要求调整：衍生项目只需在应用内「关于」页保留 `Based on MiuixGuiTemplate <版本号>` 标注，不再要求在各自 `README.md` 中标注；同步更新 README 与二次开发指南
 - Telegram 群组文案：关于页「反馈渠道」改为「Telegram 群组」（英文 `Telegram Group`），README 顶部链接同步改为「Telegram 群组」；二次开发指南强调不要只写「反馈渠道 / 反馈方式」，以免用户看不出是 TG 群组

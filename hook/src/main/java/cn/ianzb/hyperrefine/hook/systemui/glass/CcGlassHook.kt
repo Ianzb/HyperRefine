@@ -13,7 +13,7 @@ import cn.ianzb.hyperrefine.hook.xposed.Reflect
  *
  * 统一由总开关 [CcGlassKeys.MASTER] 控制。涉及：
  * - 亮度二级：大亮度条 + 三个圆形按钮（开启白色遮罩 / 关闭默认玻璃）
- * - WLAN / 移动数据 / 蓝牙详情：列表项（顶部已连接卡片、下方列表组）与「更多设置」按钮
+ * - WLAN / 移动数据 / 蓝牙详情：下方列表组与「更多设置」按钮（不改动顶部已连接设备卡片）
  * - 控制中心音量 / 侧边音量：音量条、静音 / 勿扰圆按钮、定时滑块
  * - 播放器：设备卡片
  *
@@ -255,17 +255,14 @@ class CcGlassHook : BaseHook() {
     }
 
     private fun applyDetailGlass(view: View, index: Int?, adapter: Any) {
+        // 顶部已连接设备卡片：保持系统默认背景，不套用柔光玻璃。
+        if (view.isSelected) return
         runCatching {
             view.background = null
-            if (view.isSelected) {
-                // 顶部已连接卡片：激活柔光玻璃（白色玻璃 + 描边）。
-                CcGlassApi.applyStyle(view, CcGlassApi.bionics(TOKEN_ACTIVATED))
-            } else {
-                // 下方列表组：系统 blend 玻璃（由系统 `getBlendColorsArrayId` 提供色板）。
-                val content = Reflect.getObjectField(adapter, "this\$0") ?: return
-                val arrayId = Reflect.callMethod(content, "getBlendColorsArrayId", false) as? Int ?: return
-                CcGlassApi.forceBlurGlass(view, view.resources.getIntArray(arrayId))
-            }
+            // 下方列表组：系统 blend 玻璃（由系统 `getBlendColorsArrayId` 提供色板）。
+            val content = Reflect.getObjectField(adapter, "this\$0") ?: return
+            val arrayId = Reflect.callMethod(content, "getBlendColorsArrayId", false) as? Int ?: return
+            CcGlassApi.forceBlurGlass(view, view.resources.getIntArray(arrayId))
             if (index != null) applyGroupOutline(adapter, index, view)
         }.onFailure { HookHelper.log("$tag: detail glass failed", it) }
     }

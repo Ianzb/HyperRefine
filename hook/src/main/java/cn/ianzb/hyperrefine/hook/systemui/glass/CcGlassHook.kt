@@ -12,7 +12,7 @@ import cn.ianzb.hyperrefine.hook.xposed.Reflect
  * 控制中心「柔光玻璃」：把二级面板的按钮 / 卡片接入系统同款柔光玻璃。
  *
  * 统一由总开关 [CcGlassKeys.MASTER] 控制。涉及：
- * - 亮度二级：大亮度条 + 三个圆形按钮（开启白色遮罩 / 关闭默认玻璃）
+ * - 亮度二级：大亮度条；三个圆形按钮改为非详情磁贴，走系统自带 SDF 玻璃（状态与动画由系统处理）
  * - WLAN / 移动数据 / 蓝牙详情：下方列表组与「更多设置」按钮（不改动顶部已连接设备卡片）
  * - 控制中心音量 / 侧边音量：音量条、静音 / 勿扰圆按钮、定时滑块
  * - 播放器：设备卡片
@@ -29,9 +29,6 @@ class CcGlassHook : BaseHook() {
 
     /** 已设置圆形轮廓的静音 / 勿扰按钮。 */
     private val outlined = java.util.WeakHashMap<View, Boolean>()
-
-    /** 已注册「动画结束重套」的图标动画对象。 */
-    private val animEndHooked = java.util.WeakHashMap<Any, Boolean>()
 
     /**
      * 侧边音量已套玻璃的视图及其状态签名。
@@ -55,7 +52,7 @@ class CcGlassHook : BaseHook() {
         PluginLoader.register(key, systemCl) { pluginCl ->
             CcGlassApi.init(pluginCl)
             hookSecondaryPanels(pluginCl)
-            hookTileIcons(pluginCl)
+            hookBrightnessTileDetailFlag(pluginCl)
             hookMoreButton(pluginCl)
             hookDetailItems(systemCl)
             hookRingerButtons(pluginCl)
@@ -112,125 +109,38 @@ class CcGlassHook : BaseHook() {
     // ---------------- 亮度二级 ----------------
 
     /**
-     * 亮度面板圆形按钮（`QSTileItemIconView`）。挂在 `updateIconInternal` 之后：
-     * 黑夜模式磁贴的 `updateIcon` 会把 `updateIconInternal` post 到下一帧，挂后者才能保证玻璃最后设置。
+     * 亮度面板的三个圆形磁贴按钮官方按「详情磁贴」处理时只套 blend 颜色、不套 SDF 柔光玻璃；
+     * 只有非详情磁贴才会走 `MiBackgroundStyle.setMiBackgroundStyle(... DEFAULT/ACTIVATED_GLASS_TOKEN ...)`。
+     *
+     * 全项目只有 `BrightnessPanelTilesDelegate` 以 `isDetailTile = true` 构造该视图，故仅需在构造前把
+     * 该参数改为 `false`，玻璃、开关态与动画即由系统按非详情分支自行完成，无需再手工拼 drawable。
      */
-    private fun hookTileIcons(pluginCl: ClassLoader) {
+    private fun hookBrightnessTileDetailFlag(pluginCl: ClassLoader) {
         val cls = Reflect.findClassIfExists(TILE_ICON_CLASS, pluginCl) ?: return
-        val method = cls.declaredMethods.firstOrNull {
-            it.name == "updateIconInternal" && it.parameterCount == 5
-        } ?: cls.declaredMethods.firstOrNull {
-            it.name == "updateIcon" && it.parameterCount == 5
+        val ctor = cls.declaredConstructors.firstOrNull { c ->
+            c.parameterCount == 4 &&
+                c.parameterTypes[0] == android.content.Context::class.java &&
+                c.parameterTypes[1] == android.content.Context::class.java &&
+                c.parameterTypes[2] == java.lang.Boolean.TYPE &&
+                c.parameterTypes[3] == java.lang.Boolean.TYPE
         } ?: return
-        method.isAccessible = true
+        ctor.isAccessible = true
         runCatching {
-            HookHelper.hookAfter(method) { param ->
-                if (!master()) return@hookAfter
-                val iconView = param.thisObject as? View ?: return@hookAfter
-                if (!inBrightnessPanel(iconView)) return@hookAfter
-                applyTileGlass(iconView, param.args.getOrNull(0))
+            // (pluginContext, sysUIContext, card, isDetailTile) -> isDetailTile = false
+            HookHelper.hookBefore(ctor) { param ->
+                if (param.args.getOrNull(3) == true) param.setArg(3, false)
             }
-        }.onFailure { HookHelper.log("$tag: hook tile icons failed", it) }
-    }
-
-    private fun inBrightnessPanel(view: View): Boolean {
-        var parent = view.parent
-        while (parent != null) {
-            if (parent is View && idName(parent) == "brightness_panel") return true
-            parent = parent.parent
-        }
-        return false
+        }.onFailure { HookHelper.log("$tag: hook brightness tile ctor failed", it) }
     }
 
     private fun glassBrightness(root: View?) {
         // 大亮度条轨道；主题 / 配置切换后系统会重绘，稍后再补一次。
         applyBrightnessSlider(root)
         root?.postDelayed({ if (master()) applyBrightnessSlider(root) }, 300L)
-        // 圆形磁贴按钮：按当前开关状态处理。
-        val view = root ?: return
-        traverse(view) { child ->
-            if (child is ViewGroup && child.javaClass.simpleName == TILE_ICON_NAME) {
-                applyTileGlass(child, stateOf(child))
-            }
-        }
     }
 
     private fun applyBrightnessSlider(root: View?) {
         byId(root, SLIDER_IDS)
-    }
-
-    /**
-     * 与系统 `QSTileItemIconView` 一致的两种状态：
-     * - 开启：取系统开启背景 drawable（白色圆形遮罩）与图标 combine；
-     * - 关闭：去掉深色底，套默认柔光玻璃（图标本体带圆形 outline）。
-     */
-    private fun applyTileGlass(iconView: View, state: Any?) {
-        val target = call(iconView, "getIcon") as? android.widget.ImageView ?: return
-
-        // 图标正在播放动画（如深色模式切换）时不要覆盖它的 drawable，否则动画会卡在一半；
-        // 注册动画结束回调，等播完再套。
-        val anim = findAnimatable2(target.drawable)
-        if ((anim as? android.graphics.drawable.Animatable)?.isRunning == true) {
-            registerTileAnimationEnd(iconView, target)
-            return
-        }
-
-        val on = (state?.let { getIntField(it, "state") }) == 2
-
-        // 系统把「底图 + 图标」合成成 LayerDrawable：去掉底图层，只保留图标本体。
-        (target.drawable as? android.graphics.drawable.LayerDrawable)?.let { layer ->
-            if (layer.numberOfLayers >= 1) {
-                runCatching { target.setImageDrawable(layer.getDrawable(layer.numberOfLayers - 1)) }
-            }
-        }
-
-        iconView.background = null
-        target.clipToOutline = false
-        target.background = null
-        if (on) {
-            val bg = call(iconView, "getActiveBackgroundDrawable", state) as? android.graphics.drawable.Drawable
-            val icon = target.drawable
-            if (icon != null && bg != null) {
-                val combined = android.graphics.drawable.LayerDrawable(
-                    arrayOf<android.graphics.drawable.Drawable>(bg, icon),
-                )
-                combined.setLayerGravity(1, android.view.Gravity.CENTER)
-                (call(iconView, "getProperIconSize", icon) as? Int)
-                    ?.takeIf { it > 0 }
-                    ?.let { combined.setLayerSize(1, it, it) }
-                target.setImageDrawable(combined)
-            }
-        } else {
-            CcGlassApi.applyStyle(target, CcGlassApi.bionics(TOKEN_DEFAULT))
-        }
-        registerTileAnimationEnd(iconView, target)
-    }
-
-    /** 在图标动画结束时重套一次玻璃（每个动画对象只注册一次）。 */
-    private fun registerTileAnimationEnd(iconView: View, target: android.widget.ImageView) {
-        val anim = findAnimatable2(target.drawable) ?: return
-        if (animEndHooked[anim] == true) return
-        animEndHooked[anim] = true
-        runCatching {
-            anim.registerAnimationCallback(object : android.graphics.drawable.Animatable2.AnimationCallback() {
-                override fun onAnimationEnd(drawable: android.graphics.drawable.Drawable?) {
-                    if (!master()) return
-                    runCatching { applyTileGlass(iconView, stateOf(iconView)) }
-                }
-            })
-        }.onFailure { HookHelper.log("$tag: register anim end failed", it) }
-    }
-
-    private fun findAnimatable2(drawable: android.graphics.drawable.Drawable?): android.graphics.drawable.Animatable2? {
-        when (drawable) {
-            is android.graphics.drawable.Animatable2 -> return drawable
-            is android.graphics.drawable.LayerDrawable -> {
-                for (i in 0 until drawable.numberOfLayers) {
-                    findAnimatable2(drawable.getDrawable(i))?.let { return it }
-                }
-            }
-        }
-        return null
     }
 
     // ---------------- 详情面板（WLAN / 移动数据 / 蓝牙） ----------------
@@ -472,11 +382,6 @@ class CcGlassHook : BaseHook() {
     private fun call(target: Any, getter: String, vararg args: Any?): Any? =
         runCatching { Reflect.callMethod(target, getter, *args) }.getOrNull()
 
-    private fun stateOf(iconView: View): Any? = runCatching { Reflect.getObjectField(iconView, "state") }.getOrNull()
-
-    private fun getIntField(target: Any, name: String): Int? =
-        runCatching { Reflect.getObjectField(target, name) as? Int }.getOrNull()
-
     private fun glass(view: Any?, signature: Long? = null) {
         val v = view as? View ?: return
         applyOnce(v, signature) { CcGlassApi.apply(it, TOKEN_GLASS) }
@@ -551,7 +456,6 @@ class CcGlassHook : BaseHook() {
             "miui.systemui.controlcenter.panel.secondary.SecondaryPanelControllerBase"
         private const val TILE_ICON_CLASS =
             "miui.systemui.controlcenter.qs.tileview.QSTileItemIconView"
-        private const val TILE_ICON_NAME = "QSTileItemIconView"
         private const val TIMER_SEEK_BAR_NAME = "MiuiVolumeTimerSeekBar"
         private const val DETAIL_ADAPTER_CLASS =
             "com.android.systemui.qs.QSDetailContent\$Adapter"

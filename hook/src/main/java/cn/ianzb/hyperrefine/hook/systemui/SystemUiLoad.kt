@@ -4,6 +4,8 @@ import cn.ianzb.hyperrefine.hook.base.BaseLoad
 import cn.ianzb.hyperrefine.hook.base.PackageTarget
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassHook
+import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
+import cn.ianzb.hyperrefine.hook.systemui.glass.CcMaterialGateHook
 
 /**
  * 系统界面（com.android.systemui）目标 Load：
@@ -24,6 +26,7 @@ class SystemUiLoad : BaseLoad() {
             HookPrefs.getBoolean(DeviceCenterLandscapeRightHook.KEY, false),
         )
         initHook(CcGlassHook(), HookPrefs.getBoolean(CcGlassHook.KEY, false))
+        initHook(CcMaterialGateHook(), HookPrefs.getBoolean(CcGlassKeys.THEME_MATERIAL, false))
     }
 
     companion object {

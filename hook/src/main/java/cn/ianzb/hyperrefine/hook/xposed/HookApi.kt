@@ -16,10 +16,29 @@ import java.lang.reflect.Method
 class HookParam(
     val executable: Any?,
     val thisObject: Any?,
-    val args: List<Any?>,
+    args: List<Any?>,
 ) {
+    private val mutableArgs: MutableList<Any?> = args.toMutableList()
+
+    /** 当前参数（可被 [setArg] 修改）。 */
+    val args: List<Any?> get() = mutableArgs
+
+    /** 参数是否被 [setArg] 修改：修改后 [HookHelper.hookBefore] 会以新参数继续原调用。 */
+    var argsModified: Boolean = false
+        private set
+
     var result: Any? = null
     var hasResult: Boolean = false
+
+    /**
+     * 替换第 [index] 个参数。
+     *
+     * 仅在 [HookHelper.hookBefore] 中生效（`hookAfter` 时原方法已执行完毕）。
+     */
+    fun setArg(index: Int, value: Any?) {
+        mutableArgs[index] = value
+        argsModified = true
+    }
 
     fun setResultValue(value: Any?) {
         result = value
@@ -76,7 +95,11 @@ object HookHelper {
     ): HookHandle = intercept(executable, priority) { chain ->
         val param = HookParam(executable, chain.thisObject, chain.args)
         callback(param)
-        if (param.hasResult) param.result else chain.proceed()
+        when {
+            param.hasResult -> param.result
+            param.argsModified -> chain.proceed(param.args.toTypedArray())
+            else -> chain.proceed()
+        }
     }
 
     fun hookAfter(

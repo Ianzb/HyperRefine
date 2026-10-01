@@ -167,6 +167,8 @@
     <string name="section_cc_glass">Soft glass</string>
     <string name="cc_glass_master">Enable soft glass</string>
     <string name="cc_glass_master_summary">Apply the same soft glass as the top level to the buttons and cards of the Control Center secondary panels</string>
+    <string name="cc_glass_theme_material">Force material under third-party themes</string>
+    <string name="cc_glass_theme_material_summary">Keep the system advanced material / soft glass enabled under third-party themes (as if the default theme were used); may affect some theme-provided visuals</string>
 
     <string name="percent_display_section">Volume &amp; brightness bars</string>
     <string name="percent_switch_summary">Show a percentage value on the slider; style options appear after enabling</string>

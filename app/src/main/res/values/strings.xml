@@ -167,6 +167,8 @@
     <string name="section_cc_glass">柔光玻璃</string>
     <string name="cc_glass_master">启用柔光玻璃</string>
     <string name="cc_glass_master_summary">为控制中心各二级面板的按钮与卡片套用与一级界面一致的柔光玻璃材质</string>
+    <string name="cc_glass_theme_material">第三方主题下强制启用材质</string>
+    <string name="cc_glass_theme_material_summary">使用第三方主题时仍按默认主题启用系统高级材质 / 柔光玻璃，保证一级磁贴与各二级面板的玻璃效果；可能影响主题自带的部分外观</string>
 
     <string name="percent_display_section">音量条与亮度条</string>
     <string name="percent_switch_summary">开启后在对应进度条上显示百分比数值，开启后可配置显示样式</string>

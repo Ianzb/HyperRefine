@@ -291,6 +291,15 @@ internal fun featureSpecs(): List<OptionSpec> {
         targetPackages = systemUi,
         showStatus = true,
     )
+    specs += OptionSpec(
+        key = CcGlassKeys.THEME_MATERIAL,
+        type = OptionType.SWITCH,
+        titleRes = R.string.cc_glass_theme_material,
+        summaryRes = R.string.cc_glass_theme_material_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+        showStatus = true,
+    )
     PercentLocation.all().forEach { location ->
         val titleRes = when (location) {
             PercentLocation.CC_VOLUME -> R.string.appearance_cc_volume

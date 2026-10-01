@@ -50,7 +50,10 @@ class ControlCenterActivity : BaseSubPageActivity() {
         )
         val glassSection = HookSection(
             titleRes = R.string.section_cc_glass,
-            specs = listOf(featureSpec(CcGlassKeys.MASTER)),
+            specs = listOf(
+                featureSpec(CcGlassKeys.MASTER),
+                featureSpec(CcGlassKeys.THEME_MATERIAL),
+            ),
         )
         LazyColumn(
             modifier = Modifier

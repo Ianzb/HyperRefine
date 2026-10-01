@@ -30,6 +30,17 @@ class CcVolumePercentHook : BaseHook() {
                     .forEach { method ->
                         HookHelper.hookAfter(method) { param -> param.thisObject?.let { update(it) } }
                     }
+                // 深 / 浅色切换后系统会对 top_text 调用 `setTextAppearance` 重置字号、字重与颜色
+                // （VolumeSliderController.onConfigurationChanged），此时上述方法不一定回调，
+                // 故在配置变更回调之后再套一次百分比样式。
+                controller.declaredMethods
+                    .firstOrNull { it.name == "onConfigurationChanged" && it.parameterCount == 1 }
+                    ?.let { method ->
+                        method.isAccessible = true
+                        HookHelper.hookAfter(method) { param ->
+                            param.thisObject?.let { update(it) }
+                        }
+                    }
             }.onFailure { HookHelper.log("$tag: hook failed", it) }
         }
     }

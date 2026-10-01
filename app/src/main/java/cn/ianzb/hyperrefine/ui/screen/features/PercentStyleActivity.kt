@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
@@ -33,8 +34,13 @@ class PercentStyleActivity : BaseSubPageActivity() {
             else -> R.string.appearance_cc_volume
         }
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui")) }
+    override val topBarActions: (@Composable () -> Unit)? = {
+        val packages = buildList {
+            add("com.android.systemui")
+            if (location() == PercentLocation.SIDE_VOLUME) add(AppVolumeKeys.TARGET_PACKAGE)
+        }
+        QuickActionsAction(packages)
+    }
 
     private fun location(): String =
         intent?.getStringExtra(EXTRA_LOCATION) ?: PercentLocation.CC_VOLUME
@@ -53,6 +59,20 @@ class PercentStyleActivity : BaseSubPageActivity() {
             HookSection(
                 titleRes = R.string.side_volume_interaction_section,
                 specs = listOf(featureSpec(SIDE_LONGPRESS_KEY)),
+            )
+        } else {
+            null
+        }
+        val appVolumeSection = if (location == PercentLocation.SIDE_VOLUME) {
+            HookSection(
+                titleRes = R.string.app_volume_section,
+                specs = listOf(
+                    featureSpec(AppVolumeKeys.ENTRY),
+                    featureSpec(AppVolumeKeys.HIDE_FLOAT),
+                    featureSpec(AppVolumeKeys.ALWAYS_SHOW),
+                    featureSpec(AppVolumeKeys.ALIGN_RIGHT),
+                    featureSpec(AppVolumeKeys.HEIGHT_PERCENT),
+                ),
             )
         } else {
             null
@@ -95,6 +115,13 @@ class PercentStyleActivity : BaseSubPageActivity() {
         ) {
             // 长按打开音量面板：始终显示且置于页面最前。
             interactionSection?.let { section ->
+                item {
+                    HookSectionCard(section) {
+                        section.specs.forEach { HookOptionView(it) }
+                    }
+                }
+            }
+            appVolumeSection?.let { section ->
                 item {
                     HookSectionCard(section) {
                         section.specs.forEach { HookOptionView(it) }

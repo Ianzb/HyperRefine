@@ -170,6 +170,12 @@ private val licenseSections: List<LicenseSection> = listOf(
                 "非开源，仅思路参考",
                 "https://github.com/KiminonawaResa/HyperLight",
             ),
+            LibraryInfo(
+                "HyperVolume",
+                "-",
+                "仅思路参考",
+                "https://github.com/Mo-SeTian/HyperVolume",
+            ),
         ),
     ),
 )
@@ -275,7 +281,9 @@ fun LicensePageContent(
                                     append(library.license)
                                 },
                                 onClick = {
-                                    uriHandler.openUri(library.website)
+                                    if (library.website.isNotBlank()) {
+                                        uriHandler.openUri(library.website)
+                                    }
                                 },
                             )
                         }

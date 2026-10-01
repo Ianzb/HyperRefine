@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.hook.connect.ConnectKeys
 import cn.ianzb.hyperrefine.hook.device.DeviceType
+import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.prefs.OptionType
@@ -170,6 +171,11 @@ private fun locationSpecs(specs: List<OptionSpec>, location: String): List<Optio
     if (location == PercentLocation.SIDE_VOLUME) {
         keys += SIDE_INSIDE_KEY
         keys += SIDE_LONGPRESS_KEY
+    keys += AppVolumeKeys.ENTRY
+    keys += AppVolumeKeys.HIDE_FLOAT
+    keys += AppVolumeKeys.ALWAYS_SHOW
+    keys += AppVolumeKeys.ALIGN_RIGHT
+    keys += AppVolumeKeys.HEIGHT_PERCENT
     }
     return keys.map { specByKey(specs, it) }
 }
@@ -390,5 +396,63 @@ internal fun featureSpecs(): List<OptionSpec> {
             )
         }
     }
+    specs += appVolumeSpecs(systemUi)
     return specs
 }
+
+/** 「分应用音量」配置项（侧边音量条）。 */
+private fun appVolumeSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
+    OptionSpec(
+        key = AppVolumeKeys.ENTRY,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_entry,
+        summaryRes = R.string.app_volume_entry_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi + AppVolumeKeys.TARGET_PACKAGE,
+        showStatus = true,
+    ),
+    OptionSpec(
+        key = AppVolumeKeys.HIDE_FLOAT,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_hide_float,
+        summaryRes = R.string.app_volume_hide_float_summary,
+        defaultBoolean = true,
+        targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
+        dependsOn = AppVolumeKeys.ENTRY,
+        showStatus = true,
+    ),
+    OptionSpec(
+        key = AppVolumeKeys.ALWAYS_SHOW,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_always_show,
+        summaryRes = R.string.app_volume_always_show_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+        dependsOn = AppVolumeKeys.ENTRY,
+    ),
+    OptionSpec(
+        key = AppVolumeKeys.ALIGN_RIGHT,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_align_right,
+        summaryRes = R.string.app_volume_align_right_summary,
+        defaultBoolean = true,
+        targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
+        dependsOn = AppVolumeKeys.ENTRY,
+        showStatus = true,
+    ),
+    OptionSpec(
+        key = AppVolumeKeys.HEIGHT_PERCENT,
+        type = OptionType.SLIDER,
+        titleRes = R.string.app_volume_height_percent,
+        summaryRes = R.string.app_volume_height_percent_summary,
+        defaultFloat = 50f,
+        sliderMin = 0f,
+        sliderMax = 100f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.percent_unit,
+        sliderValueLabelRes = R.string.app_volume_height_percent,
+        targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
+        dependsOn = AppVolumeKeys.ENTRY,
+    ),
+)

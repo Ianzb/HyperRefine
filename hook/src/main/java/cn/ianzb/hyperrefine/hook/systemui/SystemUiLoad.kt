@@ -2,6 +2,7 @@ package cn.ianzb.hyperrefine.hook.systemui
 
 import cn.ianzb.hyperrefine.hook.base.BaseLoad
 import cn.ianzb.hyperrefine.hook.base.PackageTarget
+import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassHook
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
@@ -27,6 +28,7 @@ class SystemUiLoad : BaseLoad() {
         )
         initHook(CcGlassHook(), HookPrefs.getBoolean(CcGlassHook.KEY, false))
         initHook(CcMaterialGateHook(), HookPrefs.getBoolean(CcGlassKeys.THEME_MATERIAL, false))
+        initHook(AppVolumeEntryHook(), HookPrefs.getBoolean(AppVolumeKeys.ENTRY, false))
     }
 
     companion object {

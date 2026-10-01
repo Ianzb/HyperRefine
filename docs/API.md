@@ -450,7 +450,7 @@ data class OptionSpec(
 | `dependsOn` / `dependsOnValue` | 全部 | 依赖其他键启用 / 禁用 |
 | `masterKey` | SLIDER | 主开关键，控制滑块显隐与生效 |
 | `sliderMin/Max/Step/Decimals` | SLIDER | 范围、步长、小数位 |
-| `sliderUnitRes` / `sliderValueLabelRes` | SLIDER | 单位、数值类型说明 |
+| `sliderUnitRes` / `sliderValueLabelRes` | SLIDER | `sliderUnitRes`=数值**右侧**单位；`sliderValueLabelRes`=数值**左侧**标签。**两者都不设时**标题才会显示在滑块外面，详见下文「`HookSliderCard` 细则」 |
 | `targetPackages` | 全部 | 目标包，用于作用域申请 |
 | `deviceScope` | 全部 | 设备形态白名单（`PHONE` / `PAD` / `FOLD`）；非白名单设备上组件**禁用灰显不隐藏**，更改「当前设备类型」后实时刷新。空 = 各设备通用 |
 | `showStatus` | SWITCH / CHECKBOX | 在副标题末尾展示该键在目标进程的 Hook 生效状态（见 [4.5 Hook 生效状态](#45-hook-生效状态广播回报)），目标进程重启后刷新 |
@@ -928,7 +928,12 @@ AnimatedVisibility(
 **`HookSliderCard` 细则：**
 - `masterKey` 非空时，卡片顶部渲染一个 `SwitchPreference`（标题取 `spec.titleRes`），其开关状态控制滑块是否**出现**（`AnimatedVisibility` 展开/收起动画）与是否**生效**。
 - `sliderMin` / `sliderMax` / `sliderStep` / `sliderDecimals` 定义范围、步长与小数位；内部用 `BigDecimal` 定点换算，避免浮点精度丢失。
-- `sliderValueLabelRes` 作为滑块行的**标题居左**显示；当前值显示在行末、**紧邻箭头**。
+- `sliderValueLabelRes` 作为滑块行的**标题居左**显示（位于数值左侧）；当前值显示在行末、**紧邻箭头**。
+- ⚠️ **标签位置（重要，务必遵守）**：滑块的文字分两处——
+  - `sliderValueLabelRes` → 显示在**数值左侧**的行内标签；
+  - `sliderUnitRes` → 显示在**数值右侧**的单位后缀（如 `%`、`dp`）。
+  仅当 `masterKey == null && sliderValueLabelRes == 0` 时，`HookSliderCard` 才会退化为把 `titleRes` 作为**滑动组件外面**的独立标题显示（见 `HookSliderCard.kt` 中 `if (masterKey == null && spec.sliderValueLabelRes == 0)` 分支）。
+  **因此：若希望标题与数值同行、显示在数值左侧，必须设置 `sliderValueLabelRes`（可直接复用 `titleRes` 的字符串资源），否则标题会显示在滑动组件外面。** 指定 `sliderValueLabelRes` 后不会再额外渲染外部标题。
 - 点击滑块行空白弹出居中 `WindowDialog`：第一行左右显示最小值 / 最大值，中间显示「当前值 · 默认值」；下方 `TextField` 手动输入（超范围提示错误）；底部按钮 **取消 / 恢复默认 / 确定**。
 
 **`HookTextCard` 细则：** 主界面为一行（标题 + 当前值摘要），点击弹出与滑块一致的对话框：当前值 / 默认值同行左右显示 + `TextField` + 取消 / 恢复默认 / 确定。

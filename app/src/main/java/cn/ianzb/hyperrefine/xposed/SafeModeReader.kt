@@ -35,14 +35,17 @@ object SafeModeReader {
     private const val DEFAULT_THRESHOLD = 3
     private const val CRITICAL_THRESHOLD = 2
 
-    /** 崩溃可能导致无法开机的关键应用，阈值更低。 */
-    private val CRITICAL_PACKAGES = setOf(
+    /**
+     * 安全模式白名单：仅对系统界面、桌面、系统进程启用自动安全模式。
+     *
+     * 其他进程（应用 / 第三方 / 部分系统服务）本身就会按自身或系统策略重启，
+     * 若按其「进程重启」计数触发安全模式会误判，故不计入。
+     */
+    private val SAFE_MODE_WHITELIST = setOf(
         "android",
         "system",
         "com.android.systemui",
-        "com.android.settings",
         "com.miui.home",
-        "com.miui.securitycenter",
     )
 
     @Volatile
@@ -81,6 +84,8 @@ object SafeModeReader {
      * 记录一次目标进程启动。窗口内的重复启动累计为疑似崩溃，达到阈值即置安全模式并同步到远程偏好。
      */
     fun recordProcessStart(packageName: String) {
+        // 只对白名单（系统界面 / 桌面 / 系统进程）做自动安全模式判定。
+        if (packageName !in SAFE_MODE_WHITELIST) return
         val p = prefs ?: return
         val now = System.currentTimeMillis()
         val last = p.getLong("$LAST_PREFIX$packageName", 0L)
@@ -131,7 +136,7 @@ object SafeModeReader {
     }
 
     private fun thresholdOf(packageName: String): Int =
-        if (packageName in CRITICAL_PACKAGES) CRITICAL_THRESHOLD else DEFAULT_THRESHOLD
+        if (packageName in SAFE_MODE_WHITELIST) CRITICAL_THRESHOLD else DEFAULT_THRESHOLD
 
     private fun readSafeSet(): Set<String> =
         prefs?.all

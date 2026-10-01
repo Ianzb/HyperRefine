@@ -18,6 +18,17 @@ object SafeModeManager {
 
     private const val SAFE_PREFIX = "safe_mode_"
 
+    /**
+     * 安全模式白名单（需与 App 侧 `SafeModeReader.SAFE_MODE_WHITELIST` 一致）：
+     * 仅系统界面、桌面、系统进程启用；其他进程本身会自行重启，不参与安全模式。
+     */
+    private val SAFE_MODE_WHITELIST = setOf(
+        "android",
+        "system",
+        "com.android.systemui",
+        "com.miui.home",
+    )
+
     @Volatile
     private var prefs: SharedPreferences? = null
 
@@ -31,6 +42,7 @@ object SafeModeManager {
      * @return true 表示该包已被 App 置为安全模式，应跳过全部 hook。
      */
     fun handleStart(packageName: String): Boolean {
+        if (packageName !in SAFE_MODE_WHITELIST) return false
         val safe = runCatching { prefs?.getBoolean("$SAFE_PREFIX$packageName", false) }
             .getOrNull() ?: false
         if (safe) {

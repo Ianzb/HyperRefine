@@ -3,6 +3,7 @@ package cn.ianzb.hyperrefine.hook.base
 import cn.ianzb.hyperrefine.hook.connect.MiLinkLoad
 import cn.ianzb.hyperrefine.hook.connect.XiaomiMirrorLoad
 import cn.ianzb.hyperrefine.hook.home.HomeLoad
+import cn.ianzb.hyperrefine.hook.misound.MiSoundLoad
 import cn.ianzb.hyperrefine.hook.securitycenter.SecurityCenterLoad
 import cn.ianzb.hyperrefine.hook.systemui.SystemUiLoad
 
@@ -19,6 +20,7 @@ object HookEntryRegistry {
         SecurityCenterLoad(),
         MiLinkLoad(),
         XiaomiMirrorLoad(),
+        MiSoundLoad(),
     )
 
     fun loadsFor(packageName: String): List<BaseLoad> =

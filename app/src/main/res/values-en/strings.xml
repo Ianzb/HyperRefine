@@ -195,6 +195,20 @@
     <string name="side_volume_longpress">Long-press to open volume panel</string>
     <string name="side_volume_longpress_summary">Long-press the bar to expand the volume panel and hide its three-dot button</string>
 
+    <string name="app_volume_section">App volume</string>
+    <string name="app_volume_entry">App volume entry</string>
+    <string name="app_volume_entry_summary">Show an entry to the system per-app volume panel at the bottom of the side volume bar</string>
+    <string name="app_volume_hide_float">Hide left floating button</string>
+    <string name="app_volume_hide_float_summary">Hide the blue per-app volume floating button on the left side</string>
+    <string name="app_volume_always_show">Always show entry</string>
+    <string name="app_volume_always_show_summary">When off, the entry only appears while media is playing</string>
+    <string name="app_volume_align_right">Align panel to the right</string>
+    <string name="app_volume_align_right_summary">Off: centered. On: right-aligned with a right margin</string>
+    <string name="app_volume_empty">No app is currently playing</string>
+    <string name="app_volume_height_percent">Height</string>
+    <string name="app_volume_height_percent_summary">Vertical placement of the panel; 0% lowest, 100% highest, 50% centered</string>
+    <string name="percent_unit">%</string>
+
     <!-- Update -->
     <string name="check_update_on_launch">Check for Updates on Launch</string>
     <string name="check_update_on_launch_summary">Automatically check for new versions at startup</string>
@@ -225,7 +239,7 @@
     <string name="about_telegram">Telegram Group</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.5.0</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.5.2</string>
     <string name="license_lgpl">GNU LGPL v3.0</string>
     <string name="license_lgpl_summary">View full license text</string>
     <string name="third_party_licenses_title">Third Party Licenses &amp; Credits</string>

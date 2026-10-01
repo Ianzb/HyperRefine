@@ -15,7 +15,7 @@
 
 </div>
 
-**HyperRefine** 是一个 **LSPosed 模块**项目，基于 [libxposed API 102](https://libxposed.github.io/api/index-all.html) 与 [Miuix](https://github.com/compose-miuix-ui/miuix) Compose 组件库构建，使用 [MiuixGuiTemplate](https://github.com/Ianzb/MiuixGuiTemplate) 脚手架（`Based on MiuixGuiTemplate 0.5.0`）创建，提供完整的 Hook 二次封装接口与可复用 UI 组件。当前 Hook 目标为**系统界面**（`com.android.systemui`）：控制中心音量条 / 亮度条与侧边音量条的百分比数值显示；**安全服务**（`com.miui.securitycenter`）：隐藏快充加速通知；**MiLink 与小米互联**（`com.milink.service` / `com.xiaomi.mirror`）：设备互联三项功能；另预留系统桌面（`com.miui.home`）占位。
+**HyperRefine** 是一个 **LSPosed 模块**项目，基于 [libxposed API 102](https://libxposed.github.io/api/index-all.html) 与 [Miuix](https://github.com/compose-miuix-ui/miuix) Compose 组件库构建，使用 [MiuixGuiTemplate](https://github.com/Ianzb/MiuixGuiTemplate) 脚手架（`Based on MiuixGuiTemplate 0.5.2`）创建，提供完整的 Hook 二次封装接口与可复用 UI 组件。当前 Hook 目标为**系统界面**（`com.android.systemui`）：控制中心音量条 / 亮度条与侧边音量条的百分比数值显示；**安全服务**（`com.miui.securitycenter`）：隐藏快充加速通知；**MiLink 与小米互联**（`com.milink.service` / `com.xiaomi.mirror`）：设备互联三项功能；另预留系统桌面（`com.miui.home`）占位。
 
 <br>
 

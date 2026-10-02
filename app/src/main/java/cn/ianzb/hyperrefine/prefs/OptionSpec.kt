@@ -21,6 +21,7 @@ import cn.ianzb.hyperrefine.hook.device.DeviceType
  * @param dependsOn 依赖的配置键；为空表示无依赖
  * @param dependsOnValue 依赖键需要等于该布尔值时才启用
  * @param masterKey 滑块的主开关键（开关控制滑块是否生效/显示）
+ * @param masterDefault [masterKey] 的默认开关状态
  * @param sliderMin 滑块最小值
  * @param sliderMax 滑块最大值
  * @param sliderStep 滑块步长
@@ -45,6 +46,7 @@ data class OptionSpec(
     val dependsOn: String? = null,
     val dependsOnValue: Boolean = true,
     val masterKey: String? = null,
+    val masterDefault: Boolean = false,
     val sliderMin: Float = 0f,
     val sliderMax: Float = 100f,
     val sliderStep: Float = 1f,

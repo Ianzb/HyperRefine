@@ -921,12 +921,14 @@ AnimatedVisibility(
 | `HookTextCard` | 确认时写入 | 无 | 弹窗输入 |
 | `HookOptionView` | 由具体组件决定 | 由具体组件决定 | 按 `type` 分发，`SPINNER` 复用下拉 |
 
-> 所有卡片统一以 `enabled = rememberOptionEnabled(spec)` 渲染：`dependsOn` 或 `deviceScope` 不满足时**禁用灰显**（不隐藏）。
+> **依赖前置规范（强制）**：需要前置选项解锁的功能，必须**始终显示**；前置未满足时以**禁用（灰显）**呈现，**禁止隐藏**——不得使用 `AnimatedVisibility` 或条件渲染根据配置值隐藏组件 / 整个分区。
+>
+> 依赖关系一律用 `OptionSpec.dependsOn`（+ `dependsOnValue`）声明，由 `rememberOptionEnabled(spec)` 统一判定 `enabled`；`HookSliderCard.masterKey` 的开关只控制滑块的**启用 / 禁用**，不再控制显隐。设备独占同理（`deviceScope` 不满足时禁用灰显）。
 
 **下拉 / 单选默认项约定：** `entryValues[0]` 为默认值（`defaultString` 应等于它），第一项文本建议形如「默认（中速）」，表示该状态下不 hook；选择非默认项才申请作用域。
 
 **`HookSliderCard` 细则：**
-- `masterKey` 非空时，卡片顶部渲染一个 `SwitchPreference`（标题取 `spec.titleRes`），其开关状态控制滑块是否**出现**（`AnimatedVisibility` 展开/收起动画）与是否**生效**。
+- `masterKey` 非空时，卡片顶部渲染一个 `SwitchPreference`（标题取 `spec.titleRes`），其开关状态只控制滑块**启用 / 禁用**（`enabled = enabled && masterEnabled`）；滑块**始终显示**，不随开关隐藏（见 5.7 顶部的依赖前置规范）。
 - `sliderMin` / `sliderMax` / `sliderStep` / `sliderDecimals` 定义范围、步长与小数位；内部用 `BigDecimal` 定点换算，避免浮点精度丢失。
 - `sliderValueLabelRes` 作为滑块行的**标题居左**显示（位于数值左侧）；当前值显示在行末、**紧邻箭头**。
 - ⚠️ **标签位置（重要，务必遵守）**：滑块的文字分两处——

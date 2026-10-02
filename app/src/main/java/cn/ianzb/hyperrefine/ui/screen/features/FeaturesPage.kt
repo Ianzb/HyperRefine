@@ -13,6 +13,7 @@ import cn.ianzb.hyperrefine.hook.connect.ConnectKeys
 import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
+import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
 import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.prefs.OptionType
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
@@ -32,14 +33,12 @@ fun FeaturesPageView(
 ) {
     val context = LocalContext.current
     val specs = remember { featureSpecs() }
-    val sideVolumeEntry = PercentLocation.entryKey(PercentLocation.SIDE_VOLUME)
     val sections = remember(specs) {
         listOf(
             HookSection(
                 titleRes = R.string.section_system_ui,
                 specs = listOf(
-                    specByKey(specs, KEY_CONTROL_CENTER),
-                    specByKey(specs, sideVolumeEntry),
+                    specByKey(specs, KEY_APPEARANCE),
                 ),
             ),
             HookSection(
@@ -56,19 +55,37 @@ fun FeaturesPageView(
             ),
         )
     }
-    // 控制中心 / 侧边音量条为二级页，各自的样式页为三级页；安全服务下功能为二级页：通过嵌套 subPages 让搜索直达多级功能。
+    // 「外观」为二级页，其下再分子页；通过嵌套 subPages 让搜索直达多级功能。
     val subPages = remember(specs) {
         listOf(
             HookSubPage(
-                titleRes = R.string.feature_control_center,
+                titleRes = R.string.feature_appearance,
                 specs = listOf(
+                    specByKey(specs, KEY_GLASS),
+                    specByKey(specs, KEY_CC_RADIUS),
+                    specByKey(specs, KEY_DEVICE_CENTER),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_BRIGHTNESS)),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_VOLUME)),
-                    specByKey(specs, KEY_DEVICE_CENTER_HIDE_MORE),
-                    specByKey(specs, KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
+                    specByKey(specs, PercentLocation.entryKey(PercentLocation.SIDE_VOLUME)),
+                    specByKey(specs, KEY_APP_VOLUME),
                 ),
-                onOpen = { context.startActivity(Intent(context, ControlCenterActivity::class.java)) },
+                onOpen = { context.startActivity(Intent(context, AppearanceActivity::class.java)) },
                 subPages = listOf(
+                    HookSubPage(
+                        titleRes = R.string.feature_glass,
+                        specs = glassSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, GlassActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.cc_radius_title,
+                        specs = cornerRadiusSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, CornerRadiusActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.section_device_center,
+                        specs = deviceCenterSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, DeviceCenterActivity::class.java)) },
+                    ),
                     HookSubPage(
                         titleRes = R.string.appearance_cc_brightness,
                         specs = locationSpecs(specs, PercentLocation.CC_BRIGHTNESS),
@@ -79,12 +96,17 @@ fun FeaturesPageView(
                         specs = locationSpecs(specs, PercentLocation.CC_VOLUME),
                         onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.CC_VOLUME)) },
                     ),
+                    HookSubPage(
+                        titleRes = R.string.appearance_side_volume,
+                        specs = locationSpecs(specs, PercentLocation.SIDE_VOLUME),
+                        onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.SIDE_VOLUME)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.app_volume_section,
+                        specs = appVolumeSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, AppVolumeActivity::class.java)) },
+                    ),
                 ),
-            ),
-            HookSubPage(
-                titleRes = R.string.appearance_side_volume,
-                specs = locationSpecs(specs, PercentLocation.SIDE_VOLUME),
-                onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.SIDE_VOLUME)) },
             ),
             HookSubPage(
                 titleRes = R.string.fast_charge_notify,
@@ -107,14 +129,12 @@ fun FeaturesPageView(
         extraBottomPadding = extraBottomPadding,
         onArrowClick = { spec ->
             when (spec.key) {
-                KEY_CONTROL_CENTER ->
-                    context.startActivity(Intent(context, ControlCenterActivity::class.java))
+                KEY_APPEARANCE ->
+                    context.startActivity(Intent(context, AppearanceActivity::class.java))
                 KEY_SECURITY_CENTER ->
                     context.startActivity(Intent(context, SecurityCenterActivity::class.java))
                 KEY_DEVICE_CONNECT ->
                     context.startActivity(Intent(context, DeviceConnectActivity::class.java))
-                sideVolumeEntry ->
-                    context.startActivity(percentStyleIntent(context, PercentLocation.SIDE_VOLUME))
             }
         },
         topBarActions = {
@@ -130,17 +150,21 @@ fun FeaturesPageView(
     )
 }
 
-const val KEY_CONTROL_CENTER = "feature_control_center"
+const val KEY_APPEARANCE = "feature_appearance"
+const val KEY_GLASS = "feature_glass"
+const val KEY_DEVICE_CENTER = "feature_device_center"
+const val KEY_APP_VOLUME = "feature_app_volume"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
 const val KEY_DEVICE_CENTER_LANDSCAPE_RIGHT = "device_center_landscape_right"
 const val KEY_SECURITY_CENTER = "feature_security_center"
 const val KEY_DEVICE_CONNECT = "feature_device_connect"
+const val KEY_CC_RADIUS = "feature_cc_radius"
 const val KEY_FAST_CHARGE_ENTER = "security_center_fast_charge_enter_notify"
 const val KEY_FAST_CHARGE_EXIT = "security_center_fast_charge_exit_notify"
 const val SIDE_INSIDE_KEY = "side_volume_inside"
 const val SIDE_LONGPRESS_KEY = "side_volume_longpress"
 
-private fun percentStyleIntent(context: Context, location: String): Intent =
+fun percentStyleIntent(context: Context, location: String): Intent =
     Intent(context, PercentStyleActivity::class.java)
         .putExtra(PercentStyleActivity.EXTRA_LOCATION, location)
 
@@ -154,6 +178,8 @@ object PercentLocation {
 
     fun masterKey(location: String): String = "${location}_percent"
 
+    fun positionKey(location: String): String = "${location}_position"
+
     fun entryKey(location: String): String = "appearance_$location"
 }
 
@@ -164,6 +190,7 @@ private fun specByKey(specs: List<OptionSpec>, key: String): OptionSpec =
 private fun locationSpecs(specs: List<OptionSpec>, location: String): List<OptionSpec> {
     val keys = mutableListOf(
         PercentLocation.masterKey(location),
+        PercentLocation.positionKey(location),
         "${location}_font_size",
         "${location}_font_weight",
         "${location}_follow_icon",
@@ -176,9 +203,44 @@ private fun locationSpecs(specs: List<OptionSpec>, location: String): List<Optio
     keys += AppVolumeKeys.ALWAYS_SHOW
     keys += AppVolumeKeys.ALIGN_RIGHT
     keys += AppVolumeKeys.HEIGHT_PERCENT
+    keys += AppVolumeKeys.HIDE_BLUR_BG
     }
     return keys.map { specByKey(specs, it) }
 }
+
+/** 控制中心「圆角调整」二级页内的配置项，用于功能页搜索直达。 */
+private fun cornerRadiusSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    buildList {
+        add(specByKey(specs, CcRadiusKeys.MASTER))
+        add(specByKey(specs, CcRadiusKeys.COMPONENT))
+        add(specByKey(specs, CcRadiusKeys.BACKGROUND))
+        CcRadiusKeys.ITEMS.forEach { add(specByKey(specs, CcRadiusKeys.valueKey(it))) }
+    }
+
+/** 柔光玻璃二级页内的配置项，用于功能页搜索直达。 */
+private fun glassSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, CcGlassKeys.MASTER),
+        specByKey(specs, CcGlassKeys.THEME_MATERIAL),
+    )
+
+/** 融合设备中心二级页内的配置项，用于功能页搜索直达。 */
+private fun deviceCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, KEY_DEVICE_CENTER_HIDE_MORE),
+        specByKey(specs, KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
+    )
+
+/** 分应用音量二级页内的配置项，用于功能页搜索直达。 */
+private fun appVolumeSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, AppVolumeKeys.ENTRY),
+        specByKey(specs, AppVolumeKeys.HIDE_FLOAT),
+        specByKey(specs, AppVolumeKeys.ALWAYS_SHOW),
+        specByKey(specs, AppVolumeKeys.ALIGN_RIGHT),
+        specByKey(specs, AppVolumeKeys.HEIGHT_PERCENT),
+        specByKey(specs, AppVolumeKeys.HIDE_BLUR_BG),
+    )
 
 /** 安全服务二级页（快充加速通知）内的配置项，用于功能页搜索直达。 */
 private fun securityCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
@@ -207,9 +269,24 @@ internal fun featureSpecs(): List<OptionSpec> {
     val connect = listOf("com.milink.service", "com.xiaomi.mirror")
     val specs = mutableListOf(
         OptionSpec(
-            key = KEY_CONTROL_CENTER,
+            key = KEY_APPEARANCE,
             type = OptionType.ARROW,
-            titleRes = R.string.feature_control_center,
+            titleRes = R.string.feature_appearance,
+        ),
+        OptionSpec(
+            key = KEY_GLASS,
+            type = OptionType.ARROW,
+            titleRes = R.string.feature_glass,
+        ),
+        OptionSpec(
+            key = KEY_DEVICE_CENTER,
+            type = OptionType.ARROW,
+            titleRes = R.string.section_device_center,
+        ),
+        OptionSpec(
+            key = KEY_APP_VOLUME,
+            type = OptionType.ARROW,
+            titleRes = R.string.app_volume_section,
         ),
         OptionSpec(
             key = KEY_DEVICE_CENTER_HIDE_MORE,
@@ -337,7 +414,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             targetPackages = systemUi,
             showStatus = true,
         )
-        // 百分比样式子配置项（由所属开关控制显隐）。
+        // 百分比样式子配置项（由所属开关控制启用 / 禁用；始终显示，不隐藏）。
         specs += OptionSpec(
             key = "${location}_font_size",
             type = OptionType.SLIDER,
@@ -351,6 +428,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             sliderUnitRes = R.string.percent_font_size_unit,
             sliderValueLabelRes = R.string.percent_font_size_label,
             targetPackages = systemUi,
+            dependsOn = PercentLocation.masterKey(location),
         )
         specs += OptionSpec(
             key = "${location}_font_weight",
@@ -368,6 +446,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             ),
             entryValues = listOf("light", "normal", "medium", "semibold", "bold", "black"),
             targetPackages = systemUi,
+            dependsOn = PercentLocation.masterKey(location),
         )
         specs += OptionSpec(
             key = "${location}_follow_icon",
@@ -376,6 +455,22 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = followSummaryRes,
             defaultBoolean = true,
             targetPackages = systemUi,
+            dependsOn = PercentLocation.masterKey(location),
+        )
+        specs += OptionSpec(
+            key = PercentLocation.positionKey(location),
+            type = OptionType.SLIDER,
+            titleRes = R.string.percent_position,
+            summaryRes = R.string.percent_position_summary,
+            defaultFloat = 100f,
+            sliderMin = 0f,
+            sliderMax = 100f,
+            sliderStep = 1f,
+            sliderDecimals = 0,
+            sliderUnitRes = R.string.percent_unit,
+            sliderValueLabelRes = R.string.percent_position,
+            targetPackages = systemUi,
+            dependsOn = PercentLocation.masterKey(location),
         )
         if (location == PercentLocation.SIDE_VOLUME) {
             specs += OptionSpec(
@@ -385,6 +480,7 @@ internal fun featureSpecs(): List<OptionSpec> {
                 summaryRes = R.string.side_volume_inside_summary,
                 defaultBoolean = false,
                 targetPackages = systemUi,
+                dependsOn = PercentLocation.masterKey(PercentLocation.SIDE_VOLUME),
             )
             specs += OptionSpec(
                 key = SIDE_LONGPRESS_KEY,
@@ -396,12 +492,122 @@ internal fun featureSpecs(): List<OptionSpec> {
             )
         }
     }
-    specs += appVolumeSpecs(systemUi)
+    specs += buildAppVolumeSpecs(systemUi)
+    specs += ccRadiusSpecs(systemUi)
     return specs
 }
 
+/** 控制中心「圆角调整」配置项：总开关 + 组件/背景统一圆角 + 各子项自定义。 */
+private fun ccRadiusSpecs(systemUi: List<String>): List<OptionSpec> = buildList {
+    add(
+        OptionSpec(
+            key = KEY_CC_RADIUS,
+            type = OptionType.ARROW,
+            titleRes = R.string.cc_radius_title,
+        )
+    )
+    add(
+        OptionSpec(
+            key = CcRadiusKeys.MASTER,
+            type = OptionType.SWITCH,
+            titleRes = R.string.cc_radius_title,
+            summaryRes = R.string.cc_radius_master_summary,
+            defaultBoolean = false,
+            targetPackages = systemUi,
+        )
+    )
+    add(
+        ccRadiusUnifiedSpec(
+            key = CcRadiusKeys.COMPONENT,
+            titleRes = R.string.cc_radius_component,
+            summaryRes = R.string.cc_radius_component_summary,
+            defaultFloat = CcRadiusKeys.DEFAULT_COMPONENT,
+            systemUi = systemUi,
+        )
+    )
+    add(
+        ccRadiusUnifiedSpec(
+            key = CcRadiusKeys.BACKGROUND,
+            titleRes = R.string.cc_radius_background,
+            summaryRes = R.string.cc_radius_background_summary,
+            defaultFloat = CcRadiusKeys.DEFAULT_BACKGROUND,
+            systemUi = systemUi,
+        )
+    )
+    CcRadiusKeys.ITEMS.forEach { item ->
+        val isAppVolume = item == CcRadiusKeys.APP_VOLUME_PANEL || item == CcRadiusKeys.APP_VOLUME_BAR
+        add(
+            OptionSpec(
+                key = CcRadiusKeys.valueKey(item),
+                type = OptionType.SLIDER,
+                titleRes = ccRadiusItemTitle(item),
+                summaryRes = if (isAppVolume) {
+                    R.string.cc_radius_app_volume_summary
+                } else {
+                    R.string.cc_radius_item_summary
+                },
+                defaultFloat = CcRadiusKeys.itemValueDefault(item),
+                sliderMin = 0f,
+                sliderMax = 60f,
+                sliderStep = 1f,
+                sliderDecimals = 0,
+                sliderUnitRes = R.string.cc_radius_unit,
+                sliderValueLabelRes = ccRadiusItemTitle(item),
+                targetPackages = if (isAppVolume) listOf(AppVolumeKeys.TARGET_PACKAGE) else systemUi,
+                dependsOn = CcRadiusKeys.MASTER,
+                masterKey = CcRadiusKeys.customKey(item),
+                masterDefault = CcRadiusKeys.itemCustomDefault(item),
+            )
+        )
+    }
+}
+
+private fun ccRadiusUnifiedSpec(
+    key: String,
+    titleRes: Int,
+    summaryRes: Int,
+    defaultFloat: Float,
+    systemUi: List<String>,
+): OptionSpec = OptionSpec(
+    key = key,
+    type = OptionType.SLIDER,
+    titleRes = titleRes,
+    summaryRes = summaryRes,
+    defaultFloat = defaultFloat,
+    sliderMin = 0f,
+    sliderMax = 60f,
+    sliderStep = 1f,
+    sliderDecimals = 0,
+    sliderUnitRes = R.string.cc_radius_unit,
+    sliderValueLabelRes = titleRes,
+    targetPackages = systemUi,
+    dependsOn = CcRadiusKeys.MASTER,
+)
+
+private fun ccRadiusItemTitle(item: String): Int = when (item) {
+    CcRadiusKeys.TILE -> R.string.cc_radius_tile
+    CcRadiusKeys.MEDIA -> R.string.cc_radius_media
+    CcRadiusKeys.SLIDER_L1 -> R.string.cc_radius_slider_l1
+    CcRadiusKeys.BRIGHTNESS_L2 -> R.string.cc_radius_brightness_l2
+    CcRadiusKeys.CC_VOLUME_L1 -> R.string.cc_radius_cc_volume_l1
+    CcRadiusKeys.CC_VOLUME_L2 -> R.string.cc_radius_cc_volume_l2
+    CcRadiusKeys.SIDE_VOLUME_L1 -> R.string.cc_radius_side_volume_l1
+    CcRadiusKeys.SIDE_VOLUME_L2 -> R.string.cc_radius_side_volume_l2
+    CcRadiusKeys.RINGER -> R.string.cc_radius_ringer
+    CcRadiusKeys.TIMER -> R.string.cc_radius_timer
+    CcRadiusKeys.DEVICE_CENTER -> R.string.cc_radius_device_center
+    CcRadiusKeys.APP_VOLUME_BAR -> R.string.cc_radius_app_volume_bar
+    CcRadiusKeys.BRIGHTNESS_L2_BG -> R.string.cc_radius_brightness_l2_bg
+    CcRadiusKeys.MEDIA_L2_BG -> R.string.cc_radius_media_l2_bg
+    CcRadiusKeys.DETAIL_BG -> R.string.cc_radius_detail_bg
+    CcRadiusKeys.CC_VOLUME_L2_BG -> R.string.cc_radius_cc_volume_l2_bg
+    CcRadiusKeys.SIDE_VOLUME_L2_BG -> R.string.cc_radius_side_volume_l2_bg
+    CcRadiusKeys.APP_VOLUME_PANEL -> R.string.cc_radius_app_volume_panel
+    else -> R.string.cc_radius_tile
+}
+
 /** 「分应用音量」配置项（侧边音量条）。 */
-private fun appVolumeSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
+private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
     OptionSpec(
         key = AppVolumeKeys.ENTRY,
         type = OptionType.SWITCH,
@@ -452,6 +658,15 @@ private fun appVolumeSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
         sliderDecimals = 0,
         sliderUnitRes = R.string.percent_unit,
         sliderValueLabelRes = R.string.app_volume_height_percent,
+        targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
+        dependsOn = AppVolumeKeys.ENTRY,
+    ),
+    OptionSpec(
+        key = AppVolumeKeys.HIDE_BLUR_BG,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_hide_blur_bg,
+        summaryRes = R.string.app_volume_hide_blur_bg_summary,
+        defaultBoolean = false,
         targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
         dependsOn = AppVolumeKeys.ENTRY,
     ),

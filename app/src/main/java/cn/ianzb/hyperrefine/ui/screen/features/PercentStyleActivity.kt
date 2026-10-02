@@ -1,23 +1,17 @@
 package cn.ianzb.hyperrefine.ui.screen.features
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
-import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
-import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.screen.subpage.BaseSubPageActivity
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
-import cn.ianzb.hyperrefine.ui.util.MiuixExpandSpec
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 
 /**
@@ -34,13 +28,8 @@ class PercentStyleActivity : BaseSubPageActivity() {
             else -> R.string.appearance_cc_volume
         }
 
-    override val topBarActions: (@Composable () -> Unit)? = {
-        val packages = buildList {
-            add("com.android.systemui")
-            if (location() == PercentLocation.SIDE_VOLUME) add(AppVolumeKeys.TARGET_PACKAGE)
-        }
-        QuickActionsAction(packages)
-    }
+    override val topBarActions: (@Composable () -> Unit)? =
+        { QuickActionsAction(listOf("com.android.systemui")) }
 
     private fun location(): String =
         intent?.getStringExtra(EXTRA_LOCATION) ?: PercentLocation.CC_VOLUME
@@ -52,27 +41,12 @@ class PercentStyleActivity : BaseSubPageActivity() {
     ) {
         val location = location()
         val masterKey = PercentLocation.masterKey(location)
-        val enabled = ConfigState.bool(masterKey, false)
         val scrollBehavior = LocalSubPageScrollBehavior.current
 
         val interactionSection = if (location == PercentLocation.SIDE_VOLUME) {
             HookSection(
                 titleRes = R.string.side_volume_interaction_section,
                 specs = listOf(featureSpec(SIDE_LONGPRESS_KEY)),
-            )
-        } else {
-            null
-        }
-        val appVolumeSection = if (location == PercentLocation.SIDE_VOLUME) {
-            HookSection(
-                titleRes = R.string.app_volume_section,
-                specs = listOf(
-                    featureSpec(AppVolumeKeys.ENTRY),
-                    featureSpec(AppVolumeKeys.HIDE_FLOAT),
-                    featureSpec(AppVolumeKeys.ALWAYS_SHOW),
-                    featureSpec(AppVolumeKeys.ALIGN_RIGHT),
-                    featureSpec(AppVolumeKeys.HEIGHT_PERCENT),
-                ),
             )
         } else {
             null
@@ -87,6 +61,7 @@ class PercentStyleActivity : BaseSubPageActivity() {
                 featureSpec("${location}_font_size"),
                 featureSpec("${location}_font_weight"),
                 featureSpec("${location}_follow_icon"),
+                featureSpec(PercentLocation.positionKey(location)),
             ),
         )
         val positionSection = if (location == PercentLocation.SIDE_VOLUME) {
@@ -121,39 +96,21 @@ class PercentStyleActivity : BaseSubPageActivity() {
                     }
                 }
             }
-            appVolumeSection?.let { section ->
-                item {
-                    HookSectionCard(section) {
-                        section.specs.forEach { HookOptionView(it) }
-                    }
-                }
-            }
             item {
                 HookSectionCard(displaySection) {
                     displaySection.specs.forEach { HookOptionView(it) }
                 }
             }
+            // 规范：依赖百分比总开关的样式项始终显示，未开启时禁用灰显（不隐藏）。
             item {
-                AnimatedVisibility(
-                    visible = enabled,
-                    enter = expandVertically(animationSpec = MiuixExpandSpec),
-                    exit = shrinkVertically(animationSpec = MiuixExpandSpec),
-                ) {
-                    HookSectionCard(styleSection) {
-                        styleSection.specs.forEach { HookOptionView(it) }
-                    }
+                HookSectionCard(styleSection) {
+                    styleSection.specs.forEach { HookOptionView(it) }
                 }
             }
             positionSection?.let { section ->
                 item {
-                    AnimatedVisibility(
-                        visible = enabled,
-                        enter = expandVertically(animationSpec = MiuixExpandSpec),
-                        exit = shrinkVertically(animationSpec = MiuixExpandSpec),
-                    ) {
-                        HookSectionCard(section) {
-                            section.specs.forEach { HookOptionView(it) }
-                        }
+                    HookSectionCard(section) {
+                        section.specs.forEach { HookOptionView(it) }
                     }
                 }
             }

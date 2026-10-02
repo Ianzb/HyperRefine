@@ -1,8 +1,5 @@
 package cn.ianzb.hyperrefine.ui.component.pref
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.prefs.OptionSpec
-import cn.ianzb.hyperrefine.ui.util.MiuixExpandSpec
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
@@ -38,7 +34,7 @@ import top.yukonga.miuix.kmp.basic.Text as MiuixText
 /**
  * 带 slider 的卡片。
  *
- * - 由 [OptionSpec.masterKey] 的开关控制 slider 是否生效与是否出现（带 Miuix 动画）
+ * - 由 [OptionSpec.masterKey] 的开关控制 slider 启用 / 禁用（始终显示，不隐藏）
  * - 支持整数 / 小数 / 自定义范围（内部定点换算，避免浮点精度丢失）
  * - 当前值与默认值同一行显示，两侧显示最小值 / 最大值
  * - 点击卡片空白弹出居中输入卡片（取消 / 恢复默认 / 确定）
@@ -50,7 +46,7 @@ fun HookSliderCard(
 ) {
     val enabled = rememberOptionEnabled(spec)
     val masterKey = spec.masterKey
-    val masterEnabled = if (masterKey != null) ConfigState.bool(masterKey, false) else true
+    val masterEnabled = if (masterKey != null) ConfigState.bool(masterKey, spec.masterDefault) else true
     val value = ConfigState.float(spec.key, spec.defaultFloat)
     var showDialog by remember { mutableStateOf(false) }
     val unit = if (spec.sliderUnitRes != 0) stringResource(spec.sliderUnitRes) else ""
@@ -69,36 +65,31 @@ fun HookSliderCard(
             )
         }
 
-        AnimatedVisibility(
-            visible = masterEnabled && enabled,
-            enter = expandVertically(animationSpec = MiuixExpandSpec),
-            exit = shrinkVertically(animationSpec = MiuixExpandSpec),
-        ) {
-            Column {
-                if (masterKey == null && spec.sliderValueLabelRes == 0) {
-                    MiuixText(
-                        text = stringResource(spec.titleRes),
-                        style = MiuixTheme.textStyles.main,
-                        modifier = Modifier.padding(start = 16.dp, top = 12.dp),
-                    )
-                }
-                // 数值类型说明作为标题居左，当前值显示在右侧、紧邻箭头。
-                val valueLabel = if (spec.sliderValueLabelRes != 0) {
-                    stringResource(spec.sliderValueLabelRes)
-                } else {
-                    null
-                }
-                SliderPreference(
-                    value = value,
-                    onValueChange = { ConfigState.set(spec.key, roundToDecimals(it, spec.sliderDecimals)) },
-                    valueRange = spec.sliderMin..spec.sliderMax,
-                    steps = sliderSteps(spec),
-                    title = valueLabel,
-                    valueText = formatValue(value, spec, unit),
-                    onClick = { showDialog = true },
-                    enabled = enabled,
+        // 规范：前置未满足时始终显示并禁用，不用 AnimatedVisibility 隐藏。
+        Column {
+            if (masterKey == null && spec.sliderValueLabelRes == 0) {
+                MiuixText(
+                    text = stringResource(spec.titleRes),
+                    style = MiuixTheme.textStyles.main,
+                    modifier = Modifier.padding(start = 16.dp, top = 12.dp),
                 )
             }
+            // 数值类型说明作为标题居左，当前值显示在右侧、紧邻箭头。
+            val valueLabel = if (spec.sliderValueLabelRes != 0) {
+                stringResource(spec.sliderValueLabelRes)
+            } else {
+                null
+            }
+            SliderPreference(
+                value = value,
+                onValueChange = { ConfigState.set(spec.key, roundToDecimals(it, spec.sliderDecimals)) },
+                valueRange = spec.sliderMin..spec.sliderMax,
+                steps = sliderSteps(spec),
+                title = valueLabel,
+                valueText = formatValue(value, spec, unit),
+                onClick = { showDialog = true },
+                enabled = enabled && masterEnabled,
+            )
         }
     }
 

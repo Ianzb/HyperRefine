@@ -34,6 +34,12 @@ object PercentText {
     /** 按字重缓存 Typeface，避免高频回调里反复 `Typeface.create`。 */
     private val typefaceCache = ConcurrentHashMap<Int, Typeface>()
 
+    /** 垂直位置重试计数（布局未就绪时逐帧重试，带上限）。 */
+    private val verticalRetry = java.util.WeakHashMap<TextView, Int>()
+
+    /** 垂直位置最大重试帧数。 */
+    private const val MAX_VERTICAL_RETRIES = 30
+
     fun percentText(value: Int, max: Int): String {
         if (max <= 0) return "0%"
         val percent = (value.toFloat() * 100f / max).roundToInt()
@@ -113,6 +119,48 @@ object PercentText {
 
         val color = textColor(pref, value, max, icon, iconColorRes, highlightColor)
         if (tv.currentTextColor != color) tv.setTextColor(color)
+    }
+
+    /**
+     * 按配置的上下位置百分比在同级容器内平移百分比文本。
+     *
+     * - `100%`：保持原位（顶部）；
+     * - `0%`：移动到容器底部。
+     *
+     * @param pref 样式配置键前缀（读取 `${pref}_position`，0–100）
+     */
+    fun applyVerticalPosition(tv: TextView, pref: String) {
+        val percent = HookPrefs.getFloat("${pref}_position", 100f)
+        if (percent >= 100f) {
+            verticalRetry.remove(tv)
+            if (tv.translationY != 0f) tv.translationY = 0f
+            return
+        }
+        val parent = tv.parent as? View
+        if (parent == null || parent.height <= 0 || tv.height <= 0) {
+            // 首次打开时视图尚未布局（高度为 0），等下一帧布局完成后再套用，
+            // 否则要等用户改动数值触发下一次回调才会移动。
+            scheduleVerticalRetry(tv, pref)
+            return
+        }
+        val available = parent.height - tv.height - tv.top
+        if (available < 0) {
+            scheduleVerticalRetry(tv, pref)
+            return
+        }
+        verticalRetry.remove(tv)
+        val ty = (1f - percent.coerceIn(0f, 100f) / 100f) * available
+        if (abs(tv.translationY - ty) > 0.5f) tv.translationY = ty
+    }
+
+    /** 布局未就绪时重试（带上限，避免视图长期不可见时无限循环）。 */
+    private fun scheduleVerticalRetry(tv: TextView, pref: String) {
+        val attempts = verticalRetry[tv] ?: 0
+        if (attempts >= MAX_VERTICAL_RETRIES) return
+        verticalRetry[tv] = attempts + 1
+        tv.post {
+            if (tv.isAttachedToWindow) applyVerticalPosition(tv, pref) else verticalRetry.remove(tv)
+        }
     }
 
     /** 计算文本颜色：关闭跟随固定灰色；开启跟随图标（低值灰色 / 高值彩色）。 */

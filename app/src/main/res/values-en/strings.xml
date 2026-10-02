@@ -131,6 +131,12 @@
     <!-- Features -->
     <string name="section_system_ui">System UI</string>
     <string name="feature_control_center">Control center</string>
+    <string name="feature_appearance">Appearance</string>
+    <string name="feature_display">Display</string>
+    <string name="feature_percent">Percentage</string>
+    <string name="section_components">Components</string>
+    <string name="feature_glass">Soft glass</string>
+    <string name="section_beautify">Beautify</string>
 
     <string name="section_security_center">Security</string>
     <string name="fast_charge_notify">Fast-charge notification</string>
@@ -170,7 +176,39 @@
     <string name="cc_glass_theme_material">Force material under third-party themes</string>
     <string name="cc_glass_theme_material_summary">Keep the system advanced material / soft glass enabled under third-party themes (as if the default theme were used); may affect some theme-provided visuals</string>
 
-    <string name="percent_display_section">Volume &amp; brightness bars</string>
+    <string name="section_cc_radius">Appearance</string>
+    <string name="cc_radius_title">Corner radius</string>
+    <string name="cc_radius_master_summary">Uniformly adjust the corner radius of Control Center tiles, player, volume, brightness, device center, the side volume bar and the per-app volume panel</string>
+    <string name="cc_radius_component">Component radius</string>
+    <string name="cc_radius_component_summary">All non-background components (tiles / player / sliders / volume columns / device center, etc.) share this radius</string>
+    <string name="cc_radius_background">Background radius</string>
+    <string name="cc_radius_background_summary">Only blurred backgrounds (secondary panel backgrounds / per-app volume panel) share this radius</string>
+    <string name="cc_radius_item_summary">Enable to use a custom radius for this item</string>
+    <string name="cc_radius_unit">dp</string>
+    <string name="cc_radius_tile">Top-level tiles</string>
+    <string name="cc_radius_media">Player card</string>
+    <string name="cc_radius_slider_l1">Level-1 brightness / volume slider</string>
+    <string name="cc_radius_brightness_l2">Brightness level-2 slider</string>
+    <string name="cc_radius_cc_volume_l1">Control Center volume columns (level 1)</string>
+    <string name="cc_radius_cc_volume_l2">Control Center volume columns (level 2)</string>
+    <string name="cc_radius_side_volume_l1">Side volume columns (level 1)</string>
+    <string name="cc_radius_side_volume_l2">Side volume columns (level 2)</string>
+    <string name="cc_radius_ringer">Mute / DND button</string>
+    <string name="cc_radius_timer">Timer slider</string>
+    <string name="cc_radius_device_center">Fusion device center</string>
+    <string name="cc_radius_app_volume_bar">Per-app volume bars</string>
+    <string name="cc_radius_brightness_l2_bg">Brightness level-2 background</string>
+    <string name="cc_radius_media_l2_bg">Player level-2 background</string>
+    <string name="cc_radius_detail_bg">Detail level-2 background</string>
+    <string name="cc_radius_cc_volume_l2_bg">Control Center volume level-2 background</string>
+    <string name="cc_radius_side_volume_l2_bg">Side volume level-2 background</string>
+    <string name="cc_radius_app_volume_panel">Per-app volume panel background</string>
+    <string name="cc_radius_app_volume_summary">Enable to use a custom radius (requires the per-app volume entry first)</string>
+    <string name="cc_radius_section_master">Overview</string>
+    <string name="cc_radius_section_component">Component radius</string>
+    <string name="cc_radius_section_background">Background radius</string>
+
+    <string name="percent_display_section">Percentage</string>
     <string name="percent_switch_summary">Show a percentage value on the slider; style options appear after enabling</string>
     <string name="percent_style_section">Style</string>
     <string name="percent_font_size">Font size</string>
@@ -188,6 +226,8 @@
     <string name="percent_follow_icon">Follow icon color</string>
     <string name="volume_follow_icon_summary">Follow the volume icon: gray at low volume, blue otherwise; fixed gray when off</string>
     <string name="brightness_follow_icon_summary">Follow the brightness icon: gray at low brightness, gold otherwise; fixed gray when off</string>
+    <string name="percent_position">Height</string>
+    <string name="percent_position_summary">Height of the percentage value: the larger the value, the higher it sits (0% at the bottom, 100% at the top)</string>
     <string name="side_volume_interaction_section">Interaction</string>
     <string name="side_volume_position_section">Display position</string>
     <string name="side_volume_inside">Show percentage inside the bar</string>
@@ -207,6 +247,8 @@
     <string name="app_volume_empty">No app is currently playing</string>
     <string name="app_volume_height_percent">Height</string>
     <string name="app_volume_height_percent_summary">Vertical placement of the panel; 0% lowest, 100% highest, 50% centered</string>
+    <string name="app_volume_hide_blur_bg">Hide blurred background border</string>
+    <string name="app_volume_hide_blur_bg_summary">Hide the panel\'s blurred background border, leaving only the volume bars</string>
     <string name="percent_unit">%</string>
 
     <!-- Update -->

@@ -51,6 +51,7 @@ class CcBrightnessPercentHook : BaseHook() {
                             val (value, max) = PercentText.progressOf(slider) ?: return@runCatching
                             val icon = runCatching { Reflect.callMethod(holder, "getIcon") }.getOrNull() as? View
                             PercentText.show(topText, value, max, PREF, icon, highlightColor = HIGHLIGHT_COLOR)
+                            PercentText.applyVerticalPosition(topText, PREF)
                         }.onFailure { HookHelper.log("$tag: main update failed", it) }
                     }
                 }
@@ -75,6 +76,7 @@ class CcBrightnessPercentHook : BaseHook() {
                                 val (value, max) = PercentText.progressOf(slider) ?: return@runCatching
                                 val icon = runCatching { Reflect.callMethod(thiz, "getVIcon") }.getOrNull() as? View
                                 PercentText.show(topText, value, max, PREF, icon, highlightColor = HIGHLIGHT_COLOR)
+                                PercentText.applyVerticalPosition(topText, PREF)
                             }.onFailure { HookHelper.log("$tag: secondary update failed", it) }
                         }
                     }
@@ -126,6 +128,7 @@ class CcBrightnessPercentHook : BaseHook() {
             val textCenter = (topText.left + topText.right) / 2f
             val delta = width / 2f - textCenter
             if (abs(topText.translationX - delta) > 0.5f) topText.translationX = delta
+            PercentText.applyVerticalPosition(topText, PREF)
         }
     }
 

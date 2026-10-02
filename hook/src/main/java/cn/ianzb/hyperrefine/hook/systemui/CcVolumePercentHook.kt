@@ -67,6 +67,7 @@ class CcVolumePercentHook : BaseHook() {
                 icon = icon,
                 highlightColor = HIGHLIGHT_COLOR,
             )
+            PercentText.applyVerticalPosition(topText, PREF)
         }.onFailure { HookHelper.log("$tag: update failed", it) }
     }
 

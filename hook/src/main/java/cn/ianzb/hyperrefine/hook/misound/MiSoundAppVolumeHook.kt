@@ -21,6 +21,7 @@ import android.widget.TextView
 import cn.ianzb.hyperrefine.hook.base.BaseHook
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.status.HookStatusReporter
+import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
 import java.lang.ref.WeakReference
@@ -79,6 +80,15 @@ class MiSoundAppVolumeHook : BaseHook() {
 
     /** 「当前无正在播放的应用」占位文本。 */
     private var emptyHintView: WeakReference<TextView>? = null
+
+    /**
+     * 正在等待适配器重建 / 布局的卡片。刷新期间保持占位文本可见，待内容真正就绪后再切换，
+     * 避免出现「既无占位、也无音量条」的空白帧或塌缩成很小的状态。
+     */
+    private val pendingContentRefresh = java.util.WeakHashMap<View, Boolean>()
+
+    /** 每张卡片最近一次已套用的空状态（见 EMPTY_STATE_*），用于避免 poll 中重复套用。 */
+    private val emptyStateApplied = java.util.WeakHashMap<View, Int>()
 
     override fun init() {
         hookWindowManager()
@@ -275,6 +285,8 @@ class MiSoundAppVolumeHook : BaseHook() {
             val empty = runCatching { activeAppPackages(context).isEmpty() }.getOrDefault(false)
 
             val vp = findViewPager2(card) ?: (Reflect.getObjectField(controller, "p") as? View)
+            // 内容已真正布局出来才隐藏占位文本，避免刷新瞬间出现空白帧。
+            val contentReady = !empty && pagerHasLaidOutContent(vp)
             val pages = (Reflect.getObjectField(controller, "u") as? List<*>)?.size ?: 1
             if (vp != null) {
                 // 应用数量增多时面板会被拉宽，限制在屏幕可用宽度内，避免溢出屏幕。
@@ -301,7 +313,7 @@ class MiSoundAppVolumeHook : BaseHook() {
 
             adjustAllSlidersInView(vp ?: container)
 
-            val radius = CARD_RADIUS_DP * density
+            val radius = panelRadiusDp().coerceIn(0f, 60f) * density
             val sideMargin = ((if (alignRight) PANEL_RIGHT_MARGIN_DP else PANEL_SIDE_MARGIN_DP) * density).toInt()
             val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
             card.layoutParams = when (val parent = card.parent) {
@@ -332,17 +344,23 @@ class MiSoundAppVolumeHook : BaseHook() {
                     outline.setRoundRect(0, 0, v.width, v.height, radius)
                 }
             }
-            card.elevation = 6f * density
-            applyBackdropBlur(card, radius, isNightMode(context))
+            val hideBlurBg = HookPrefs.getBoolean(AppVolumeKeys.HIDE_BLUR_BG, false)
+            card.elevation = if (hideBlurBg) 0f else 6f * density
+            applyCardBackground(card, radius, isNightMode(context))
             // 首帧模糊 / 边框可能未就绪，布局完成后补套几次。
-            card.post { applyBackdropBlur(card, radius, isNightMode(context)) }
-            card.postDelayed({ applyBackdropBlur(card, radius, isNightMode(context)) }, 200L)
+            card.post { applyCardBackground(card, radius, isNightMode(context)) }
+            card.postDelayed({ applyCardBackground(card, radius, isNightMode(context)) }, 200L)
 
             // 关掉内部音量条/列表项的入场动画 + 逐层关闭裁剪（只保留整体卡片的进入动画）。
             disableChildAnimations(card)
             disableChildAnimations(container)
             setupDismiss(controller, container, card)
-            applyEmptyState(card, vp, empty)
+            applyEmptyState(card, vp, empty, contentReady)
+            emptyStateApplied[card] = when {
+                empty -> EMPTY_STATE_EMPTY
+                contentReady -> EMPTY_STATE_CONTENT
+                else -> EMPTY_STATE_PENDING
+            }
             if (animate) animateIn(card, waitForContent = !empty)
             startPercentPoll(card, controller)
             HookHelper.log("$tag: setupCardLayout done")
@@ -484,12 +502,44 @@ class MiSoundAppVolumeHook : BaseHook() {
      * 无活跃播放应用时，保留卡片的模糊区域、隐藏音量列，并在模糊区域内部居中显示占位文本；
      * 有应用时恢复音量列、隐藏占位文本。
      */
-    private fun applyEmptyState(card: View, vp: View?, empty: Boolean) {
+    private fun applyEmptyState(card: View, vp: View?, empty: Boolean, contentReady: Boolean) {
         runCatching {
             val hint = getOrCreateEmptyHint(card as? ViewGroup ?: return)
-            (vp as? View)?.visibility = if (empty) View.GONE else View.VISIBLE
-            hint.visibility = if (empty) View.VISIBLE else View.GONE
+            // 过渡态（非空但内容尚未布局）用 INVISIBLE：既保证音量列参与布局（不塌缩），
+            // 又保留占位文本直到内容真正就绪，避免「既无占位、也无音量条」的空白帧。
+            vp?.visibility = when {
+                empty -> View.GONE
+                contentReady -> View.VISIBLE
+                else -> View.INVISIBLE
+            }
+            hint.visibility = if (empty || !contentReady) View.VISIBLE else View.GONE
         }.onFailure { HookHelper.log("$tag: applyEmptyState failed", it) }
+    }
+
+    /**
+     * 在 poll 中轻量对齐空状态：内容完成布局后收起占位文本、显示音量条。
+     * 使用 [lastActiveApps]（由展开 / 刷新链路维护）判断是否为空，避免每次轮询都做重量级探测。
+     */
+    private fun syncEmptyState(controller: Any, card: View) {
+        val apps = lastActiveApps ?: return
+        val vp = findViewPager2(card) ?: (Reflect.getObjectField(controller, "p") as? View)
+        val empty = apps.isEmpty()
+        val contentReady = !empty && pagerHasLaidOutContent(vp)
+        val state = when {
+            empty -> EMPTY_STATE_EMPTY
+            contentReady -> EMPTY_STATE_CONTENT
+            else -> EMPTY_STATE_PENDING
+        }
+        if (emptyStateApplied[card] == state) return
+        emptyStateApplied[card] = state
+        applyEmptyState(card, vp, empty, contentReady)
+    }
+
+    /** ViewPager2 内是否已有完成布局的音量条（用于判断刷新后内容真正就绪）。 */
+    private fun pagerHasLaidOutContent(vp: View?): Boolean {
+        val v = vp ?: return false
+        if (v.width <= 0 || v.height <= 0) return false
+        return hasLaidOutSlider(v)
     }
 
     private fun getOrCreateEmptyHint(card: ViewGroup): TextView {
@@ -587,6 +637,7 @@ class MiSoundAppVolumeHook : BaseHook() {
         if (name.contains("MiuiVolumeSeekBar") || name.contains("VerticalSeekBar")) {
             ensurePercentText(v)
             renderPercent(v)
+            applyBarRadius(v)
             val ctx = v.context
             // 与官方侧边音量二级菜单展开列完全同尺寸（64dp × 172dp，间距 14dp）。
             val height = dimenPx(ctx, "o3_miui_volume_expend_height", 172)
@@ -645,6 +696,101 @@ class MiSoundAppVolumeHook : BaseHook() {
         }
     }
 
+    /**
+     * 音量条圆角：改写原生进度 drawable（LayerDrawable 内的 GradientDrawable）与平滑背景
+     * （`miuix.smooth.SmoothContainerDrawable(2)`）的圆角半径。默认值 20dp 与原生一致，等于不改变外观。
+     */
+    private fun applyBarRadius(slider: View) {
+        val radiusDp = barRadiusDp().coerceIn(0f, 60f)
+        val radiusPx = radiusDp * slider.resources.displayMetrics.density
+        runCatching {
+            (slider as? android.widget.ProgressBar)?.let { pb ->
+                setDrawableCornerRadius(pb.progressDrawable, radiusPx)
+            }
+        }.onFailure { HookHelper.log("$tag: apply progressDrawable radius failed", it) }
+        runCatching { setSmoothContainerRadius(slider.background, radiusPx) }
+            .onFailure { HookHelper.log("$tag: apply seekbar background radius failed", it) }
+        (slider as? ViewGroup)?.let { group ->
+            for (i in 0 until group.childCount) {
+                val child = group.getChildAt(i)
+                runCatching { setSmoothContainerRadius(child.background, radiusPx) }
+                runCatching {
+                    (child as? android.widget.ProgressBar)?.let {
+                        setDrawableCornerRadius(it.progressDrawable, radiusPx)
+                    }
+                }
+            }
+        }
+        // 轨道圆角可能挂在音量条的父容器（RoundRectFrameLayout / 列容器）上。
+        var ancestor = slider.parent as? View
+        var depth = 0
+        while (ancestor != null && depth < 3) {
+            runCatching { setSmoothContainerRadius(ancestor.background, radiusPx) }
+            ancestor = ancestor.parent as? View
+            depth++
+        }
+    }
+
+    /** 递归改写 drawable 树中 GradientDrawable 的圆角半径（兼容 Layer / 包装 drawable）。 */
+    private fun setDrawableCornerRadius(drawable: Drawable?, radiusPx: Float) {
+        val d = drawable ?: return
+        when (d) {
+            is android.graphics.drawable.GradientDrawable -> {
+                runCatching {
+                    d.setCornerRadius(radiusPx)
+                    d.invalidateSelf()
+                }
+            }
+            is android.graphics.drawable.LayerDrawable -> {
+                for (i in 0 until d.numberOfLayers) setDrawableCornerRadius(d.getDrawable(i), radiusPx)
+            }
+            else -> {
+                // InsetDrawable / ClipDrawable / RotateDrawable / ScaleDrawable 等包装类。
+                val nested = runCatching {
+                    d.javaClass.getMethod("getDrawable").invoke(d) as? Drawable
+                }.getOrNull()
+                if (nested != null && nested !== d) setDrawableCornerRadius(nested, radiusPx)
+            }
+        }
+    }
+
+    /**
+     * 改写 `miuix.smooth.SmoothContainerDrawable(2)` 的圆角半径。
+     * 方法名为混淆后的单字母，分别尝试 setter 与字段回退。
+     */
+    private fun setSmoothContainerRadius(drawable: Drawable?, radiusPx: Float) {
+        val d = drawable ?: return
+        val name = d.javaClass.name
+        val setters = when {
+            name.endsWith("SmoothContainerDrawable2") -> listOf("i", "setRadius", "setCornerRadius")
+            name.endsWith("SmoothContainerDrawable") -> listOf("e", "setRadius", "setCornerRadius")
+            else -> return
+        }
+        for (methodName in setters) {
+            val ok = runCatching {
+                val m = d.javaClass.getMethod(methodName, Float::class.javaPrimitiveType)
+                m.isAccessible = true
+                m.invoke(d, radiusPx)
+                d.invalidateSelf()
+            }.isSuccess
+            if (ok) return
+        }
+        // 字段回退：`j` / `mRadius` 单一半径，`h` / `mRadii` 四角数组。
+        runCatching {
+            val f = d.javaClass.getDeclaredField("j")
+            f.isAccessible = true
+            f.setFloat(d, radiusPx)
+            d.invalidateSelf()
+        }.onFailure {
+            runCatching {
+                val f = d.javaClass.getDeclaredField("mRadius")
+                f.isAccessible = true
+                f.setFloat(d, radiusPx)
+                d.invalidateSelf()
+            }
+        }
+    }
+
     // ---------------- 模块百分比功能（外观统一，跟随开关） ----------------
 
     private val percentTexts = java.util.WeakHashMap<View, TextView>()
@@ -695,6 +841,8 @@ class MiSoundAppVolumeHook : BaseHook() {
                 icon = null,
                 highlightColor = PERCENT_HIGHLIGHT,
             )
+            // 跟随侧边音量百分比的高度设置
+            cn.ianzb.hyperrefine.hook.systemui.PercentText.applyVerticalPosition(tv, PERCENT_PREF)
         }.onFailure { HookHelper.log("$tag: renderPercent failed", it) }
     }
 
@@ -808,10 +956,14 @@ class MiSoundAppVolumeHook : BaseHook() {
                 if (!card.isAttachedToWindow) {
                     percentPolls.remove(card)
                     openStartedAt.remove(card)
+                    pendingContentRefresh.remove(card)
+                    emptyStateApplied.remove(card)
                     return
                 }
                 runCatching { syncMainMediaVolume(controller, card) }
                 runCatching { updatePercents(card) }
+                runCatching { syncEmptyState(controller, card) }
+                runCatching { reconcileContentRefresh(controller, card) }
                 runCatching { maybeRefreshActiveApps(controller, card) }
                 card.postDelayed(this, 100L)
             }
@@ -839,11 +991,33 @@ class MiSoundAppVolumeHook : BaseHook() {
         if (apps == previous) return
         lastActiveApps = apps
         HookHelper.log("$tag: active apps changed -> ${apps.joinToString()}")
+        pendingContentRefresh[card] = true
         runCatching { Reflect.callMethod(controller, "u") }
             .onFailure { HookHelper.log("$tag: refresh u() failed", it) }
         notifyPager(card)
-        // 列数可能变化，重新套用尺寸 / 百分比。
+        // 列数可能变化，重新套用尺寸 / 百分比。此时内容可能尚未布局，占位文本会保留，
+        // 待 poll 检测到内容真正就绪后再收起占位（见 reconcileContentRefresh）。
         setupCardLayout(controller)
+        card.postDelayed({
+            if (card.isAttachedToWindow) runCatching { setupCardLayout(controller) }
+        }, CONTENT_REFRESH_RETRY_MS)
+    }
+
+    /**
+     * 刷新「正在播放应用」后，等适配器重建并完成布局，再重新套用尺寸与空状态。
+     *
+     * 若只做一次同步 `setupCardLayout`，适配器尚未 notify / 布局时会出现「既无占位文本、
+     * 也无音量条且卡片塌缩」的空白帧。这里在 poll 中持续检查，内容就绪后再收敛一次。
+     */
+    private fun reconcileContentRefresh(controller: Any, card: View) {
+        if (pendingContentRefresh[card] != true) return
+        val context = appContext ?: card.context.applicationContext
+        val empty = runCatching { activeAppPackages(context).isEmpty() }.getOrDefault(false)
+        val vp = findViewPager2(card) ?: (Reflect.getObjectField(controller, "p") as? View)
+        if (empty || pagerHasLaidOutContent(vp)) {
+            pendingContentRefresh[card] = false
+            runCatching { setupCardLayout(controller) }
+        }
     }
 
     /** 读取原生 `playervolume.f.a(Context)` 的活跃播放配置并映射为包名列表。 */
@@ -869,6 +1043,15 @@ class MiSoundAppVolumeHook : BaseHook() {
             runCatching { Reflect.callMethod(adapter, "notifyDataSetChanged") }
                 .onFailure { HookHelper.log("$tag: notifyDataSetChanged failed", it) }
         }, 150L)
+    }
+
+    /** 套用卡片背景：默认模糊边框；开启「隐藏背景模糊边框」时置空背景。 */
+    private fun applyCardBackground(view: View, cornerRadius: Float, isNight: Boolean) {
+        if (HookPrefs.getBoolean(AppVolumeKeys.HIDE_BLUR_BG, false)) {
+            if (view.background != null) view.background = null
+            return
+        }
+        applyBackdropBlur(view, cornerRadius, isNight)
     }
 
     private fun applyBackdropBlur(view: View, cornerRadius: Float, isNight: Boolean) {
@@ -917,6 +1100,27 @@ class MiSoundAppVolumeHook : BaseHook() {
 
     private fun isNightMode(context: Context): Boolean =
         (context.resources.configuration.uiMode and 0x30) == 0x20
+
+    /**
+     * 分应用音量面板圆角（dp）。由控制中心「圆角调整」的统一背景值 / 单项自定义控制。
+     */
+    private fun panelRadiusDp(): Float =
+        ccRadiusDp(CcRadiusKeys.APP_VOLUME_PANEL, CcRadiusKeys.DEFAULT_BACKGROUND)
+
+    /**
+     * 分应用音量**内部音量条**圆角（dp）。由控制中心「圆角调整」的统一组件值 / 单项自定义控制。
+     */
+    private fun barRadiusDp(): Float =
+        ccRadiusDp(CcRadiusKeys.APP_VOLUME_BAR, CcRadiusKeys.DEFAULT_COMPONENT)
+
+    /** 解析统一圆角配置（dp）：单项自定义优先，否则取统一组件 / 背景值。 */
+    private fun ccRadiusDp(item: String, fallback: Float): Float {
+        if (HookPrefs.getBoolean(CcRadiusKeys.customKey(item), CcRadiusKeys.itemCustomDefault(item))) {
+            return HookPrefs.getFloat(CcRadiusKeys.valueKey(item), CcRadiusKeys.itemValueDefault(item))
+        }
+        val key = if (CcRadiusKeys.isBackground(item)) CcRadiusKeys.BACKGROUND else CcRadiusKeys.COMPONENT
+        return HookPrefs.getFloat(key, fallback)
+    }
 
     // ---------------- 展开 / 接收器 ----------------
 
@@ -1062,8 +1266,17 @@ class MiSoundAppVolumeHook : BaseHook() {
         /** 列间距（dp）。 */
         private const val COLUMN_MARGIN_DP = 8
 
-        /** 卡片背景模糊的外圆角半径（dp）。 */
-        private const val CARD_RADIUS_DP = 30f
+        /** 刷新「正在播放应用」后，补套一次尺寸 / 空状态的延迟（ms）。 */
+        private const val CONTENT_REFRESH_RETRY_MS = 350L
+
+        /** 空状态：无正在播放应用（显示占位文本）。 */
+        private const val EMPTY_STATE_EMPTY = 0
+
+        /** 空状态：有应用且音量列已布局完成（显示音量条）。 */
+        private const val EMPTY_STATE_CONTENT = 1
+
+        /** 空状态：有应用但音量列尚未布局完成（占位文本 + 隐藏音量列过渡）。 */
+        private const val EMPTY_STATE_PENDING = 2
 
         /** 面板与屏幕边缘的间距（dp）。 */
         private const val PANEL_SIDE_MARGIN_DP = 16

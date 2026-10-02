@@ -54,11 +54,27 @@
             android:label="@string/third_party_licenses_title"
             android:theme="@style/Theme.HyperRefine" />
         <activity
-            android:name=".ui.screen.features.ControlCenterActivity"
+            android:name=".ui.screen.features.AppearanceActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.features.GlassActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.features.DeviceCenterActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.features.AppVolumeActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity
             android:name=".ui.screen.features.PercentStyleActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.features.CornerRadiusActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity

@@ -119,6 +119,7 @@ class SideVolumePercentHook : BaseHook() {
                     val icon = runCatching { Reflect.callMethod(c, "getIcon") }.getOrNull() as? View
                     val iconColorRes = runCatching { Reflect.callMethod(c, "getIconColorRes") }.getOrNull() as? Int
                     PercentText.show(text, value, max, PREF, icon, iconColorRes, HIGHLIGHT_COLOR)
+                    PercentText.applyVerticalPosition(text, PREF)
                 }
             }
 
@@ -133,6 +134,7 @@ class SideVolumePercentHook : BaseHook() {
             if (panelText != null) {
                 if (pair != null) {
                     PercentText.show(panelText, pair.first, pair.second, PREF, null, null, HIGHLIGHT_COLOR)
+                    PercentText.applyVerticalPosition(panelText, PREF)
                 } else {
                     panelText.setVisible(false)
                 }

@@ -7,6 +7,8 @@ import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassHook
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcMaterialGateHook
+import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusHook
+import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
 
 /**
  * 系统界面（com.android.systemui）目标 Load：
@@ -28,6 +30,7 @@ class SystemUiLoad : BaseLoad() {
         )
         initHook(CcGlassHook(), HookPrefs.getBoolean(CcGlassHook.KEY, false))
         initHook(CcMaterialGateHook(), HookPrefs.getBoolean(CcGlassKeys.THEME_MATERIAL, false))
+        initHook(CcRadiusHook(), HookPrefs.getBoolean(CcRadiusKeys.MASTER, false))
         initHook(AppVolumeEntryHook(), HookPrefs.getBoolean(AppVolumeKeys.ENTRY, false))
     }
 

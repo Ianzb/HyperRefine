@@ -152,7 +152,7 @@ object AppVolumePanel {
         dialogRef = null
     }
 
-    private fun show(
+    fun show(
         root: ViewGroup,
         dialog: View,
         context: Context,

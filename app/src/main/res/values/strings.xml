@@ -246,6 +246,8 @@
     <string name="app_volume_hide_float_summary">隐藏系统左侧的蓝色多应用音量悬浮按钮</string>
     <string name="app_volume_always_show">入口常显</string>
     <string name="app_volume_always_show_summary">关闭时仅在检测到媒体播放时显示入口</string>
+    <string name="app_volume_auto_show">自动显示面板</string>
+    <string name="app_volume_auto_show_summary">打开侧边音量条时自动展开多应用音量面板（入口按钮仍可点击开关）</string>
 
     <string name="app_volume_empty">当前无正在播放的应用</string>
     <string name="app_volume_height_auto">高度自动</string>

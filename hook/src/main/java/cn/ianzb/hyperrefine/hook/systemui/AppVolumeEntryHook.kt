@@ -403,6 +403,8 @@ class AppVolumeEntryHook : BaseHook() {
                 return
             }
             updateVisibility(controller, entry)
+            // 侧边音量条真正显示时，按需自动展开多应用音量面板。
+            if (methodName == "showVolumePanelH") maybeAutoShow(entry)
         }.onFailure { HookHelper.log("$tag: onController failed", it) }
     }
 
@@ -605,6 +607,25 @@ class AppVolumeEntryHook : BaseHook() {
             (HookPrefs.getBoolean(AppVolumeKeys.ALWAYS_SHOW, false) || hasActiveMedia(entry.context))
         applyEntryState(entry, visible, dodge = expanded)
         shiftPanel(entry, visible)
+    }
+
+    /**
+     * 「自动显示」：侧边音量条显示时，若开关开启且入口可见（有媒体 / 常显），自动展开面板。
+     * 入口按钮的点击开关逻辑不变；已展开时（含用户手动关闭后）不重复展开。
+     */
+    private fun maybeAutoShow(entry: View) {
+        if (!HookPrefs.getBoolean(AppVolumeKeys.AUTO_SHOW, false)) return
+        if (AppVolumePanel.isShowing()) return
+        if (lastVisible[entry] != true) return
+        val root = entry.rootView as? ViewGroup ?: return
+        val dialog = findVolumeDialog(entry) ?: return
+        // 延后到本轮布局之后，确保侧边音量条已就位再取坐标 / 展开。
+        entry.post {
+            if (!HookPrefs.getBoolean(AppVolumeKeys.AUTO_SHOW, false)) return@post
+            if (AppVolumePanel.isShowing() || lastVisible[entry] != true) return@post
+            runCatching { AppVolumePanel.show(root, dialog, entry.context, pluginClassLoader, entry) }
+                .onFailure { HookHelper.log("$tag: auto show panel failed", it) }
+        }
     }
 
     private fun onEntryClick(entry: View) {

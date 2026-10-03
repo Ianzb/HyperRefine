@@ -16,6 +16,9 @@ object AppVolumeKeys {
     /** 入口常显；关闭时仅在检测到媒体播放时显示。 */
     const val ALWAYS_SHOW = "app_volume_always_show"
 
+    /** 自动显示：打开侧边音量条时自动展开多应用音量面板（入口按钮仍可点击开关）。 */
+    const val AUTO_SHOW = "app_volume_auto_show"
+
     /** 面板垂直位置百分比（0=顶部，50=居中，100=底部）。 */
     const val HEIGHT_PERCENT = "app_volume_height_percent"
 

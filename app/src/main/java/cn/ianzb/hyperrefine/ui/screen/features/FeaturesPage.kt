@@ -204,6 +204,7 @@ private fun locationSpecs(specs: List<OptionSpec>, location: String): List<Optio
     keys += AppVolumeKeys.ENTRY
     keys += AppVolumeKeys.HIDE_FLOAT
     keys += AppVolumeKeys.ALWAYS_SHOW
+    keys += AppVolumeKeys.AUTO_SHOW
     keys += AppVolumeKeys.HEIGHT_AUTO
     keys += AppVolumeKeys.HEIGHT_PERCENT
     keys += AppVolumeKeys.HIDE_PANEL_BG
@@ -242,6 +243,7 @@ private fun appVolumeSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, AppVolumeKeys.ENTRY),
         specByKey(specs, AppVolumeKeys.HIDE_FLOAT),
         specByKey(specs, AppVolumeKeys.ALWAYS_SHOW),
+        specByKey(specs, AppVolumeKeys.AUTO_SHOW),
         specByKey(specs, AppVolumeKeys.HEIGHT_AUTO),
         specByKey(specs, AppVolumeKeys.HEIGHT_PERCENT),
         specByKey(specs, AppVolumeKeys.HIDE_PANEL_BG),
@@ -655,6 +657,15 @@ private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = list
         type = OptionType.SWITCH,
         titleRes = R.string.app_volume_always_show,
         summaryRes = R.string.app_volume_always_show_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+        dependsOn = AppVolumeKeys.ENTRY,
+    ),
+    OptionSpec(
+        key = AppVolumeKeys.AUTO_SHOW,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_auto_show,
+        summaryRes = R.string.app_volume_auto_show_summary,
         defaultBoolean = false,
         targetPackages = systemUi,
         dependsOn = AppVolumeKeys.ENTRY,

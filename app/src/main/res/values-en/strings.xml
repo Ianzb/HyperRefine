@@ -246,6 +246,8 @@
     <string name="app_volume_hide_float_summary">Hide the blue Multi-app volume floating button on the left side</string>
     <string name="app_volume_always_show">Always show entry</string>
     <string name="app_volume_always_show_summary">When off, the entry only appears while media is playing</string>
+    <string name="app_volume_auto_show">Auto-show panel</string>
+    <string name="app_volume_auto_show_summary">Expand the Multi-app volume panel automatically when the side volume bar opens (the entry button still toggles it)</string>
 
     <string name="app_volume_empty">No app is currently playing</string>
     <string name="app_volume_height_auto">Automatic height</string>

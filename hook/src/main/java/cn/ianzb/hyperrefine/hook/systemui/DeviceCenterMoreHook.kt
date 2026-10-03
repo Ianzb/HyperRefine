@@ -57,6 +57,15 @@ class DeviceCenterMoreHook : BaseHook() {
                     HookHelper.hookAfter(method) { param -> raiseDeviceLimit(param, pluginCl) }
                 }.onFailure { HookHelper.log("$tag: hook device limit failed", it) }
             }
+
+        Reflect.findClassIfExists(CARD_CONTROLLER, pluginCl)
+            ?.declaredMethods
+            ?.filter { it.name == "handleUpdateList" && it.parameterCount == 1 }
+            ?.forEach { method ->
+                method.isAccessible = true
+                runCatching { HookHelper.hookAfter(method) { param -> dropDetailItem(param) } }
+                    .onFailure { HookHelper.log("$tag: hook handleUpdateList failed", it) }
+            }
     }
 
     /**
@@ -98,6 +107,34 @@ class DeviceCenterMoreHook : BaseHook() {
             runCatching { Reflect.callMethod(listener, "onDeviceListChanged", wrapperList) }
                 .onFailure { HookHelper.log("$tag: notify expanded device list failed", it) }
         }
+    }
+
+    /**
+     * 官方卡片用 `FlexboxLayoutManager`，`justifyContent` 由 `deviceItems.size()` 决定：
+     * 设备少于 3 个时 `size`（含末尾省略号）< 4 → `SPACE_EVENLY`，否则靠左。省略号被置
+     * `GONE` 后仍会被 flexbox 当作一个占位项，导致「平均排列」不再居中。
+     *
+     * 这里直接把末尾的 `DetailItem` 从 `deviceItems` 中移除（并通知适配器），让 flexbox 只
+     * 按真实设备数排布；随后按真实设备数重设 `justifyContent`：4 个及以下（填满一行以内）
+     * 平均排列，超过一行则靠左。
+     */
+    private fun dropDetailItem(param: HookParam) {
+        if (!HookPrefs.getBoolean(KEY, false)) return
+        val controller = param.thisObject ?: return
+        val items = runCatching { Reflect.getObjectField(controller, "deviceItems") as? MutableList<Any?> }
+            .getOrNull() ?: return
+        if (items.lastOrNull()?.javaClass?.name != DETAIL_ITEM) return
+
+        val realCount = items.size - 1
+        items.removeAt(realCount)
+        val adapter = runCatching { Reflect.getObjectField(controller, "_adapter") }.getOrNull() ?: return
+        runCatching { Reflect.callMethod(adapter, "notifyItemRemoved", realCount) }
+            .onFailure { HookHelper.log("$tag: notify detail removal failed", it) }
+
+        val layoutManager = runCatching { Reflect.getObjectField(controller, "layoutManager") }.getOrNull() ?: return
+        val justifyContent = if (realCount <= 3) SPACE_EVENLY else FLEX_START
+        runCatching { Reflect.callMethod(layoutManager, "setJustifyContent", justifyContent) }
+            .onFailure { HookHelper.log("$tag: set justifyContent failed", it) }
     }
 
     private fun overrideMode(param: HookParam) {
@@ -166,5 +203,9 @@ class DeviceCenterMoreHook : BaseHook() {
 
         /** 两行满格可放的设备数（4 × 2）。 */
         private const val MAX_DEVICES = 8
+
+        /** `FlexboxLayoutManager` 的 `JustifyContent` 取值。 */
+        private const val FLEX_START = 0
+        private const val SPACE_EVENLY = 5
     }
 }

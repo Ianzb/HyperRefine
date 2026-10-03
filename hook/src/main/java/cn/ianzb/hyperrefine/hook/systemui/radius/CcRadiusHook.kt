@@ -2,8 +2,6 @@ package cn.ianzb.hyperrefine.hook.systemui.radius
 
 import android.content.res.Resources
 import android.graphics.Outline
-import android.graphics.Path
-import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.view.View
 import android.view.ViewOutlineProvider
@@ -61,6 +59,9 @@ class CcRadiusHook : BaseHook() {
         hookBackgroundSetters(pluginCl, QS_TILE_ICON_VIEW, CcRadiusKeys.TILE)
         // 一级亮度 / 音量滑块
         hookEndpointAfter(pluginCl, TOGGLE_SLIDER_HOLDER, listOf("updateSize", "updateResources"), { CcRadiusKeys.SLIDER_L1 }, ::forceLevel1Slider)
+        // 官方在构造函数里于 updateResources/updateSize 之后才设置各 outline provider，
+        // 会覆盖上面的强制；构造结束后再套一次。
+        hookLevel1SliderCtor(pluginCl)
         // 亮度二级
         hookEndpointAfter(pluginCl, BRIGHTNESS_SLIDER_DELEGATE, listOf("updateSize", "updateResources"), { CcRadiusKeys.BRIGHTNESS_L2 }, ::forceBrightnessL2)
         // 亮度二级动画每帧同步玻璃轮廓（否则玻璃 SDF 仍用原始半径，描边错位）
@@ -368,49 +369,46 @@ class CcRadiusHook : BaseHook() {
 
     private fun forceLevel1Slider(obj: Any, px: Float) {
         val binding = Reflect.getObjectField(obj, "binding") ?: return
-        // 轨道（遮罩源）：父级 toggle_slider_inner 以它为圆角裁剪顶端。
+        // 轨道背景：让官方 `toggle_slider_inner` 的遮罩半径跟随自定义值。
         for (field in listOf("progressBg", "bionicsProgressBg")) {
             val v = Reflect.getObjectField(binding, field) as? View ?: continue
             setGradientCornerRadius(v.background, px)
             v.invalidateOutline()
         }
-        (Reflect.getObjectField(binding, "toggleSliderInner") as? View)?.invalidateOutline()
-
-        // 填充：官方 Outline 只能四角同值，会把上边也裁圆。替换为「只圆底角」的路径轮廓：
-        // 底角 = 配置圆角，上边平直。进度变化时系统会 invalidateOutline 重算。
-        val progress = Reflect.getObjectField(binding, "progress") as? View ?: return
-        val slider = Reflect.getObjectField(binding, "slider") as? android.widget.SeekBar ?: return
-        progress.clipToOutline = true
-        progress.outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) {
-                val w = view.width.toFloat()
-                val h = view.height.toFloat()
-                if (w <= 0f || h <= 0f) return
-                val r = px.coerceIn(0f, minOf(w, h) / 2f)
-                // 轨道形状：整块圆角矩形
-                val track = Path().apply {
-                    addRoundRect(RectF(0f, 0f, w, h), r, r, Path.Direction.CW)
-                }
-                // 填充区域：从当前进度顶部到底部（上边平直）
-                val max = slider.max
-                val ratio = if (max > 0) slider.progress.toFloat() / max.toFloat() else 0f
-                val top = ((1f - ratio) * h).coerceIn(0f, h)
-                val fill = Path().apply {
-                    addRect(0f, top, w, h, Path.Direction.CW)
-                }
-                // 交集：底角=轨道圆角；数值拉满时上角也随轨道变圆
-                val result = Path()
-                result.op(track, fill, Path.Op.INTERSECT)
-                if (top >= h || result.isEmpty) {
-                    // 数值为 0：裁到零高度（不显示填充）
-                    outline.setRect(0, view.height, view.width, view.height)
-                } else {
-                    runCatching { outline.setPath(result) }
-                        .onFailure { outline.setRoundRect(0, top.toInt(), view.width, view.height, r) }
+        // 遮罩：`toggle_slider_inner`（clipToOutline）以轨道圆角裁剪填充。显式固定其轮廓半径，
+        // 不再修改白色条 `progress` 自身的填充轮廓（其官方轮廓负责按进度切顶部，遮罩负责外圈圆角）。
+        val inner = Reflect.getObjectField(binding, "toggleSliderInner") as? View
+        if (inner != null) {
+            inner.clipToOutline = true
+            inner.outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, px)
                 }
             }
+            inner.invalidateOutline()
         }
-        progress.invalidateOutline()
+    }
+
+    /**
+     * 官方 `ToggleSliderViewHolder` 构造函数在 `updateResources/updateSize`（触发我方强制）**之后**才
+     * 设置 `progress` / `toggleSliderInner` 的 outline provider（官方 147/158 行），会覆盖我方自定义轮廓，
+     * 导致首次创建时音量条白色部分按原生半径裁剪。这里在构造结束后重套一次。
+     */
+    private fun hookLevel1SliderCtor(cl: ClassLoader) {
+        val cls = Reflect.findClassIfExists(TOGGLE_SLIDER_HOLDER, cl) ?: return
+        var hooked = 0
+        cls.declaredConstructors.forEach { ctor ->
+            ctor.isAccessible = true
+            runCatching {
+                HookHelper.hookAfter(ctor) { param ->
+                    val obj = param.thisObject ?: return@hookAfter
+                    val px = pxFor(CcRadiusKeys.SLIDER_L1) ?: return@hookAfter
+                    forceLevel1Slider(obj, px)
+                }
+                hooked++
+            }.onFailure { HookHelper.log("$tag: hook ToggleSliderViewHolder ctor failed", it) }
+        }
+        HookHelper.log("$tag: hooked ToggleSliderViewHolder ctor x$hooked")
     }
 
     private fun forceBrightnessL2(obj: Any, px: Float) {

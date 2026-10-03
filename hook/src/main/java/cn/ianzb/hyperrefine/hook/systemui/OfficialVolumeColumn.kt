@@ -25,6 +25,9 @@ object OfficialVolumeColumnFactory {
     /** 官方滑条以 1000 为满值（百分比 0..100 → 0..1000）。 */
     private const val SLIDER_MAX = 1000
 
+    /** 多应用音量滑条标记，用于让入口 hook 的边缘动画镜像跳过本面板的滑条。 */
+    const val SLIDER_TAG = "hyperrefine_multi_app_slider"
+
     private const val FIRST_FAKE_STREAM = 10_000
     private const val LAST_FAKE_STREAM = 999_999
 
@@ -128,6 +131,8 @@ object OfficialVolumeColumnFactory {
             ?: return null
         val slider = runCatching { columnClass.getMethod("getSlider").invoke(instance) as? SeekBar }.getOrNull()
             ?: return null
+        // 标记本面板滑条：入口 hook 的边缘动画镜像会跳过它，避免带着入口 / 勿扰按钮一起动。
+        slider.tag = SLIDER_TAG
         val progressView = runCatching { columnClass.getMethod("getProgressView").invoke(instance) as? View }
             .getOrNull() ?: return null
 
@@ -241,24 +246,35 @@ object OfficialVolumeColumnFactory {
 
     /**
      * 复刻模块对侧边音量列的处理（`CcGlassHook.glassVolumeColumns`）：
-     * 清除滑条深色兜底背景（`volume_column_view` / `volume_column_slider_bg_blend`），
-     * 并对音量列与滑条套柔光玻璃。
+     * 清除各层的深色兜底背景、把滑条进度 drawable 置空，让音量条透出面板自身的材质，
+     * 避免出现「深色压暗」。
      */
     private fun applyModuleGlass(view: View, classLoader: ClassLoader) {
         runCatching {
             CcGlassApi.init(classLoader)
-            // 尺寸为 0 时套玻璃会按 0 尺寸算出无效参数，等布局完成后再套。
+            // 尺寸为 0 时会按 0 尺寸算出无效材质，等布局完成后再套。
             if (view.width == 0 || view.height == 0) {
                 view.post { if (view.isAttachedToWindow) applyModuleGlass(view, classLoader) }
                 return
             }
             CcGlassApi.apply(view, "DefaultContentBgMaterialToken")
+            // 列根视图的深色实心兜底背景（ColorDrawable）也是深色来源之一。
+            if (view.background is android.graphics.drawable.ColorDrawable) view.background = null
             traverseGlass(view) { v ->
                 when (idName(v)) {
-                    "volume_column_view", "volume_column_slider_bg_blend" -> v.background = null
+                    "volume_column_view",
+                    "volume_column_slider_bg_blend",
+                    "volume_column_slider_bg_glass",
+                    -> v.background = null
                     "volume_column_slider" -> {
                         v.background = null
-                        CcGlassApi.applyStyle(v, CcGlassApi.bionics("DEFAULT_GLASS_TOKEN"))
+                        if (v is SeekBar) {
+                            runCatching {
+                                v.progressDrawable = android.graphics.drawable.ColorDrawable(
+                                    android.graphics.Color.TRANSPARENT,
+                                )
+                            }
+                        }
                     }
                 }
             }

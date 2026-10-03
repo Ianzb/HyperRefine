@@ -295,7 +295,7 @@ object AppVolumePanel {
             attrs.dimAmount = original.first
             attrs.flags = original.second
             Reflect.callMethod(viewRoot, "setLayoutParams", attrs)
-        }.onFailure { HookHelper.log("$TAG: restoreWindowDim failed", it) }
+        }
     }
 
     // ---------------- 窗口触摸区域 ----------------

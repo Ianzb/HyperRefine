@@ -157,6 +157,7 @@ const val KEY_DEVICE_CENTER = "feature_device_center"
 const val KEY_APP_VOLUME = "feature_app_volume"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
 const val KEY_DEVICE_CENTER_LANDSCAPE_RIGHT = "device_center_landscape_right"
+const val KEY_DEVICE_CENTER_SHRINK_HIT_AREA = "device_center_shrink_hit_area"
 const val KEY_SECURITY_CENTER = "feature_security_center"
 const val KEY_DEVICE_CONNECT = "feature_device_connect"
 const val KEY_CC_RADIUS = "feature_cc_radius"
@@ -228,6 +229,7 @@ private fun deviceCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
         specByKey(specs, KEY_DEVICE_CENTER_HIDE_MORE),
         specByKey(specs, KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
+        specByKey(specs, KEY_DEVICE_CENTER_SHRINK_HIT_AREA),
     )
 
 /** 多应用音量二级页内的配置项，用于功能页搜索直达。 */
@@ -302,6 +304,15 @@ internal fun featureSpecs(): List<OptionSpec> {
             defaultBoolean = false,
             targetPackages = systemUi,
             deviceScope = setOf(DeviceType.PHONE),
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_DEVICE_CENTER_SHRINK_HIT_AREA,
+            type = OptionType.SWITCH,
+            titleRes = R.string.device_center_shrink_hit_area,
+            summaryRes = R.string.device_center_shrink_hit_area_summary,
+            defaultBoolean = false,
+            targetPackages = systemUi,
             showStatus = true,
         ),
         OptionSpec(

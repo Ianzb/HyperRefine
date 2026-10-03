@@ -70,6 +70,7 @@ class AppVolumeEntryHook : BaseHook() {
             hookRingerLayout(pluginCl)
             hookController(pluginCl)
             hookSeekBarAnim(pluginCl)
+            hookRingerButtonDelay(pluginCl)
         }
     }
 
@@ -312,6 +313,8 @@ class AppVolumeEntryHook : BaseHook() {
     /** 把原生对按钮 `bg_blur` 的平移 / 缩放增量同步到入口的 `bg_blur`。 */
     private fun mirrorAnim(slider: View, name: String, args: Array<out Any?>?) {
         if (idBlur == 0) return
+        // 多应用音量面板的滑条不参与镜像，否则其边缘动画会带着入口 / 勿扰按钮一起动。
+        if (slider.tag == OfficialVolumeColumnFactory.SLIDER_TAG) return
         val entry = findEntry(slider.rootView) ?: return
         if (entry.visibility != View.VISIBLE) return
         val blur = entry.findViewById<View>(idBlur) ?: return
@@ -335,6 +338,33 @@ class AppVolumeEntryHook : BaseHook() {
                 blur.scaleY = 1f
             }
         }
+    }
+
+    /**
+     * 追加的入口按钮在官方「静音 / 勿扰」之后出现。
+     *
+     * 官方 `VolumeShowHideAnimatorKt.createRingerButtonArgs` 只区分 index==0（30ms）与其余（50ms），
+     * 因此入口（index≥2）与勿扰（index==1）延迟相同、几乎同步。这里对 index≥2 继续递增延迟，
+     * 使其保持「自上而下递增」的出现节奏。
+     */
+    private fun hookRingerButtonDelay(pluginCl: ClassLoader) {
+        val cls = Reflect.findClassIfExists(RINGER_BUTTON_ARGS_CLASS, pluginCl) ?: return
+        val method = cls.declaredMethods.firstOrNull {
+            it.name == "createRingerButtonArgs" && it.parameterCount == 3
+        } ?: return
+        method.isAccessible = true
+        runCatching {
+            HookHelper.hookAfter(method) { param ->
+                // 第 1 个参数为「展开 / 出现」标志；关闭动画本无延迟，不能动。
+                if (param.args.getOrNull(0) as? Boolean != true) return@hookAfter
+                val index = param.args.getOrNull(1) as? Int ?: return@hookAfter
+                if (index < 2) return@hookAfter
+                val args = param.result ?: return@hookAfter
+                // index 1 为 50ms；index ≥2 每级 +20ms。
+                val delayMs = (0.05 + 0.02 * (index - 1)) * 1000.0
+                runCatching { Reflect.callMethod(args, "setDelayX", delayMs.toLong()) }
+            }
+        }.onFailure { HookHelper.log("$tag: hook ringer button delay failed", it) }
     }
 
     // ---------------- 控制器：显隐 / 上移 ----------------
@@ -641,6 +671,8 @@ class AppVolumeEntryHook : BaseHook() {
             "com.android.systemui.miui.volume.MiuiVolumeSeekBar"
         private const val ANIM_LISTENER_IFACE =
             "com.android.systemui.miui.volume.MiuiVolumeSeekBar\$SeekBarAnimListener"
+        private const val RINGER_BUTTON_ARGS_CLASS =
+            "com.android.systemui.miui.volume.VolumeShowHideAnimatorKt"
         private const val HELPER_CLASS =
             "com.android.systemui.miui.volume.MiuiRingerModeLayout\$RingerButtonHelper"
 

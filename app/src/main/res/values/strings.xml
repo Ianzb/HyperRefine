@@ -169,6 +169,8 @@
     <string name="device_center_hide_more_summary">隐藏融合设备中心末尾的「…」按钮，设备刚好占满一行时不再换行</string>
     <string name="device_center_landscape_right">横屏融合设备中心右置</string>
     <string name="device_center_landscape_right_summary">手机横屏时把融合设备中心从控制中心左侧移到右侧（仅手机可用）</string>
+    <string name="device_center_shrink_hit_area">缩小设备点击范围</string>
+    <string name="device_center_shrink_hit_area_summary">把每个设备的点击判定范围缩小到图标本身，点击卡片内的空白处改为打开融合设备中心（原来会打开对应设备）</string>
 
     <string name="section_cc_glass">柔光玻璃</string>
     <string name="cc_glass_master">启用柔光玻璃</string>

@@ -13,7 +13,7 @@ import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
 /**
  * 系统界面（com.android.systemui）目标 Load：
  * 控制中心音量条 / 控制中心亮度条 / 侧边音量条的百分比数值显示，
- * 以及融合设备中心隐藏末尾「…」省略卡片。
+ * 以及融合设备中心隐藏末尾「…」省略卡片、缩小设备点击判定范围。
  */
 class SystemUiLoad : BaseLoad() {
 
@@ -24,6 +24,10 @@ class SystemUiLoad : BaseLoad() {
         initHook(CcBrightnessPercentHook(), HookPrefs.getBoolean(CcBrightnessPercentHook.KEY, false))
         initHook(SideVolumePercentHook(), HookPrefs.getBoolean(SideVolumePercentHook.KEY, false))
         initHook(DeviceCenterMoreHook(), HookPrefs.getBoolean(DeviceCenterMoreHook.KEY, false))
+        initHook(
+            DeviceCenterHitAreaHook(),
+            HookPrefs.getBoolean(DeviceCenterHitAreaHook.KEY, false),
+        )
         initHook(
             DeviceCenterLandscapeRightHook(),
             HookPrefs.getBoolean(DeviceCenterLandscapeRightHook.KEY, false),

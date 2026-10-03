@@ -169,6 +169,8 @@
     <string name="device_center_hide_more_summary">Hide the “…” button at the end of the device center so a full row of devices no longer wraps</string>
     <string name="device_center_landscape_right">Landscape device center on right</string>
     <string name="device_center_landscape_right_summary">In phone landscape, move the fusion device center from the left to the right side of Control Center (phones only)</string>
+    <string name="device_center_shrink_hit_area">Shrink device tap area</string>
+    <string name="device_center_shrink_hit_area_summary">Shrink each device’s tappable area to its icon, so tapping blank space in the card opens the Fusion Device Center instead of that device</string>
 
     <string name="section_cc_glass">Soft glass</string>
     <string name="cc_glass_master">Enable soft glass</string>

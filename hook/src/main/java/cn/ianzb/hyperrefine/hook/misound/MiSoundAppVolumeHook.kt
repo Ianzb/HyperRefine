@@ -1102,24 +1102,33 @@ class MiSoundAppVolumeHook : BaseHook() {
         (context.resources.configuration.uiMode and 0x30) == 0x20
 
     /**
-     * 分应用音量面板圆角（dp）。由控制中心「圆角调整」的统一背景值 / 单项自定义控制。
+     * 分应用音量面板圆角（dp）。未启用「圆角调整」时保持 1.3.0 的默认值；
+     * 启用后由统一背景值 / 单项自定义控制。
      */
-    private fun panelRadiusDp(): Float =
-        ccRadiusDp(CcRadiusKeys.APP_VOLUME_PANEL, CcRadiusKeys.DEFAULT_BACKGROUND)
+    private fun panelRadiusDp(): Float = ccRadiusDp(CcRadiusKeys.APP_VOLUME_PANEL)
 
     /**
-     * 分应用音量**内部音量条**圆角（dp）。由控制中心「圆角调整」的统一组件值 / 单项自定义控制。
+     * 分应用音量**内部音量条**圆角（dp）。未启用「圆角调整」时保持 1.3.0 的默认值；
+     * 启用后由统一组件值 / 单项自定义控制。
      */
-    private fun barRadiusDp(): Float =
-        ccRadiusDp(CcRadiusKeys.APP_VOLUME_BAR, CcRadiusKeys.DEFAULT_COMPONENT)
+    private fun barRadiusDp(): Float = ccRadiusDp(CcRadiusKeys.APP_VOLUME_BAR)
 
-    /** 解析统一圆角配置（dp）：单项自定义优先，否则取统一组件 / 背景值。 */
-    private fun ccRadiusDp(item: String, fallback: Float): Float {
+    /**
+     * 解析分应用音量圆角配置（dp）：
+     * - 未启用「圆角调整」总开关：使用该功能 1.3.0 的默认圆角（开启自定义圆角前的值）；
+     * - 启用后：单项自定义优先，否则取统一组件 / 背景值。
+     */
+    private fun ccRadiusDp(item: String): Float {
+        val defaultValue = CcRadiusKeys.itemValueDefault(item)
+        if (!HookPrefs.getBoolean(CcRadiusKeys.MASTER, false)) return defaultValue
         if (HookPrefs.getBoolean(CcRadiusKeys.customKey(item), CcRadiusKeys.itemCustomDefault(item))) {
-            return HookPrefs.getFloat(CcRadiusKeys.valueKey(item), CcRadiusKeys.itemValueDefault(item))
+            return HookPrefs.getFloat(CcRadiusKeys.valueKey(item), defaultValue)
         }
-        val key = if (CcRadiusKeys.isBackground(item)) CcRadiusKeys.BACKGROUND else CcRadiusKeys.COMPONENT
-        return HookPrefs.getFloat(key, fallback)
+        val background = CcRadiusKeys.isBackground(item)
+        val key = if (background) CcRadiusKeys.BACKGROUND else CcRadiusKeys.COMPONENT
+        val unifiedDefault =
+            if (background) CcRadiusKeys.DEFAULT_BACKGROUND else CcRadiusKeys.DEFAULT_COMPONENT
+        return HookPrefs.getFloat(key, unifiedDefault)
     }
 
     // ---------------- 展开 / 接收器 ----------------

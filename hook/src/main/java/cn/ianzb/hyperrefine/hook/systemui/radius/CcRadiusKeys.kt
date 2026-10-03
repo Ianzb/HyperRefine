@@ -130,9 +130,17 @@ object CcRadiusKeys {
     /** 亮度二级滑块默认圆角（dp）。 */
     const val BRIGHTNESS_L2_VALUE_DEFAULT = 40f
 
+    /** 分应用音量内部音量条默认圆角（dp，1.3.0 的默认值）。 */
+    const val APP_VOLUME_BAR_VALUE_DEFAULT = 20f
+
+    /** 分应用音量面板背景默认圆角（dp，1.3.0 的默认值）。 */
+    const val APP_VOLUME_PANEL_VALUE_DEFAULT = 30f
+
     /** 单项数值默认值（dp）。 */
     fun itemValueDefault(item: String): Float = when (item) {
         BRIGHTNESS_L2 -> BRIGHTNESS_L2_VALUE_DEFAULT
+        APP_VOLUME_BAR -> APP_VOLUME_BAR_VALUE_DEFAULT
+        APP_VOLUME_PANEL -> APP_VOLUME_PANEL_VALUE_DEFAULT
         else -> DEFAULT_ITEM
     }
 

@@ -298,20 +298,35 @@ object AppVolumePanel {
     /**
      * 「高度自动」：把面板内音量条竖直中心对齐到侧边音量条音量条的中心。
      *
-     * 每帧用屏幕坐标计算残差并叠加到 `translationY`，因此面板 / 侧边条移动时都能持续跟随。
+     * 使用**布局坐标**（`getTop()` 逐级累加，不含 `translationY`/`scale`）计算，因此不会跟随
+     * 侧边音量条拉到端点时的边界弹性动画（整列上下平移 / 缩放），只跟随面板整体的真实位移
+     * （如入口按钮出现时整条侧边音量条的上移）。
      */
     private fun alignToDialogBar(panel: View, dialog: View) {
         runCatching {
             val panelSlider = officialColumns.firstOrNull()?.slider ?: return
             val dialogSlider = findSideVolumeSlider(dialog) ?: return
             if (panelSlider.height <= 0 || dialogSlider.height <= 0) return
-            val panelLoc = IntArray(2)
-            val dialogLoc = IntArray(2)
-            panelSlider.getLocationOnScreen(panelLoc)
-            dialogSlider.getLocationOnScreen(dialogLoc)
-            val dy = (dialogLoc[1] + dialogSlider.height / 2f) - (panelLoc[1] + panelSlider.height / 2f)
-            if (kotlin.math.abs(dy) > 0.5f) panel.translationY += dy
+            val root = panel.rootView
+            val panelTop = layoutTopTo(panelSlider, root) ?: return
+            val dialogTop = layoutTopTo(dialogSlider, root) ?: return
+            val panelCenter = panelTop + panelSlider.height / 2f
+            // 侧边面板整体位移（如入口出现时的上移）用 translationY 表示，需保留。
+            val dialogCenter = dialogTop + dialogSlider.height / 2f + dialog.translationY
+            val ty = dialogCenter - panelCenter
+            if (kotlin.math.abs(panel.translationY - ty) > 0.5f) panel.translationY = ty
         }
+    }
+
+    /** 计算 [view] 相对 [ancestor] 的布局 Y（逐级累加 `getTop()`，不含平移 / 缩放）。 */
+    private fun layoutTopTo(view: View, ancestor: View): Int? {
+        var current: View? = view
+        var top = 0
+        while (current != null && current !== ancestor) {
+            top += current.top
+            current = current.parent as? View
+        }
+        return if (current === ancestor) top else null
     }
 
     /** 在侧边音量条视图里找到它的音量列滑条（id `volume_column_slider`）。 */

@@ -554,7 +554,7 @@ private fun ccRadiusSpecs(systemUi: List<String>): List<OptionSpec> = buildList 
                 sliderUnitRes = R.string.cc_radius_unit,
                 sliderValueLabelRes = ccRadiusItemTitle(item),
                 targetPackages = if (isAppVolume) listOf(AppVolumeKeys.TARGET_PACKAGE) else systemUi,
-                dependsOn = CcRadiusKeys.MASTER,
+                // 单项自定义不依赖总开关：总开关关闭时仍可单独启用并生效。
                 masterKey = CcRadiusKeys.customKey(item),
                 masterDefault = CcRadiusKeys.itemCustomDefault(item),
             )
@@ -585,14 +585,14 @@ private fun ccRadiusUnifiedSpec(
 )
 
 private fun ccRadiusItemTitle(item: String): Int = when (item) {
-    CcRadiusKeys.TILE -> R.string.cc_radius_tile
+    CcRadiusKeys.HORIZONTAL_TILE -> R.string.cc_radius_horizontal_tile
+    CcRadiusKeys.SMALL_TILE -> R.string.cc_radius_small_tile
     CcRadiusKeys.MEDIA -> R.string.cc_radius_media
     CcRadiusKeys.SLIDER_L1 -> R.string.cc_radius_slider_l1
     CcRadiusKeys.BRIGHTNESS_L2 -> R.string.cc_radius_brightness_l2
-    CcRadiusKeys.CC_VOLUME_L1 -> R.string.cc_radius_cc_volume_l1
-    CcRadiusKeys.CC_VOLUME_L2 -> R.string.cc_radius_cc_volume_l2
     CcRadiusKeys.SIDE_VOLUME_L1 -> R.string.cc_radius_side_volume_l1
     CcRadiusKeys.SIDE_VOLUME_L2 -> R.string.cc_radius_side_volume_l2
+    CcRadiusKeys.CC_VOLUME_L2 -> R.string.cc_radius_cc_volume_l2
     CcRadiusKeys.RINGER -> R.string.cc_radius_ringer
     CcRadiusKeys.TIMER -> R.string.cc_radius_timer
     CcRadiusKeys.DEVICE_CENTER -> R.string.cc_radius_device_center
@@ -603,7 +603,7 @@ private fun ccRadiusItemTitle(item: String): Int = when (item) {
     CcRadiusKeys.CC_VOLUME_L2_BG -> R.string.cc_radius_cc_volume_l2_bg
     CcRadiusKeys.SIDE_VOLUME_L2_BG -> R.string.cc_radius_side_volume_l2_bg
     CcRadiusKeys.APP_VOLUME_PANEL -> R.string.cc_radius_app_volume_panel
-    else -> R.string.cc_radius_tile
+    else -> R.string.cc_radius_horizontal_tile
 }
 
 /** 「分应用音量」配置项（侧边音量条）。 */

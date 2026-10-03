@@ -38,8 +38,11 @@ class CcRadiusHook : BaseHook() {
     @Volatile
     private var inBlurCorner = false
 
-    /** 当前 `VolumeColumn.setRadius` 的来源：true=控制中心，false=侧边，null=未知。 */
-    private val volumeColumnIsCC = ThreadLocal<Boolean?>()
+    /** 当前 `VolumeColumn.setRadius` 期间的展开态：true=展开，false=收起，null=非音量列上下文。 */
+    private val volumeColumnIsExpanded = ThreadLocal<Boolean?>()
+
+    /** 当前音量列是否属于控制中心二级音量面板（`isControlCenterPanel`）：true=CC，false/未设置=侧边。 */
+    private val volumeColumnIsCCPanel = ThreadLocal<Boolean?>()
 
     private val dimenItemCache = HashMap<Long, String?>()
 
@@ -52,11 +55,12 @@ class CcRadiusHook : BaseHook() {
     private fun hookPlugin(pluginCl: ClassLoader) {
         HookHelper.log("$tag: hooking plugin classes")
 
-        // 一级磁贴
-        hookEndpointAfter(pluginCl, QS_CARD_ITEM_VIEW, listOf("updateCornerRadius"), { CcRadiusKeys.TILE }, ::forceTileCard)
-        hookEndpointAfter(pluginCl, QS_TILE_ICON_VIEW, listOf("updateSize", "updateCornerRadius"), { CcRadiusKeys.TILE }, ::forceTileIcon)
+        // 横向磁贴（WLAN / 数据等大卡片）
+        hookEndpointAfter(pluginCl, QS_CARD_ITEM_VIEW, listOf("updateCornerRadius"), { CcRadiusKeys.HORIZONTAL_TILE }, ::forceTileCard)
+        // 小磁贴（下方 1x1 组件）
+        hookEndpointAfter(pluginCl, QS_TILE_ICON_VIEW, listOf("updateSize", "updateCornerRadius"), { CcRadiusKeys.SMALL_TILE }, ::forceTileIcon)
         // 磁贴背景重建时补一次
-        hookBackgroundSetters(pluginCl, QS_TILE_ICON_VIEW, CcRadiusKeys.TILE)
+        hookBackgroundSetters(pluginCl, QS_TILE_ICON_VIEW, CcRadiusKeys.SMALL_TILE)
         // 一级亮度 / 音量滑块
         hookEndpointAfter(pluginCl, TOGGLE_SLIDER_HOLDER, listOf("updateSize", "updateResources"), { CcRadiusKeys.SLIDER_L1 }, ::forceLevel1Slider)
         // 官方在构造函数里于 updateResources/updateSize 之后才设置各 outline provider，
@@ -87,6 +91,7 @@ class CcRadiusHook : BaseHook() {
         hookRadiusProvider(pluginCl, TIMER_ITEM_RES, "getRadius", CcRadiusKeys.TIMER)
         // 音量列：getRadius 为可靠端点（setResultValue）→ 自定义；上下文区分 CC / 侧边
         hookVolumeColumnContext(pluginCl)
+        hookVolumeColumnOwner(pluginCl)
         hookVolumeColumnRadius(pluginCl)
         // 音量二级模糊容器（blur SDK，非 dimen）
         hookVolumeBlurBackground(pluginCl)
@@ -109,23 +114,33 @@ class CcRadiusHook : BaseHook() {
         // 动画插值仍由官方 setter 完成（setter 不 hook）。
         // 只 hook outline（进度填充半径必须保持原生小值，否则 min() 会被取成大值把填充裁成圆）
         // 详情/收回动画端点读 getCornerRadius()，令其返回自定义，避免收回末尾回到 hook 前圆角
-        hookGetterValue(pluginCl, QS_CARD_ITEM_VIEW, listOf("getCornerRadius")) { CcRadiusKeys.TILE }
-        hookGetterValue(pluginCl, QS_TILE_ICON_VIEW, listOf("getCornerRadius")) { CcRadiusKeys.TILE }
+        hookGetterValue(pluginCl, QS_CARD_ITEM_VIEW, listOf("getCornerRadius")) { CcRadiusKeys.HORIZONTAL_TILE }
+        hookGetterValue(pluginCl, QS_TILE_ICON_VIEW, listOf("getCornerRadius")) { CcRadiusKeys.SMALL_TILE }
         // DetailPanelAnimator 的 fromView 是 ViewHolder（DetailFromView），直接 hook 其 getCornerRadius
-        hookGetterValue(pluginCl, QS_CARD_VIEW_HOLDER, listOf("getCornerRadius")) { CcRadiusKeys.TILE }
-        hookGetterValue(pluginCl, QS_ITEM_VIEW_HOLDER, listOf("getCornerRadius")) { CcRadiusKeys.TILE }
+        hookGetterValue(pluginCl, QS_CARD_VIEW_HOLDER, listOf("getCornerRadius")) { CcRadiusKeys.HORIZONTAL_TILE }
+        hookGetterValue(pluginCl, QS_ITEM_VIEW_HOLDER, listOf("getCornerRadius")) { CcRadiusKeys.SMALL_TILE }
         hookGetterValue(pluginCl, MEDIA_PLAYER_HOLDER, listOf("getCornerRadius")) { CcRadiusKeys.MEDIA }
         // 各二级动画器会复用缓存的 lastAnimValue（旧半径），计算前清空以强制用自定义 getter 重算
         for (animator in SECONDARY_PANEL_ANIMATORS) {
             hookClearFieldBefore(pluginCl, animator, "calculateViewValues", "lastAnimValue")
         }
-        // 收回动画的假卡片在结束帧可能落到非自定义圆角；每帧回调后强制假卡片圆角
-        hookMethodAfter(pluginCl, DETAIL_PANEL_ANIMATOR, "frameCallback", { CcRadiusKeys.TILE }) { obj, px ->
-            val fake = Reflect.callMethod(obj, "getFakeView") as? View ?: return@hookMethodAfter
-            val name = fake.javaClass.name
-            when {
-                name.contains("QSCardItemView") -> forceTileCard(fake, px)
-                name.contains("QSTileItemIconView") -> forceTileIcon(fake, px)
+        // 收回动画的假卡片在结束帧可能落到非自定义圆角；每帧回调后按卡片类型分别强制圆角
+        Reflect.findClassIfExists(DETAIL_PANEL_ANIMATOR, pluginCl)?.let { cls ->
+            cls.declaredMethods.firstOrNull { it.name == "frameCallback" }?.let { method ->
+                method.isAccessible = true
+                runCatching {
+                    HookHelper.hookAfter(method) { param ->
+                        val obj = param.thisObject ?: return@hookAfter
+                        val fake = Reflect.callMethod(obj, "getFakeView") as? View ?: return@hookAfter
+                        val name = fake.javaClass.name
+                        when {
+                            name.contains("QSCardItemView") ->
+                                pxFor(CcRadiusKeys.HORIZONTAL_TILE)?.let { forceTileCard(fake, it) }
+                            name.contains("QSTileItemIconView") ->
+                                pxFor(CcRadiusKeys.SMALL_TILE)?.let { forceTileIcon(fake, it) }
+                        }
+                    }
+                }.onFailure { HookHelper.log("$tag: hook DetailPanelAnimator.frameCallback failed", it) }
             }
         }
         hookGetterValue(pluginCl, TOGGLE_SLIDER_HOLDER, listOf("getOutlineRadius")) { CcRadiusKeys.SLIDER_L1 }
@@ -210,7 +225,10 @@ class CcRadiusHook : BaseHook() {
 
     /**
      * 音量列端点：`VolumeColumnRes.getRadius(context, needDialog, expanded)`。
-     * 通过 [volumeColumnIsCC]（由 `VolumeColumn.setRadius` 上下文设置）区分控制中心 / 侧边。
+     *
+     * 官方第三个参数并非可靠的展开态（侧边传 `mIsNotifySingle`），故改为在 `VolumeColumn.setRadius`
+     * 上下文中读取该列的**真实** `isExpanded()`：收起 → [CcRadiusKeys.SIDE_VOLUME_L1]，展开 → [CcRadiusKeys.SIDE_VOLUME_L2]。
+     * 仅在音量列上下文内覆盖，避免影响 `MiuiVolumeDialogMotion` / `VolumePanelAnimator` 的其它调用。
      */
     private fun hookVolumeColumnRadius(cl: ClassLoader) {
         val cls = Reflect.findClassIfExists(VOLUME_COLUMN_RES, cl) ?: return
@@ -221,12 +239,17 @@ class CcRadiusHook : BaseHook() {
                 method.isAccessible = true
                 runCatching {
                     HookHelper.hookAfter(method) { param ->
-                        val expanded = param.args.getOrNull(2) as? Boolean ?: false
-                        val cc = volumeColumnIsCC.get()
-                        val item = when {
-                            cc == true -> if (expanded) CcRadiusKeys.CC_VOLUME_L2 else CcRadiusKeys.CC_VOLUME_L1
-                            else -> if (expanded) CcRadiusKeys.SIDE_VOLUME_L2 else CcRadiusKeys.SIDE_VOLUME_L1
+                        // 控制中心二级音量面板：单独设置（含面板展开动画）。
+                        if (volumeColumnIsCCPanel.get() == true) {
+                            pxFor(CcRadiusKeys.CC_VOLUME_L2)?.let {
+                                param.setResultValue(it.toInt())
+                                logApplied(CcRadiusKeys.CC_VOLUME_L2, it, "VolumeColumnRes.getRadius(cc)")
+                            }
+                            return@hookAfter
                         }
+                        // 侧边音量：按该列真实展开态区分一级 / 二级。
+                        val expanded = volumeColumnIsExpanded.get() ?: return@hookAfter
+                        val item = if (expanded) CcRadiusKeys.SIDE_VOLUME_L2 else CcRadiusKeys.SIDE_VOLUME_L1
                         pxFor(item)?.let {
                             param.setResultValue(it.toInt())
                             logApplied(item, it, "VolumeColumnRes.getRadius")
@@ -238,7 +261,7 @@ class CcRadiusHook : BaseHook() {
         HookHelper.log("$tag: hooked VolumeColumnRes.getRadius x$hooked")
     }
 
-    /** 标记 `VolumeColumn.setRadius` 期间的来源（控制中心 / 侧边）。 */
+    /** 标记 `VolumeColumn.setRadius` 期间该列的展开态。 */
     private fun hookVolumeColumnContext(cl: ClassLoader) {
         val cls = Reflect.findClassIfExists(VOLUME_COLUMN_CLASS, cl) ?: return
         cls.declaredMethods
@@ -251,13 +274,48 @@ class CcRadiusHook : BaseHook() {
                 method.isAccessible = true
                 runCatching {
                     HookHelper.hookBefore(method) { param ->
-                        val isCC = Reflect.callMethod(param.thisObject ?: return@hookBefore, "isInCCMainPage") as? Boolean
-                        volumeColumnIsCC.set(isCC ?: false)
+                        val expanded = Reflect.callMethod(param.thisObject ?: return@hookBefore, "isExpanded") as? Boolean
+                        volumeColumnIsExpanded.set(expanded ?: false)
                     }
-                    HookHelper.hookAfter(method) { volumeColumnIsCC.remove() }
+                    HookHelper.hookAfter(method) { volumeColumnIsExpanded.remove() }
                 }.onFailure { HookHelper.log("$tag: hook VolumeColumn.setRadius context failed", it) }
             }
         HookHelper.log("$tag: hooked VolumeColumn.setRadius context")
+    }
+
+    /**
+     * 标记音量列归属：`VolumePanelViewController` 为控制中心二级音量面板（`isControlCenterPanel`）时，
+     * 其音量列路由到 [CcRadiusKeys.CC_VOLUME_L2]；否则为侧边音量。覆盖静态布局（`updateColumnH` /
+     * `updateTempColumnH`）与展开动画（`VolumePanelAnimator.frameCallback`）。
+     */
+    private fun hookVolumeColumnOwner(cl: ClassLoader) {
+        Reflect.findClassIfExists(SIDE_VOLUME_CONTROLLER, cl)?.let { cls ->
+            for (name in listOf("updateColumnH", "updateTempColumnH")) {
+                cls.declaredMethods.filter { it.name == name }.forEach { method ->
+                    method.isAccessible = true
+                    runCatching {
+                        HookHelper.hookBefore(method) { param ->
+                            val cc = Reflect.getObjectField(
+                                param.thisObject ?: return@hookBefore,
+                                "isControlCenterPanel",
+                            ) as? Boolean
+                            volumeColumnIsCCPanel.set(cc ?: false)
+                        }
+                        HookHelper.hookAfter(method) { volumeColumnIsCCPanel.remove() }
+                    }.onFailure { HookHelper.log("$tag: hook $name owner failed", it) }
+                }
+            }
+        }
+        Reflect.findClassIfExists(VOLUME_PANEL_ANIMATOR, cl)?.let { cls ->
+            cls.declaredMethods.firstOrNull { it.name == "frameCallback" }?.let { method ->
+                method.isAccessible = true
+                runCatching {
+                    HookHelper.hookBefore(method) { volumeColumnIsCCPanel.set(true) }
+                    HookHelper.hookAfter(method) { volumeColumnIsCCPanel.remove() }
+                }.onFailure { HookHelper.log("$tag: hook VolumePanelAnimator.frameCallback owner failed", it) }
+            }
+        }
+        HookHelper.log("$tag: hooked volume column owner")
     }
 
     // ---------------- 端点注入 ----------------
@@ -620,23 +678,21 @@ class CcRadiusHook : BaseHook() {
     // ---------------- 配置 / 工具 ----------------
 
     private fun pxFor(item: String): Float? {
-        if (!HookPrefs.getBoolean(CcRadiusKeys.MASTER, false)) return null
-        val background = CcRadiusKeys.isBackground(item)
-        val unifiedKey = if (background) CcRadiusKeys.BACKGROUND else CcRadiusKeys.COMPONENT
-        val unifiedDefault = if (background) CcRadiusKeys.DEFAULT_BACKGROUND else CcRadiusKeys.DEFAULT_COMPONENT
-        if (item == SHARED) {
-            return HookPrefs.getFloat(unifiedKey, unifiedDefault) * Resources.getSystem().displayMetrics.density
-        }
         val custom = HookPrefs.getBoolean(
             CcRadiusKeys.customKey(item),
             CcRadiusKeys.itemCustomDefault(item),
         )
-        val dp = if (custom) {
-            HookPrefs.getFloat(CcRadiusKeys.valueKey(item), CcRadiusKeys.itemValueDefault(item))
-        } else {
-            HookPrefs.getFloat(unifiedKey, unifiedDefault)
+        // 单项自定义优先：即使总开关关闭也生效。
+        if (custom) {
+            val dp = HookPrefs.getFloat(CcRadiusKeys.valueKey(item), CcRadiusKeys.itemValueDefault(item))
+            return dp * Resources.getSystem().displayMetrics.density
         }
-        return dp * Resources.getSystem().displayMetrics.density
+        // 未自定义：仅在总开关开启时套用统一值，否则保持系统默认（不被模块修改）。
+        if (!HookPrefs.getBoolean(CcRadiusKeys.MASTER, false)) return null
+        val background = CcRadiusKeys.isBackground(item)
+        val unifiedKey = if (background) CcRadiusKeys.BACKGROUND else CcRadiusKeys.COMPONENT
+        val unifiedDefault = if (background) CcRadiusKeys.DEFAULT_BACKGROUND else CcRadiusKeys.DEFAULT_COMPONENT
+        return HookPrefs.getFloat(unifiedKey, unifiedDefault) * Resources.getSystem().displayMetrics.density
     }
 
     private fun panelBgItem(controller: Any?): String {
@@ -720,6 +776,8 @@ class CcRadiusHook : BaseHook() {
             "miui.systemui.controlcenter.panel.main.devicecenter.entry.DeviceCenterEntryViewHolder"
         private const val VOLUME_PANEL_CONTROLLER =
             "miui.systemui.controlcenter.panel.secondary.volume.VolumePanelController"
+        private const val VOLUME_PANEL_ANIMATOR =
+            "miui.systemui.controlcenter.panel.secondary.volume.VolumePanelAnimator"
         private const val RINGER_BUTTON_RES =
             "com.android.systemui.miui.volume.RingerButtonRes"
         private const val TIMER_ITEM_RES =

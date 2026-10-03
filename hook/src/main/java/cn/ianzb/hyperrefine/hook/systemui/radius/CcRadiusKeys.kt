@@ -24,8 +24,11 @@ object CcRadiusKeys {
 
     // ---------------- 组件 ----------------
 
-    /** 一级磁贴（WLAN / 数据等）。 */
-    const val TILE = "tile"
+    /** 横向磁贴（WLAN / 数据等大卡片）。 */
+    const val HORIZONTAL_TILE = "horizontal_tile"
+
+    /** 小磁贴（下方 1x1 组件）。 */
+    const val SMALL_TILE = "small_tile"
 
     /** 播放器（一级媒体卡片）。 */
     const val MEDIA = "media"
@@ -36,17 +39,14 @@ object CcRadiusKeys {
     /** 亮度二级滑块。 */
     const val BRIGHTNESS_L2 = "brightness_l2"
 
-    /** 控制中心音量列（一级，收起态）。 */
-    const val CC_VOLUME_L1 = "cc_volume_l1"
-
-    /** 控制中心音量列（二级，展开态）。 */
-    const val CC_VOLUME_L2 = "cc_volume_l2"
-
     /** 侧边音量列（一级，收起态）。 */
     const val SIDE_VOLUME_L1 = "side_volume_l1"
 
     /** 侧边音量列（二级，展开态）。 */
     const val SIDE_VOLUME_L2 = "side_volume_l2"
+
+    /** 控制中心二级音量条（控制中心二级音量面板内的音量条）。 */
+    const val CC_VOLUME_L2 = "cc_volume_l2"
 
     /** 静音 / 勿扰按钮。 */
     const val RINGER = "ringer"
@@ -80,19 +80,19 @@ object CcRadiusKeys {
     /** 分应用音量面板背景。 */
     const val APP_VOLUME_PANEL = "app_volume_panel"
 
-    /** 组件子项。 */
+    /** 组件子项（顺序即设置页展示顺序）：一级组件在前，二级 / 其它在后。 */
     val COMPONENT_ITEMS: List<String> = listOf(
-        TILE,
+        HORIZONTAL_TILE,
         MEDIA,
         SLIDER_L1,
         BRIGHTNESS_L2,
-        CC_VOLUME_L1,
         CC_VOLUME_L2,
         SIDE_VOLUME_L1,
         SIDE_VOLUME_L2,
+        DEVICE_CENTER,
+        SMALL_TILE,
         RINGER,
         TIMER,
-        DEVICE_CENTER,
         APP_VOLUME_BAR,
     )
 
@@ -127,23 +127,28 @@ object CcRadiusKeys {
     /** 单项自定义默认值（dp）。 */
     const val DEFAULT_ITEM = 35f
 
-    /** 亮度二级滑块默认圆角（dp）。 */
+    /** 亮度二级滑块默认圆角（dp，单项自定义开启后的默认值）。 */
     const val BRIGHTNESS_L2_VALUE_DEFAULT = 40f
 
-    /** 分应用音量内部音量条默认圆角（dp，1.3.0 的默认值）。 */
-    const val APP_VOLUME_BAR_VALUE_DEFAULT = 20f
+    /** 分应用音量内部音量条「未自定义」时的默认圆角（dp，1.3.0 的默认值）。 */
+    const val APP_VOLUME_BAR_RADIUS_DEFAULT = 20f
 
-    /** 分应用音量面板背景默认圆角（dp，1.3.0 的默认值）。 */
-    const val APP_VOLUME_PANEL_VALUE_DEFAULT = 30f
+    /** 分应用音量面板背景「未自定义」时的默认圆角（dp，1.3.0 的默认值）。 */
+    const val APP_VOLUME_PANEL_RADIUS_DEFAULT = 30f
 
-    /** 单项数值默认值（dp）。 */
+    /** 单项数值默认值（dp，即单项自定义开启后的默认值）。 */
     fun itemValueDefault(item: String): Float = when (item) {
         BRIGHTNESS_L2 -> BRIGHTNESS_L2_VALUE_DEFAULT
-        APP_VOLUME_BAR -> APP_VOLUME_BAR_VALUE_DEFAULT
-        APP_VOLUME_PANEL -> APP_VOLUME_PANEL_VALUE_DEFAULT
         else -> DEFAULT_ITEM
     }
 
-    /** 单项自定义开关默认值（亮度二级滑块默认开启）。 */
-    fun itemCustomDefault(item: String): Boolean = item == BRIGHTNESS_L2
+    /** 单项「未自定义」时的默认圆角（dp，1.3.0 / 开启自定义圆角前的值）。 */
+    fun itemUncustomizedDefault(item: String): Float = when (item) {
+        APP_VOLUME_BAR -> APP_VOLUME_BAR_RADIUS_DEFAULT
+        APP_VOLUME_PANEL -> APP_VOLUME_PANEL_RADIUS_DEFAULT
+        else -> itemValueDefault(item)
+    }
+
+    /** 单项自定义开关默认值（默认不自定义）。 */
+    fun itemCustomDefault(item: String): Boolean = false
 }

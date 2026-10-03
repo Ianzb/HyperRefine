@@ -1120,9 +1120,13 @@ class MiSoundAppVolumeHook : BaseHook() {
      */
     private fun ccRadiusDp(item: String): Float {
         val defaultValue = CcRadiusKeys.itemValueDefault(item)
-        if (!HookPrefs.getBoolean(CcRadiusKeys.MASTER, false)) return defaultValue
+        // 单项自定义优先：即使总开关关闭也生效。
         if (HookPrefs.getBoolean(CcRadiusKeys.customKey(item), CcRadiusKeys.itemCustomDefault(item))) {
             return HookPrefs.getFloat(CcRadiusKeys.valueKey(item), defaultValue)
+        }
+        // 未自定义：总开关关闭时保持该功能默认（开启自定义圆角前的值，如音量条 20、面板 30）。
+        if (!HookPrefs.getBoolean(CcRadiusKeys.MASTER, false)) {
+            return CcRadiusKeys.itemUncustomizedDefault(item)
         }
         val background = CcRadiusKeys.isBackground(item)
         val key = if (background) CcRadiusKeys.BACKGROUND else CcRadiusKeys.COMPONENT

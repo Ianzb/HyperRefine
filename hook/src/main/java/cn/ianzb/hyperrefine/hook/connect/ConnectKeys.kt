@@ -16,4 +16,7 @@ object ConnectKeys {
 
     /** MiLink Multi-Channel。 */
     const val MILINK_MULTI_CHANNEL = "connect_milink_multi_channel"
+
+    /** 融合设备中心流转卡片补柔光玻璃。 */
+    const val CARD_GLASS = "device_center_card_glass"
 }

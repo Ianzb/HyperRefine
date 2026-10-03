@@ -7,7 +7,7 @@ import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 /**
  * MiLink（`com.milink.service`）目标 Load：按进程精确路由设备互联功能。
  *
- * - `:ui`：跨设备通知流转的本机发现纠正；
+ * - `:ui`：跨设备通知流转的本机发现纠正、流转卡片玻璃（`MLCardViewHostService` 所在进程）；
  * - `crossdeviceservice`：通知点击 PIN_APP 桥接；
  * - `:core`：Multi-Channel 通道策略与 Host 绑定修复。
  */
@@ -16,11 +16,15 @@ class MiLinkLoad : BaseLoad() {
     override val targetPackages: List<String> = listOf(TARGET_PACKAGE)
 
     override fun onPackageLoaded(target: PackageTarget) {
+        val cardGlass = HookPrefs.getBoolean(ConnectKeys.CARD_GLASS, false)
         when (target.processName) {
-            PROCESS_UI -> initHook(
-                MiLinkDiscoveryHook(),
-                HookPrefs.getBoolean(ConnectKeys.CROSS_DEVICE_NOTIFICATION, false),
-            )
+            PROCESS_UI -> {
+                initHook(
+                    MiLinkDiscoveryHook(),
+                    HookPrefs.getBoolean(ConnectKeys.CROSS_DEVICE_NOTIFICATION, false),
+                )
+                initHook(MiLinkCardGlassHook(), cardGlass)
+            }
             PROCESS_FLOW -> initHook(
                 MiLinkNotificationFlowHook(),
                 HookPrefs.getBoolean(ConnectKeys.CROSS_DEVICE_NOTIFICATION, false),

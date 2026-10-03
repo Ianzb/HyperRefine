@@ -579,9 +579,12 @@ class AppVolumeEntryHook : BaseHook() {
         return null
     }
 
-    private fun applyEntryState(entry: View, visible: Boolean) {
+    private fun applyEntryState(entry: View, visible: Boolean, dodge: Boolean = false) {
         // 入口隐藏（展开态 / 面板收起）时同步关闭系统界面模式的面板，避免残留。
-        if (!visible) runCatching { AppVolumePanel.hide() }
+        // `dodge=true`（侧边二级面板展开）时用「避让」消失动画，其余情况原地淡出。
+        if (!visible) {
+            runCatching { if (dodge) AppVolumePanel.hideByExpand() else AppVolumePanel.hide() }
+        }
         if (lastVisible[entry] == visible) return
         lastVisible[entry] = visible
         if (visible) {
@@ -600,7 +603,7 @@ class AppVolumeEntryHook : BaseHook() {
         val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") }.getOrNull() as? Boolean ?: false
         val visible = !expanded &&
             (HookPrefs.getBoolean(AppVolumeKeys.ALWAYS_SHOW, false) || hasActiveMedia(entry.context))
-        applyEntryState(entry, visible)
+        applyEntryState(entry, visible, dodge = expanded)
         shiftPanel(entry, visible)
     }
 

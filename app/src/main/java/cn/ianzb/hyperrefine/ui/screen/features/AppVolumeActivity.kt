@@ -39,7 +39,9 @@ class AppVolumeActivity : BaseSubPageActivity() {
                 featureSpec(AppVolumeKeys.ENTRY),
                 featureSpec(AppVolumeKeys.HIDE_FLOAT),
                 featureSpec(AppVolumeKeys.ALWAYS_SHOW),
+                featureSpec(AppVolumeKeys.HEIGHT_AUTO),
                 featureSpec(AppVolumeKeys.HEIGHT_PERCENT),
+                featureSpec(AppVolumeKeys.HIDE_PANEL_BG),
             ),
         )
         LazyColumn(

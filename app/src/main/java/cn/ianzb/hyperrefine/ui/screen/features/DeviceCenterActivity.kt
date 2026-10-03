@@ -22,7 +22,7 @@ class DeviceCenterActivity : BaseSubPageActivity() {
     override val titleRes: Int = R.string.section_device_center
 
     override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui")) }
+        { QuickActionsAction(listOf("com.android.systemui", "com.milink.service")) }
 
     @Composable
     override fun SubPageContent(
@@ -35,6 +35,7 @@ class DeviceCenterActivity : BaseSubPageActivity() {
             specs = listOf(
                 featureSpec(KEY_DEVICE_CENTER_HIDE_MORE),
                 featureSpec(KEY_DEVICE_CENTER_SHRINK_HIT_AREA),
+                featureSpec(KEY_DEVICE_CENTER_CARD_GLASS),
                 featureSpec(KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
             ),
         )

@@ -52,16 +52,20 @@ object AppVolumePanel {
     private const val OVERLAY_INSET_DP = 10
     private const val COLUMN_MARGIN_DP = 6
 
+    private const val SIDE_SLIDER_ID = "volume_column_slider"
+
     private const val PERCENT_PREF = "side_volume"
     private const val PERCENT_MASTER_KEY = "side_volume_percent"
     private const val PERCENT_HIGHLIGHT = 0xFF3482FF.toInt()
 
     private const val OPEN_DURATION_MS = 260L
-    private const val CLOSE_DURATION_MS = 180L
+    private const val CLOSE_DURATION_MS = 250L
 
     private var host: View? = null
     private var card: View? = null
     private var dialogRef: View? = null
+    /** 正在淡出：暂停逐帧跟随（避免位置瞬移），改为整体平移 + 淡出。 */
+    private var closing = false
     private var insetsProxy: Any? = null
     private var preDrawContainer: View? = null
     private var preDrawListener: ViewTreeObserver.OnPreDrawListener? = null
@@ -76,28 +80,59 @@ object AppVolumePanel {
         if (isShowing()) hide() else show(root, dialog, context, pluginClassLoader, anchor)
     }
 
-    /** 关闭并移除面板。 */
-    fun hide() {
+    /** 普通关闭（点击入口 / 空白）：原地淡出。 */
+    fun hide() = close(dodge = false)
+
+    /**
+     * 侧边音量二级面板展开时的「避让」消失：整体平移 + 淡出（参照入口按钮的时长）。
+     * 与 [hide] 区分开，普通关闭不做平移。
+     */
+    fun hideByExpand() = close(dodge = true)
+
+    private fun close(dodge: Boolean) {
         val currentHost = host ?: return
-        officialColumns.forEach { it.release() }
+        // 先摘出本面板的列：动画结束后再释放，期间保留音量条一起淡出。
+        val toRelease = ArrayList(officialColumns)
         officialColumns.clear()
         val currentCard = card
         if (currentCard != null && currentCard.isAttachedToWindow) {
-            // 原地透明度淡出（不缩放 / 不位移）。
-            currentCard.animate()
+            closing = true
+            val anim = currentCard.animate()
                 .alpha(0f)
                 .setDuration(CLOSE_DURATION_MS)
-                .withEndAction { cleanup(currentHost) }
-                .start()
+            if (dodge) {
+                anim.translationX(currentCard.translationX + slideOutOffset(currentCard, dialogRef))
+            }
+            anim.withEndAction {
+                toRelease.forEach { it.release() }
+                cleanup(currentHost)
+            }.start()
         } else {
+            toRelease.forEach { it.release() }
             cleanup(currentHost)
         }
+    }
+
+    /** 关闭时整体平移的方向与幅度：朝远离侧边音量条的一侧滑出。 */
+    private fun slideOutOffset(panel: View, dialog: View?): Float {
+        val panelLoc = IntArray(2)
+        panel.getLocationOnScreen(panelLoc)
+        val panelCenter = panelLoc[0] + panel.width / 2f
+        val toLeft = if (dialog == null) {
+            true
+        } else {
+            val dialogLoc = IntArray(2)
+            dialog.getLocationOnScreen(dialogLoc)
+            panelCenter <= dialogLoc[0] + dialog.width / 2f
+        }
+        return (if (toLeft) -1f else 1f) * panel.width * 0.25f
     }
 
     private fun cleanup(currentHost: View) {
         if (host !== currentHost) return
         host = null
         card = null
+        closing = false
         preDrawListener?.let { listener ->
             runCatching {
                 preDrawContainer?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnPreDrawListener(listener)
@@ -125,6 +160,7 @@ object AppVolumePanel {
         anchor: View,
     ) {
         hide()
+        closing = false
         val density = context.resources.displayMetrics.density
         val apps = activeApps(context)
 
@@ -187,7 +223,8 @@ object AppVolumePanel {
             )
         }
 
-        // 竖直位置（「高度」配置：0% 最低、100% 最高、50% 居中）。
+        // 竖直位置：「高度自动」时与侧边音量条竖直对齐；否则用「高度」百分比（0% 最低、100% 最高、50% 居中）。
+        val heightAuto = HookPrefs.getBoolean(AppVolumeKeys.HEIGHT_AUTO, true)
         val heightPercent = HookPrefs.getFloat(AppVolumeKeys.HEIGHT_PERCENT, 50f).coerceIn(0f, 100f)
         panel.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) = applyPanelBackground(v, context, pluginClassLoader)
@@ -215,9 +252,16 @@ object AppVolumePanel {
         var started = false
         val listener = object : ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
-                val available = container.height - panel.height
-                if (available > 0) panel.translationY = (0.5f - heightPercent / 100f) * available
-                positionLeftOfDialog(container, panel, dialog, density)
+                // 淡出期间暂停跟随（否则侧边条一变就瞬移），交给整体平移 + 淡出。
+                if (!closing) {
+                    if (heightAuto) {
+                        alignToDialogBar(panel, dialog)
+                    } else {
+                        val available = container.height - panel.height
+                        if (available > 0) panel.translationY = (0.5f - heightPercent / 100f) * available
+                    }
+                    positionLeftOfDialog(container, panel, dialog, density)
+                }
                 // 官方可能在展开 / 材质变化后重新应用窗口压暗，这里每帧兜底清除。
                 clearWindowDim(dialog)
                 if (!started && panel.width > 0) {
@@ -249,6 +293,36 @@ object AppVolumePanel {
                 panel.layoutParams = lp
             }
         }
+    }
+
+    /**
+     * 「高度自动」：把面板内音量条竖直中心对齐到侧边音量条音量条的中心。
+     *
+     * 每帧用屏幕坐标计算残差并叠加到 `translationY`，因此面板 / 侧边条移动时都能持续跟随。
+     */
+    private fun alignToDialogBar(panel: View, dialog: View) {
+        runCatching {
+            val panelSlider = officialColumns.firstOrNull()?.slider ?: return
+            val dialogSlider = findSideVolumeSlider(dialog) ?: return
+            if (panelSlider.height <= 0 || dialogSlider.height <= 0) return
+            val panelLoc = IntArray(2)
+            val dialogLoc = IntArray(2)
+            panelSlider.getLocationOnScreen(panelLoc)
+            dialogSlider.getLocationOnScreen(dialogLoc)
+            val dy = (dialogLoc[1] + dialogSlider.height / 2f) - (panelLoc[1] + panelSlider.height / 2f)
+            if (kotlin.math.abs(dy) > 0.5f) panel.translationY += dy
+        }
+    }
+
+    /** 在侧边音量条视图里找到它的音量列滑条（id `volume_column_slider`）。 */
+    private fun findSideVolumeSlider(root: View): View? {
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) {
+                findSideVolumeSlider(root.getChildAt(i))?.let { return it }
+            }
+        }
+        val name = runCatching { root.resources.getResourceEntryName(root.id) }.getOrNull()
+        return if (name == SIDE_SLIDER_ID) root else null
     }
 
     /** 面板原地透明度淡入（跟随侧边音量条出现 / 隐藏，不缩放、不位移）。 */
@@ -348,6 +422,14 @@ object AppVolumePanel {
     // ---------------- 背景 ----------------
 
     private fun applyPanelBackground(view: View, context: Context, pluginClassLoader: ClassLoader?) {
+        // 「隐藏面板背景」：不套玻璃 / 背景，只保留音量条。
+        if (HookPrefs.getBoolean(AppVolumeKeys.HIDE_PANEL_BG, false)) {
+            view.background = null
+            view.clipToOutline = false
+            view.outlineProvider = null
+            view.invalidateOutline()
+            return
+        }
         val density = context.resources.displayMetrics.density
         val radiusPx = radiusDp(CcRadiusKeys.APP_VOLUME_PANEL) * density
         if (pluginClassLoader != null) {

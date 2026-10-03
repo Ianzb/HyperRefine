@@ -171,6 +171,8 @@
     <string name="device_center_landscape_right_summary">手机横屏时把融合设备中心从控制中心左侧移到右侧（仅手机可用）</string>
     <string name="device_center_shrink_hit_area">缩小设备点击范围</string>
     <string name="device_center_shrink_hit_area_summary">把每个设备的点击判定范围缩小到图标本身，点击卡片内的空白处改为打开融合设备中心（原来会打开对应设备）</string>
+    <string name="device_center_card_glass">流转卡片玻璃</string>
+    <string name="device_center_card_glass_summary">为「融合设备中心」点击设备后弹出的流转卡片补上系统柔光玻璃；设备不可用（灰色卡片）时不再只有模糊</string>
 
     <string name="section_cc_glass">柔光玻璃</string>
     <string name="cc_glass_master">启用柔光玻璃</string>
@@ -246,8 +248,12 @@
     <string name="app_volume_always_show_summary">关闭时仅在检测到媒体播放时显示入口</string>
 
     <string name="app_volume_empty">当前无正在播放的应用</string>
+    <string name="app_volume_height_auto">高度自动</string>
+    <string name="app_volume_height_auto_summary">自动让面板内的音量条与侧边音量条竖直对齐（开启后「高度」不可用）</string>
     <string name="app_volume_height_percent">高度</string>
     <string name="app_volume_height_percent_summary">面板在屏幕上的高度位置，0% 最低、100% 最高，50% 居中</string>
+    <string name="app_volume_hide_panel_bg">隐藏面板背景</string>
+    <string name="app_volume_hide_panel_bg_summary">隐藏多应用音量面板的玻璃 / 背景，只保留音量条</string>
 
     <string name="percent_unit">%</string>
 

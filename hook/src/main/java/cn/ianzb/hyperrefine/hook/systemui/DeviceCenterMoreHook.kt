@@ -16,7 +16,9 @@ import cn.ianzb.hyperrefine.hook.xposed.Reflect
  *
  * 处理方式：开关开启时
  * 1. 在 `getMode()` 结果上忽略末尾的 `DetailItem` 重新计算行数（4 个设备保持一行）；
- * 2. 在 `DetailViewHolder.onBind()` 后隐藏该条目并把尺寸置零，不再渲染省略号。
+ * 2. 在 `DetailViewHolder.onBind()` 后隐藏该条目并把尺寸置零，不再渲染省略号；
+ * 3. 官方 `DeviceCenterController` 默认只取前 7 个设备（原为给省略号留第 8 个位置），
+ *    省略号隐藏后这里放宽到 8 个，让第 8 个设备填满两行。
  */
 class DeviceCenterMoreHook : BaseHook() {
 
@@ -45,6 +47,57 @@ class DeviceCenterMoreHook : BaseHook() {
                 runCatching { HookHelper.hookAfter(method) { param -> hideDetail(param) } }
                     .onFailure { HookHelper.log("$tag: hook onBind failed", it) }
             }
+
+        Reflect.findClassIfExists(DEVICE_CENTER_CONTROLLER, pluginCl)
+            ?.declaredMethods
+            ?.filter { it.name == "handleDeviceListUpdate" && it.parameterCount == 1 }
+            ?.forEach { method ->
+                method.isAccessible = true
+                runCatching {
+                    HookHelper.hookAfter(method) { param -> raiseDeviceLimit(param, pluginCl) }
+                }.onFailure { HookHelper.log("$tag: hook device limit failed", it) }
+            }
+    }
+
+    /**
+     * 官方数据侧 (`DeviceCenterController`) 默认最多只向卡片推送 7 个设备，为省略号留位。
+     * 省略号隐藏后重新构造前 [MAX_DEVICES] 个设备的 wrapper 列表并通知监听者，让第 8 个
+     * 设备也能显示、填满两行。
+     */
+    private fun raiseDeviceLimit(param: HookParam, pluginCl: ClassLoader) {
+        if (!HookPrefs.getBoolean(KEY, false)) return
+        val controller = param.thisObject ?: return
+        val deviceList = runCatching { Reflect.getObjectField(controller, "deviceList") as? List<*> }
+            .getOrNull() ?: return
+        if (deviceList.size <= MAX_WITH_ELLIPSIS) return
+
+        val wrapperCl = Reflect.findClassIfExists(DEVICE_INFO_WRAPPER, pluginCl) ?: return
+        val companion = runCatching { Reflect.getStaticObjectField(wrapperCl, "Companion") }
+            .getOrNull() ?: return
+        val context = runCatching { Reflect.getObjectField(controller, "context") }
+            .getOrNull() ?: return
+        val wrapperList = runCatching { Reflect.getObjectField(controller, "wrapperList") as? MutableList<Any?> }
+            .getOrNull() ?: return
+        val listeners = runCatching { Reflect.getObjectField(controller, "listeners") as? List<*> }
+            .getOrNull() ?: return
+
+        val count = minOf(deviceList.size, MAX_DEVICES)
+        val wrappers = ArrayList<Any?>(count)
+        for (i in 0 until count) {
+            val info = deviceList[i] ?: continue
+            val wrapper = runCatching { Reflect.callMethod(companion, "create", info, context) }
+                .getOrNull() ?: continue
+            wrappers.add(wrapper)
+        }
+        if (wrappers.isEmpty()) return
+
+        wrapperList.clear()
+        wrapperList.addAll(wrappers)
+        listeners.forEach { listener ->
+            if (listener == null) return@forEach
+            runCatching { Reflect.callMethod(listener, "onDeviceListChanged", wrapperList) }
+                .onFailure { HookHelper.log("$tag: notify expanded device list failed", it) }
+        }
     }
 
     private fun overrideMode(param: HookParam) {
@@ -103,5 +156,15 @@ class DeviceCenterMoreHook : BaseHook() {
             "miui.systemui.controlcenter.panel.main.devicecenter.devices.DetailViewHolder"
         private const val DETAIL_ITEM =
             "miui.systemui.controlcenter.panel.main.devicecenter.devices.DeviceItem\$DetailItem"
+        private const val DEVICE_CENTER_CONTROLLER =
+            "miui.systemui.devicecenter.DeviceCenterController"
+        private const val DEVICE_INFO_WRAPPER =
+            "miui.systemui.devicecenter.devices.DeviceInfoWrapper"
+
+        /** 官方默认给省略号预留的位数（最多 7 个设备 + 1 个省略号 = 8 格）。 */
+        private const val MAX_WITH_ELLIPSIS = 7
+
+        /** 两行满格可放的设备数（4 × 2）。 */
+        private const val MAX_DEVICES = 8
     }
 }

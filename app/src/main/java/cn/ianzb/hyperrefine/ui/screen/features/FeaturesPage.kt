@@ -158,6 +158,7 @@ const val KEY_APP_VOLUME = "feature_app_volume"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
 const val KEY_DEVICE_CENTER_LANDSCAPE_RIGHT = "device_center_landscape_right"
 const val KEY_DEVICE_CENTER_SHRINK_HIT_AREA = "device_center_shrink_hit_area"
+const val KEY_DEVICE_CENTER_CARD_GLASS = "device_center_card_glass"
 const val KEY_SECURITY_CENTER = "feature_security_center"
 const val KEY_DEVICE_CONNECT = "feature_device_connect"
 const val KEY_CC_RADIUS = "feature_cc_radius"
@@ -203,7 +204,9 @@ private fun locationSpecs(specs: List<OptionSpec>, location: String): List<Optio
     keys += AppVolumeKeys.ENTRY
     keys += AppVolumeKeys.HIDE_FLOAT
     keys += AppVolumeKeys.ALWAYS_SHOW
+    keys += AppVolumeKeys.HEIGHT_AUTO
     keys += AppVolumeKeys.HEIGHT_PERCENT
+    keys += AppVolumeKeys.HIDE_PANEL_BG
     }
     return keys.map { specByKey(specs, it) }
 }
@@ -230,6 +233,7 @@ private fun deviceCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, KEY_DEVICE_CENTER_HIDE_MORE),
         specByKey(specs, KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
         specByKey(specs, KEY_DEVICE_CENTER_SHRINK_HIT_AREA),
+        specByKey(specs, KEY_DEVICE_CENTER_CARD_GLASS),
     )
 
 /** 多应用音量二级页内的配置项，用于功能页搜索直达。 */
@@ -238,7 +242,9 @@ private fun appVolumeSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, AppVolumeKeys.ENTRY),
         specByKey(specs, AppVolumeKeys.HIDE_FLOAT),
         specByKey(specs, AppVolumeKeys.ALWAYS_SHOW),
+        specByKey(specs, AppVolumeKeys.HEIGHT_AUTO),
         specByKey(specs, AppVolumeKeys.HEIGHT_PERCENT),
+        specByKey(specs, AppVolumeKeys.HIDE_PANEL_BG),
     )
 
 /** 安全服务二级页（快充加速通知）内的配置项，用于功能页搜索直达。 */
@@ -313,6 +319,15 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = R.string.device_center_shrink_hit_area_summary,
             defaultBoolean = false,
             targetPackages = systemUi,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_DEVICE_CENTER_CARD_GLASS,
+            type = OptionType.SWITCH,
+            titleRes = R.string.device_center_card_glass,
+            summaryRes = R.string.device_center_card_glass_summary,
+            defaultBoolean = false,
+            targetPackages = listOf("com.milink.service"),
             showStatus = true,
         ),
         OptionSpec(
@@ -645,6 +660,15 @@ private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = list
         dependsOn = AppVolumeKeys.ENTRY,
     ),
     OptionSpec(
+        key = AppVolumeKeys.HEIGHT_AUTO,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_height_auto,
+        summaryRes = R.string.app_volume_height_auto_summary,
+        defaultBoolean = true,
+        targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
+        dependsOn = AppVolumeKeys.ENTRY,
+    ),
+    OptionSpec(
         key = AppVolumeKeys.HEIGHT_PERCENT,
         type = OptionType.SLIDER,
         titleRes = R.string.app_volume_height_percent,
@@ -656,6 +680,16 @@ private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = list
         sliderDecimals = 0,
         sliderUnitRes = R.string.percent_unit,
         sliderValueLabelRes = R.string.app_volume_height_percent,
+        targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
+        dependsOn = AppVolumeKeys.HEIGHT_AUTO,
+        dependsOnValue = false,
+    ),
+    OptionSpec(
+        key = AppVolumeKeys.HIDE_PANEL_BG,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_hide_panel_bg,
+        summaryRes = R.string.app_volume_hide_panel_bg_summary,
+        defaultBoolean = false,
         targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
         dependsOn = AppVolumeKeys.ENTRY,
     ),

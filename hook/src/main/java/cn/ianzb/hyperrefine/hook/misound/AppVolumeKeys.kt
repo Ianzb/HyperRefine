@@ -19,6 +19,12 @@ object AppVolumeKeys {
     /** 面板垂直位置百分比（0=顶部，50=居中，100=底部）。 */
     const val HEIGHT_PERCENT = "app_volume_height_percent"
 
+    /** 高度自动：面板内的音量条与侧边音量条竖直对齐（与 [HEIGHT_PERCENT] 互斥）。 */
+    const val HEIGHT_AUTO = "app_volume_height_auto"
+
+    /** 隐藏面板背景：不显示面板的玻璃 / 背景，只保留音量条。 */
+    const val HIDE_PANEL_BG = "app_volume_hide_panel_bg"
+
     /** 目标包：MiSound（承载多应用音量页面 / 悬浮球）。 */
     const val TARGET_PACKAGE = "com.miui.misound"
 

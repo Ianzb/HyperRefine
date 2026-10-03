@@ -171,6 +171,8 @@
     <string name="device_center_landscape_right_summary">In phone landscape, move the fusion device center from the left to the right side of Control Center (phones only)</string>
     <string name="device_center_shrink_hit_area">Shrink device tap area</string>
     <string name="device_center_shrink_hit_area_summary">Shrink each device’s tappable area to its icon, so tapping blank space in the card opens the Fusion Device Center instead of that device</string>
+    <string name="device_center_card_glass">Flow card glass</string>
+    <string name="device_center_card_glass_summary">Add the system soft glass to the MiLink card shown after tapping a device in the Fusion Device Center, so an unavailable (gray) card no longer has only blur</string>
 
     <string name="section_cc_glass">Soft glass</string>
     <string name="cc_glass_master">Enable soft glass</string>
@@ -246,8 +248,12 @@
     <string name="app_volume_always_show_summary">When off, the entry only appears while media is playing</string>
 
     <string name="app_volume_empty">No app is currently playing</string>
+    <string name="app_volume_height_auto">Automatic height</string>
+    <string name="app_volume_height_auto_summary">Keep the panel’s volume bars vertically aligned with the side volume bar (disables “Height” while on)</string>
     <string name="app_volume_height_percent">Height</string>
     <string name="app_volume_height_percent_summary">Vertical placement of the panel; 0% lowest, 100% highest, 50% centered</string>
+    <string name="app_volume_hide_panel_bg">Hide panel background</string>
+    <string name="app_volume_hide_panel_bg_summary">Hide the Multi-app volume panel’s glass / background and keep only the volume bars</string>
 
     <string name="percent_unit">%</string>
 

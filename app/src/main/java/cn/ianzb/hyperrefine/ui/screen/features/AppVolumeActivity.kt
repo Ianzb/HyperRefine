@@ -16,7 +16,7 @@ import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 
 /**
- * 「分应用音量」二级页。
+ * 「多应用音量」二级页。
  *
  * 入口 / 悬浮球 / 常显 / 位置 / 高度 / 背景模糊边框。圆角统一在「外观 → 圆角调整」。
  */
@@ -39,9 +39,7 @@ class AppVolumeActivity : BaseSubPageActivity() {
                 featureSpec(AppVolumeKeys.ENTRY),
                 featureSpec(AppVolumeKeys.HIDE_FLOAT),
                 featureSpec(AppVolumeKeys.ALWAYS_SHOW),
-                featureSpec(AppVolumeKeys.ALIGN_RIGHT),
                 featureSpec(AppVolumeKeys.HEIGHT_PERCENT),
-                featureSpec(AppVolumeKeys.HIDE_BLUR_BG),
             ),
         )
         LazyColumn(

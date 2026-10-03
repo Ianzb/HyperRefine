@@ -57,7 +57,7 @@ object CcRadiusKeys {
     /** 融合设备中心入口。 */
     const val DEVICE_CENTER = "device_center"
 
-    /** 分应用音量面板内部音量条。 */
+    /** 多应用音量面板内部音量条。 */
     const val APP_VOLUME_BAR = "app_volume_bar"
 
     // ---------------- 背景（模糊区域） ----------------
@@ -77,7 +77,7 @@ object CcRadiusKeys {
     /** 侧边音量展开面板模糊背景。 */
     const val SIDE_VOLUME_L2_BG = "side_volume_l2_bg"
 
-    /** 分应用音量面板背景。 */
+    /** 多应用音量面板背景。 */
     const val APP_VOLUME_PANEL = "app_volume_panel"
 
     /** 组件子项（顺序即设置页展示顺序）：一级组件在前，二级 / 其它在后。 */
@@ -130,10 +130,10 @@ object CcRadiusKeys {
     /** 亮度二级滑块默认圆角（dp，单项自定义开启后的默认值）。 */
     const val BRIGHTNESS_L2_VALUE_DEFAULT = 40f
 
-    /** 分应用音量内部音量条「未自定义」时的默认圆角（dp，1.3.0 的默认值）。 */
+    /** 多应用音量内部音量条「未自定义」时的默认圆角（dp，1.3.0 的默认值）。 */
     const val APP_VOLUME_BAR_RADIUS_DEFAULT = 20f
 
-    /** 分应用音量面板背景「未自定义」时的默认圆角（dp，1.3.0 的默认值）。 */
+    /** 多应用音量面板背景「未自定义」时的默认圆角（dp，1.3.0 的默认值）。 */
     const val APP_VOLUME_PANEL_RADIUS_DEFAULT = 30f
 
     /** 单项数值默认值（dp，即单项自定义开启后的默认值）。 */

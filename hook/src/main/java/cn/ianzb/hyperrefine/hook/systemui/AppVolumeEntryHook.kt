@@ -20,14 +20,14 @@ import cn.ianzb.hyperrefine.hook.xposed.Reflect
 import java.util.WeakHashMap
 
 /**
- * 侧边音量条「分应用音量」入口。
+ * 侧边音量条「多应用音量」入口。
  *
  * 直接复用官方静音 / 勿扰按钮的同款实现：inflate 官方 `miui_ringer_mode_layout` 布局，
  * 并用官方 `MiuiRingerModeLayout.RingerButtonHelper` 管理其背景 / 模糊 / 图标 / 展开尺寸，
  * 再把它接进 `VolumeShowHideAnimator` 的 `mRingerBtnLayouts`，使其拥有与原生按钮完全一致
  * 的外观与「自上而下递增延迟」的出现动画。
  *
- * 点击后拉起 MiSound 的 `VolumeUIService` 打开原生分应用音量面板。
+ * 点击后拉起 MiSound 的 `VolumeUIService` 打开原生多应用音量面板。
  */
 class AppVolumeEntryHook : BaseHook() {
 
@@ -53,6 +53,9 @@ class AppVolumeEntryHook : BaseHook() {
     private var outerClass: Class<*>? = null
     private var helperClass: Class<*>? = null
 
+    /** 控制中心插件 ClassLoader（用于系统界面模式反射官方 VolumeColumn）。 */
+    private var pluginClassLoader: ClassLoader? = null
+
     /** 最近的音量面板控制器，供注入后立即刷新显隐。 */
     @Volatile
     private var lastController: Any? = null
@@ -73,6 +76,7 @@ class AppVolumeEntryHook : BaseHook() {
     // ---------------- 插件资源 / 类 ----------------
 
     private fun loadPlugin(pluginCl: ClassLoader) {
+        pluginClassLoader = pluginCl
         outerClass = Reflect.findClassIfExists(OUTER_CLASS, pluginCl)
         helperClass = Reflect.findClassIfExists(HELPER_CLASS, pluginCl)
     }
@@ -200,11 +204,11 @@ class AppVolumeEntryHook : BaseHook() {
             icon?.imageTintList = ColorStateList.valueOf(Color.WHITE)
         }.onFailure { HookHelper.log("$tag: set entry icon failed", it) }
 
-        // 覆盖点击（官方 helper 会把点击接到静音 / 勿扰切换，这里改为打开分应用音量）。
-        entry.setOnClickListener { onEntryClick(entry.context) }
+        // 覆盖点击（官方 helper 会把点击接到静音 / 勿扰切换，这里改为打开多应用音量）。
+        entry.setOnClickListener { onEntryClick(entry) }
         runCatching {
             val blur = entry.findViewById<View>(idBlur)
-            blur?.setOnClickListener { onEntryClick(entry.context) }
+            blur?.setOnClickListener { onEntryClick(entry) }
         }
     }
 
@@ -349,14 +353,16 @@ class AppVolumeEntryHook : BaseHook() {
                     HookHelper.hookAfter(method) { param ->
                         param.thisObject?.let {
                             lastController = it
-                            onController(it)
+                            onController(it, method.name)
                         }
                     }
                 }.onFailure { HookHelper.log("$tag: hook ${method.name} failed", it) }
             }
     }
 
-    private fun onController(controller: Any) {
+    private fun onController(controller: Any, methodName: String) {
+        // 侧边音量条关闭时同步关闭系统界面模式面板，避免再次打开时残留 / 位置错乱。
+        if (methodName == "dismissH") runCatching { AppVolumePanel.hide() }
         runCatching {
             val ringer = findRinger(controller) ?: return
             val entry = findEntry(ringer) ?: return
@@ -544,6 +550,8 @@ class AppVolumeEntryHook : BaseHook() {
     }
 
     private fun applyEntryState(entry: View, visible: Boolean) {
+        // 入口隐藏（展开态 / 面板收起）时同步关闭系统界面模式的面板，避免残留。
+        if (!visible) runCatching { AppVolumePanel.hide() }
         if (lastVisible[entry] == visible) return
         lastVisible[entry] = visible
         if (visible) {
@@ -566,30 +574,15 @@ class AppVolumeEntryHook : BaseHook() {
         shiftPanel(entry, visible)
     }
 
-    private fun onEntryClick(context: Context) {
+    private fun onEntryClick(entry: View) {
         HookHelper.log("$tag: entry clicked")
-        val appContext = context.applicationContext ?: context
-        // MiSound 进程/监听器可能在下一次音量面板出现前已被回收，直接广播会丢失。
-        // 显式拉起（exported 的）VolumeUIService，把展开请求随 Intent 带入；
-        // 服务注册监听并在启动完成后展开面板（重复请求由状态位自然去重）。
-        val startIntent = Intent()
-            .setClassName(AppVolumeKeys.TARGET_PACKAGE, AppVolumeKeys.VOLUME_UI_SERVICE_CLASS)
-            .putExtra(AppVolumeKeys.EXTRA_EXPAND, true)
-        val started = runCatching { appContext.startService(startIntent) }
-            .onFailure { HookHelper.log("$tag: startService failed", it) }
-            .isSuccess
-        if (!started) {
-            runCatching { appContext.startForegroundService(startIntent) }
-                .onFailure { HookHelper.log("$tag: startForegroundService failed", it) }
+        // 仅系统界面模式：由系统界面自行渲染面板（数值转发到「音质音效」生效 / 同步）。
+        val root = entry.rootView as? ViewGroup
+        val dialog = findVolumeDialog(entry)
+        if (root != null && dialog != null) {
+            runCatching { AppVolumePanel.toggle(root, dialog, entry.context, pluginClassLoader, entry) }
+                .onFailure { HookHelper.log("$tag: toggle systemui panel failed", it) }
         }
-        // 兜底：服务已在运行时，监听器可直接响应广播。
-        runCatching {
-            appContext.sendBroadcast(
-                Intent(AppVolumeKeys.ACTION_EXPAND)
-                    .setPackage(AppVolumeKeys.TARGET_PACKAGE)
-                    .addFlags(Intent.FLAG_RECEIVER_FOREGROUND),
-            )
-        }.onFailure { HookHelper.log("$tag: send expand broadcast failed", it) }
     }
 
     // ---------------- 资源 / 媒体检测 ----------------

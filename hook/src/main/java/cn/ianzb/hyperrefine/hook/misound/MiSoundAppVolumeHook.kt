@@ -27,10 +27,10 @@ import cn.ianzb.hyperrefine.hook.xposed.Reflect
 import java.lang.ref.WeakReference
 
 /**
- * MiSound 侧「分应用音量」支撑（复用官方原生页面 / 组件，不手搓 UI）。
+ * MiSound 侧「多应用音量」支撑（复用官方原生页面 / 组件，不手搓 UI）。
  *
  * - 隐藏系统左侧蓝色悬浮球
- * - 接收侧边音量条入口广播，反射调用官方控制器 `y()` 打开原生分应用音量页
+ * - 接收侧边音量条入口广播，反射调用官方控制器 `y()` 打开原生多应用音量页
  * - 按参考模块思路配置原生页卡片：ViewPager2 宽度（一屏多列）、卡片圆角 + 官方背景模糊、
  *   竖向滑块尺寸、指示点样式
  *
@@ -55,7 +55,7 @@ class MiSoundAppVolumeHook : BaseHook() {
     /** 记录已 dump 的卡片，避免重复。 */
     private val dumped = java.util.WeakHashMap<View, Boolean>()
 
-    /** 原生分应用音量页的窗口根视图（用于空白处点击关闭）。 */
+    /** 原生多应用音量页的窗口根视图（用于空白处点击关闭）。 */
     @Volatile
     private var pageWindowRoot: View? = null
 
@@ -95,10 +95,22 @@ class MiSoundAppVolumeHook : BaseHook() {
         hookController()
         hookVolumeUiService()
         hookMediaColumnCrashGuard()
-        // 本 hook 同时实现「隐藏左侧悬浮球」「面板靠右」，据实上报其生效状态。
+        // 「系统界面模式」把音量转发到本进程生效 / 同步：尽早拿到应用 Context 注册接收器，
+        // 避免用户尚未打开过官方面板（VolumeUIService 未启动）时收不到转发。
+        currentApplication()?.let { ctx ->
+            appContext = ctx
+            ensureReceiver(ctx)
+        }
+        // 本 hook 实现「隐藏左侧悬浮球」「音量转发落地」，据实上报其生效状态。
         HookStatusReporter.markInstalled(AppVolumeKeys.HIDE_FLOAT)
-        HookStatusReporter.markInstalled(AppVolumeKeys.ALIGN_RIGHT)
     }
+
+    /** 当前应用 Context（`ActivityThread.currentApplication()`）。 */
+    private fun currentApplication(): Context? = runCatching {
+        Class.forName("android.app.ActivityThread")
+            .getMethod("currentApplication")
+            .invoke(null) as? Context
+    }.getOrNull()
 
     /**
      * 防御：媒体列 `a$j` 的 SeekBar 可能尚未绑定（其 `a()` 未调用）时，
@@ -173,7 +185,7 @@ class MiSoundAppVolumeHook : BaseHook() {
     private fun isMediaVolumePageView(view: View): Boolean = view.javaClass.name.contains("MediaVolumePageView")
 
     /**
-     * 把原生分应用音量页的窗口改为**全屏、可接收空白处点击、无全屏变暗/模糊**，
+     * 把原生多应用音量页的窗口改为**全屏、可接收空白处点击、无全屏变暗/模糊**，
      * 以便「点击卡片外空白区域关闭」。
      */
     private fun configurePageWindow(lp: WindowManager.LayoutParams) {
@@ -271,7 +283,7 @@ class MiSoundAppVolumeHook : BaseHook() {
     private fun setupCardLayout(controller: Any, animate: Boolean = false) {
         runCatching {
             val container = Reflect.getObjectField(controller, "o") as? ViewGroup ?: return
-            val alignRight = HookPrefs.getBoolean(AppVolumeKeys.ALIGN_RIGHT, true)
+            val alignRight = true
             // 垂直位置改由 topMargin（按百分比）控制，故 gravity 只负责水平对齐。
             val gravity = if (alignRight) (Gravity.END or Gravity.TOP) else (Gravity.CENTER_HORIZONTAL or Gravity.TOP)
             (container as? LinearLayout)?.gravity = gravity
@@ -344,8 +356,7 @@ class MiSoundAppVolumeHook : BaseHook() {
                     outline.setRoundRect(0, 0, v.width, v.height, radius)
                 }
             }
-            val hideBlurBg = HookPrefs.getBoolean(AppVolumeKeys.HIDE_BLUR_BG, false)
-            card.elevation = if (hideBlurBg) 0f else 6f * density
+            card.elevation = 6f * density
             applyCardBackground(card, radius, isNightMode(context))
             // 首帧模糊 / 边框可能未就绪，布局完成后补套几次。
             card.post { applyCardBackground(card, radius, isNightMode(context)) }
@@ -369,7 +380,7 @@ class MiSoundAppVolumeHook : BaseHook() {
 
     // ---------------- 关闭 / 进入动画 ----------------
 
-    /** 点击卡片外任意处关闭原生分应用音量页（避免打开后关不上）。 */
+    /** 点击卡片外任意处关闭原生多应用音量页（避免打开后关不上）。 */
     private fun setupDismiss(controller: Any, container: ViewGroup, card: View) {
         // 卡片自身消费点击，保证只有「卡片外」才触发关闭。
         card.isClickable = true
@@ -1045,12 +1056,8 @@ class MiSoundAppVolumeHook : BaseHook() {
         }, 150L)
     }
 
-    /** 套用卡片背景：默认模糊边框；开启「隐藏背景模糊边框」时置空背景。 */
+    /** 套用卡片背景模糊边框。 */
     private fun applyCardBackground(view: View, cornerRadius: Float, isNight: Boolean) {
-        if (HookPrefs.getBoolean(AppVolumeKeys.HIDE_BLUR_BG, false)) {
-            if (view.background != null) view.background = null
-            return
-        }
         applyBackdropBlur(view, cornerRadius, isNight)
     }
 
@@ -1102,19 +1109,19 @@ class MiSoundAppVolumeHook : BaseHook() {
         (context.resources.configuration.uiMode and 0x30) == 0x20
 
     /**
-     * 分应用音量面板圆角（dp）。未启用「圆角调整」时保持 1.3.0 的默认值；
+     * 多应用音量面板圆角（dp）。未启用「圆角调整」时保持 1.3.0 的默认值；
      * 启用后由统一背景值 / 单项自定义控制。
      */
     private fun panelRadiusDp(): Float = ccRadiusDp(CcRadiusKeys.APP_VOLUME_PANEL)
 
     /**
-     * 分应用音量**内部音量条**圆角（dp）。未启用「圆角调整」时保持 1.3.0 的默认值；
+     * 多应用音量**内部音量条**圆角（dp）。未启用「圆角调整」时保持 1.3.0 的默认值；
      * 启用后由统一组件值 / 单项自定义控制。
      */
     private fun barRadiusDp(): Float = ccRadiusDp(CcRadiusKeys.APP_VOLUME_BAR)
 
     /**
-     * 解析分应用音量圆角配置（dp）：
+     * 解析多应用音量圆角配置（dp）：
      * - 未启用「圆角调整」总开关：使用该功能 1.3.0 的默认圆角（开启自定义圆角前的值）；
      * - 启用后：单项自定义优先，否则取统一组件 / 背景值。
      */
@@ -1231,14 +1238,67 @@ class MiSoundAppVolumeHook : BaseHook() {
         val r = object : BroadcastReceiver() {
             override fun onReceive(c: Context?, intent: Intent?) {
                 HookHelper.log("$tag: received ${intent?.action}")
-                if (intent?.action == AppVolumeKeys.ACTION_EXPAND) expand()
+                when (intent?.action) {
+                    AppVolumeKeys.ACTION_EXPAND -> expand()
+                    AppVolumeKeys.ACTION_SET_VOLUME -> {
+                        val pkg = intent.getStringExtra(AppVolumeKeys.EXTRA_PACKAGE) ?: return
+                        val volume = intent.getFloatExtra(AppVolumeKeys.EXTRA_VOLUME, -1f)
+                        if (volume >= 0f) {
+                            applyForwardedVolume(c?.applicationContext ?: context, pkg, volume)
+                        }
+                    }
+                }
             }
         }
         runCatching {
-            context.registerReceiver(r, IntentFilter(AppVolumeKeys.ACTION_EXPAND), Context.RECEIVER_EXPORTED)
+            val filter = IntentFilter().apply {
+                addAction(AppVolumeKeys.ACTION_EXPAND)
+                addAction(AppVolumeKeys.ACTION_SET_VOLUME)
+            }
+            context.registerReceiver(r, filter, Context.RECEIVER_EXPORTED)
             receiver = r
-            HookHelper.log("$tag: expand receiver registered")
+            HookHelper.log("$tag: receiver registered")
         }.onFailure { HookHelper.log("$tag: register receiver failed", it) }
+    }
+
+    /**
+     * 「系统界面模式」转发落地：用官方同款机制（`AudioManager.setPlayerVolume`）生效，
+     * 并把数值写回官方面板镜像（控制器 `w`），使「音质音效」面板数值与系统界面同步。
+     */
+    private fun applyForwardedVolume(context: Context, pkg: String, volume: Float) {
+        val v = volume.coerceIn(0f, 1f)
+        runCatching {
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+                ?: return@runCatching
+            val apc = activeConfigForPackage(context, pkg) ?: return@runCatching
+            val set = android.media.AudioManager::class.java.getMethod(
+                "setPlayerVolume",
+                android.media.AudioPlaybackConfiguration::class.java,
+                Float::class.javaPrimitiveType,
+            )
+            set.invoke(am, apc, v)
+            HookHelper.log("$tag: forwarded setPlayerVolume $pkg -> $v")
+        }.onFailure { HookHelper.log("$tag: forwarded setPlayerVolume failed", it) }
+
+        // 写回镜像 + 刷新面板（若控制器可达）。
+        val controller = controllerRef?.get() ?: resolveController(context)
+        if (controller != null) {
+            runCatching { Reflect.callMethod(controller, "w", pkg, v) }
+                .onFailure { HookHelper.log("$tag: mirror volume failed", it) }
+            runCatching { Reflect.callMethod(controller, "E") }
+        }
+    }
+
+    /** 找到目标包当前活跃的 [android.media.AudioPlaybackConfiguration]。 */
+    private fun activeConfigForPackage(context: Context, pkg: String): Any? {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            ?: return null
+        val pm = context.packageManager
+        return am.activePlaybackConfigurations.firstOrNull { config ->
+            val uid = runCatching { Reflect.callMethod(config, "getClientUid") as? Int }.getOrNull()
+                ?: return@firstOrNull false
+            runCatching { pm.getPackagesForUid(uid)?.contains(pkg) }.getOrNull() == true
+        }
     }
 
     companion object {

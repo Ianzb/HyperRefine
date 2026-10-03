@@ -178,11 +178,11 @@
 
     <string name="section_cc_radius">Appearance</string>
     <string name="cc_radius_title">Corner radius</string>
-    <string name="cc_radius_master_summary">Uniformly adjust the corner radius of Control Center tiles, player, volume, brightness, device center, the side volume bar and the per-app volume panel</string>
+    <string name="cc_radius_master_summary">Uniformly adjust the corner radius of Control Center tiles, player, volume, brightness, device center, the side volume bar and the Multi-app volume panel</string>
     <string name="cc_radius_component">Component radius</string>
     <string name="cc_radius_component_summary">All non-background components (tiles / player / sliders / volume bars / device center, etc.) share this radius</string>
     <string name="cc_radius_background">Background radius</string>
-    <string name="cc_radius_background_summary">Only blurred backgrounds (secondary panel backgrounds / per-app volume panel) share this radius</string>
+    <string name="cc_radius_background_summary">Only blurred backgrounds (secondary panel backgrounds / Multi-app volume panel) share this radius</string>
     <string name="cc_radius_item_summary">Enable to use a custom radius for this item</string>
     <string name="cc_radius_unit">dp</string>
     <string name="cc_radius_horizontal_tile">Horizontal tiles (WLAN / data)</string>
@@ -196,14 +196,14 @@
     <string name="cc_radius_ringer">Mute / DND button</string>
     <string name="cc_radius_timer">Mute / DND timer bar</string>
     <string name="cc_radius_device_center">Fusion device center</string>
-    <string name="cc_radius_app_volume_bar">Per-app volume bars</string>
+    <string name="cc_radius_app_volume_bar">Multi-app volume bars</string>
     <string name="cc_radius_brightness_l2_bg">Level-2 brightness background</string>
     <string name="cc_radius_media_l2_bg">Level-2 player background</string>
     <string name="cc_radius_detail_bg">Level-2 WLAN / data background</string>
     <string name="cc_radius_cc_volume_l2_bg">Control Center level-2 volume background</string>
     <string name="cc_radius_side_volume_l2_bg">Side level-2 volume background</string>
-    <string name="cc_radius_app_volume_panel">Per-app volume panel background</string>
-    <string name="cc_radius_app_volume_summary">Enable to use a custom radius (requires the per-app volume entry first)</string>
+    <string name="cc_radius_app_volume_panel">Multi-app volume panel background</string>
+    <string name="cc_radius_app_volume_summary">Enable to use a custom radius (requires the Multi-app volume entry first)</string>
     <string name="cc_radius_section_master">Overview</string>
     <string name="cc_radius_section_component">Component radius</string>
     <string name="cc_radius_section_background">Background radius</string>
@@ -235,20 +235,18 @@
     <string name="side_volume_longpress">Long-press to open volume panel</string>
     <string name="side_volume_longpress_summary">Long-press the bar to expand the volume panel and hide its three-dot button</string>
 
-    <string name="app_volume_section">App volume</string>
-    <string name="app_volume_entry">App volume entry</string>
-    <string name="app_volume_entry_summary">Show an entry to the system per-app volume panel at the bottom of the side volume bar</string>
+    <string name="app_volume_section">Multi-app volume</string>
+    <string name="app_volume_entry">Multi-app volume entry</string>
+    <string name="app_volume_entry_summary">Show an entry to the system Multi-app volume panel at the bottom of the side volume bar</string>
     <string name="app_volume_hide_float">Hide left floating button</string>
-    <string name="app_volume_hide_float_summary">Hide the blue per-app volume floating button on the left side</string>
+    <string name="app_volume_hide_float_summary">Hide the blue Multi-app volume floating button on the left side</string>
     <string name="app_volume_always_show">Always show entry</string>
     <string name="app_volume_always_show_summary">When off, the entry only appears while media is playing</string>
-    <string name="app_volume_align_right">Align panel to the right</string>
-    <string name="app_volume_align_right_summary">Off: centered. On: right-aligned with a right margin</string>
+
     <string name="app_volume_empty">No app is currently playing</string>
     <string name="app_volume_height_percent">Height</string>
     <string name="app_volume_height_percent_summary">Vertical placement of the panel; 0% lowest, 100% highest, 50% centered</string>
-    <string name="app_volume_hide_blur_bg">Hide blurred background border</string>
-    <string name="app_volume_hide_blur_bg_summary">Hide the panel\'s blurred background border, leaving only the volume bars</string>
+
     <string name="percent_unit">%</string>
 
     <!-- Update -->
@@ -282,8 +280,8 @@
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
     <string name="about_based_on">Based on MiuixGuiTemplate 0.5.2</string>
-    <string name="license_lgpl">GNU LGPL v3.0</string>
-    <string name="license_lgpl_summary">View full license text</string>
+    <string name="license_agpl">GNU AGPL v3.0</string>
+    <string name="license_agpl_summary">View full license text</string>
     <string name="third_party_licenses_title">Third Party Licenses &amp; Credits</string>
     <string name="licenses_header">This app uses or references the following open-source and referenced projects. Thanks to all authors and contributors.</string>
     <string name="licenses_section_core">Core</string>

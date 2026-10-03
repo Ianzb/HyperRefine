@@ -176,6 +176,12 @@ private val licenseSections: List<LicenseSection> = listOf(
                 "仅思路参考",
                 "https://github.com/Mo-SeTian/HyperVolume",
             ),
+            LibraryInfo(
+                "SoundMan",
+                "-",
+                "GPL-3.0，系统界面多应用音量面板参考",
+                "https://github.com/killerprojecte/SoundMan",
+            ),
         ),
     ),
 )

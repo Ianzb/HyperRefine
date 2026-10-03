@@ -130,12 +130,7 @@ object PercentText {
      * @param pref 样式配置键前缀（读取 `${pref}_position`，0–100）
      */
     fun applyVerticalPosition(tv: TextView, pref: String) {
-        val percent = HookPrefs.getFloat("${pref}_position", 100f)
-        if (percent >= 100f) {
-            verticalRetry.remove(tv)
-            if (tv.translationY != 0f) tv.translationY = 0f
-            return
-        }
+        val percent = HookPrefs.getFloat("${pref}_position", 90f)
         val parent = tv.parent as? View
         if (parent == null || parent.height <= 0 || tv.height <= 0) {
             // 首次打开时视图尚未布局（高度为 0），等下一帧布局完成后再套用，
@@ -143,13 +138,15 @@ object PercentText {
             scheduleVerticalRetry(tv, pref)
             return
         }
-        val available = parent.height - tv.height - tv.top
+        // 以「文本占满父容器整个高度」为基准做平移：100% 紧贴上边缘、0% 紧贴下边缘，
+        // 减去 tv.top 以消掉文本自身布局带来的顶部内边距（否则上端会始终留一段边距）。
+        val available = parent.height - tv.height
         if (available < 0) {
             scheduleVerticalRetry(tv, pref)
             return
         }
         verticalRetry.remove(tv)
-        val ty = (1f - percent.coerceIn(0f, 100f) / 100f) * available
+        val ty = (1f - percent.coerceIn(0f, 100f) / 100f) * available - tv.top
         if (abs(tv.translationY - ty) > 0.5f) tv.translationY = ty
     }
 

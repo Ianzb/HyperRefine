@@ -172,6 +172,6 @@ HyperRefine 基于个人 Android 模块开发脚手架 MiuixGuiTemplate 创建�
 
 # 许可证
 
-本项目以 [GNU Lesser General Public License v3.0](LICENSE)（LGPL-3.0）开源。
+本项目以 [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）开源。
 
-本仓库同时包含 Apache-2.0 许可的第三方代码（自 [miuix](https://github.com/compose-miuix-ui/miuix) 等引入的文件保留其原始版权与许可声明）。按照 LGPL-3.0 的传染性要求，本项目整体以 LGPL-3.0 授权分发；衍生作品须以 LGPL-3.0 或 GPL-3.0 授权公开，并保留应用内「参考与致谢」与 Based on 标注。
+本仓库同时包含 Apache-2.0 许可的第三方代码（自 [miuix](https://github.com/compose-miuix-ui/miuix) 等引入的文件保留其原始版权与许可声明）。AGPL-3.0 与 GPL-3.0 兼容（AGPL-3.0 §13）：参考或移植 GPL-3.0 项目（如 [SoundMan](https://github.com/killerprojecte/SoundMan)）时，本项目整体以 AGPL-3.0 授权分发；衍生作品须以 AGPL-3.0 授权公开，并保留应用内「参考与致谢」与 Based on 标注。

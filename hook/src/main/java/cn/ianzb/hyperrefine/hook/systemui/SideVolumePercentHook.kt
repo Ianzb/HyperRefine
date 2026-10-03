@@ -209,6 +209,10 @@ class SideVolumePercentHook : BaseHook() {
         GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onLongPress(e: MotionEvent) {
                 if (!longPressEnabled()) return
+                // 已展开时不再处理：`onExpandClicked` 是开关式的，重复调用会把面板又收回。
+                val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") as? Boolean }
+                    .getOrNull() ?: false
+                if (expanded) return
                 HookHelper.log("$tag: long-press -> expand")
                 runCatching { Reflect.callMethod(controller, "onExpandClicked") }
                     .onFailure { HookHelper.log("$tag: onExpandClicked failed", it) }

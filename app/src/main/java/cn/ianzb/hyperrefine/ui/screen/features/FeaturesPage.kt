@@ -144,6 +144,7 @@ fun FeaturesPageView(
                     "com.miui.securitycenter",
                     "com.milink.service",
                     "com.xiaomi.mirror",
+                    AppVolumeKeys.TARGET_PACKAGE,
                 )
             )
         },
@@ -201,9 +202,7 @@ private fun locationSpecs(specs: List<OptionSpec>, location: String): List<Optio
     keys += AppVolumeKeys.ENTRY
     keys += AppVolumeKeys.HIDE_FLOAT
     keys += AppVolumeKeys.ALWAYS_SHOW
-    keys += AppVolumeKeys.ALIGN_RIGHT
     keys += AppVolumeKeys.HEIGHT_PERCENT
-    keys += AppVolumeKeys.HIDE_BLUR_BG
     }
     return keys.map { specByKey(specs, it) }
 }
@@ -231,15 +230,13 @@ private fun deviceCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
     )
 
-/** 分应用音量二级页内的配置项，用于功能页搜索直达。 */
+/** 多应用音量二级页内的配置项，用于功能页搜索直达。 */
 private fun appVolumeSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
         specByKey(specs, AppVolumeKeys.ENTRY),
         specByKey(specs, AppVolumeKeys.HIDE_FLOAT),
         specByKey(specs, AppVolumeKeys.ALWAYS_SHOW),
-        specByKey(specs, AppVolumeKeys.ALIGN_RIGHT),
         specByKey(specs, AppVolumeKeys.HEIGHT_PERCENT),
-        specByKey(specs, AppVolumeKeys.HIDE_BLUR_BG),
     )
 
 /** 安全服务二级页（快充加速通知）内的配置项，用于功能页搜索直达。 */
@@ -462,7 +459,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             type = OptionType.SLIDER,
             titleRes = R.string.percent_position,
             summaryRes = R.string.percent_position_summary,
-            defaultFloat = 100f,
+            defaultFloat = 90f,
             sliderMin = 0f,
             sliderMax = 100f,
             sliderStep = 1f,
@@ -606,7 +603,7 @@ private fun ccRadiusItemTitle(item: String): Int = when (item) {
     else -> R.string.cc_radius_horizontal_tile
 }
 
-/** 「分应用音量」配置项（侧边音量条）。 */
+/** 「多应用音量」配置项（侧边音量条）。 */
 private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
     OptionSpec(
         key = AppVolumeKeys.ENTRY,
@@ -637,16 +634,6 @@ private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = list
         dependsOn = AppVolumeKeys.ENTRY,
     ),
     OptionSpec(
-        key = AppVolumeKeys.ALIGN_RIGHT,
-        type = OptionType.SWITCH,
-        titleRes = R.string.app_volume_align_right,
-        summaryRes = R.string.app_volume_align_right_summary,
-        defaultBoolean = true,
-        targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
-        dependsOn = AppVolumeKeys.ENTRY,
-        showStatus = true,
-    ),
-    OptionSpec(
         key = AppVolumeKeys.HEIGHT_PERCENT,
         type = OptionType.SLIDER,
         titleRes = R.string.app_volume_height_percent,
@@ -658,15 +645,6 @@ private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = list
         sliderDecimals = 0,
         sliderUnitRes = R.string.percent_unit,
         sliderValueLabelRes = R.string.app_volume_height_percent,
-        targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
-        dependsOn = AppVolumeKeys.ENTRY,
-    ),
-    OptionSpec(
-        key = AppVolumeKeys.HIDE_BLUR_BG,
-        type = OptionType.SWITCH,
-        titleRes = R.string.app_volume_hide_blur_bg,
-        summaryRes = R.string.app_volume_hide_blur_bg_summary,
-        defaultBoolean = false,
         targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
         dependsOn = AppVolumeKeys.ENTRY,
     ),

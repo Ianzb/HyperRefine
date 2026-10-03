@@ -20,7 +20,7 @@ import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
  * 控制中心「圆角调整」二级页。
  *
  * 总开关 + 统一圆角；各项目可单独开启自定义。涉及控制中心一级 / 二级、侧边音量条，
- * 以及模块自定义分应用音量面板。
+ * 以及模块自定义多应用音量面板。
  */
 class CornerRadiusActivity : BaseSubPageActivity() {
 

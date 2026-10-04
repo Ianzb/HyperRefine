@@ -159,6 +159,18 @@ private val licenseSections: List<LicenseSection> = listOf(
                 "https://github.com/silverpoetry/HyperConnectToolkit",
             ),
             LibraryInfo(
+                "妙享桌面增强（酷安 @ayyya）",
+                "1.10.4",
+                "非开源，妙享桌面（自由浮窗 / 下拉最小化 / 投屏刷新率）功能移植",
+                "",
+            ),
+            LibraryInfo(
+                "HyperBackground",
+                "-",
+                "MIT，顶栏渐变（MIUIX 顶栏模糊）功能移植",
+                "https://github.com/Solomonstery/HyperBackground",
+            ),
+            LibraryInfo(
                 "HyperCeiler",
                 "-",
                 "AGPL-3.0，仅思路参考",

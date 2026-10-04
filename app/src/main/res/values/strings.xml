@@ -156,6 +156,31 @@
     <string name="connect_milink_multi_channel">多设备流转</string>
     <string name="connect_milink_multi_channel_summary">让手机可同时与多台平板流转</string>
 
+    <string name="section_mirror">妙享桌面增强</string>
+    <string name="mirror_floating_window">自由浮窗</string>
+    <string name="mirror_floating_window_summary">可拖动、四角缩放、顶部拖动条双击最小化、收起为气泡并记住位置（仅平板 / 折叠屏接收端）</string>
+    <string name="mirror_floating_radius">浮窗圆角</string>
+    <string name="mirror_floating_radius_summary">自定义投屏画面、遮罩与气泡的圆角大小（默认 9，与原生一致）</string>
+    <string name="mirror_hide_pole">隐藏左侧竖条</string>
+    <string name="mirror_hide_pole_summary">隐藏投屏浮窗左侧的竖条（侧边关闭条）</string>
+    <string name="mirror_minimize_on_shade">下拉通知栏时最小化</string>
+    <string name="mirror_minimize_on_shade_summary">检测到通知中心或控制中心展开时收起投屏浮窗</string>
+    <string name="mirror_refresh_rate">投屏刷新率请求</string>
+    <string name="mirror_refresh_rate_summary">向发送端 / 接收端协商并请求指定刷新率</string>
+    <string name="mirror_refresh_rate_value">刷新率</string>
+    <string name="mirror_refresh_rate_value_summary">仅修改协商与显示请求，实际帧率仍受屏幕、编码器、网络与温控限制</string>
+    <string name="mirror_refresh_rate_60">60 Hz</string>
+    <string name="mirror_refresh_rate_90">90 Hz</string>
+    <string name="mirror_refresh_rate_120">120 Hz</string>
+
+    <string name="section_top_bar">顶栏渐变</string>
+    <string name="top_bar_gradient">顶栏渐变模糊</string>
+    <string name="top_bar_gradient_summary">把 MIUIX 应用顶栏的原生遮罩替换为顶部模糊、向下渐变透明的模糊层（设置 / 短信 / 联系人）</string>
+    <string name="top_bar_gradient_strength">模糊强度</string>
+    <string name="top_bar_gradient_strength_summary">模糊区域的高度占比</string>
+    <string name="top_bar_gradient_opacity">不透明度</string>
+    <string name="top_bar_gradient_opacity_summary">模糊层的不透明度</string>
+
     <string name="appearance_cc_volume">音量条</string>
     <string name="appearance_cc_brightness">亮度条</string>
     <string name="appearance_side_volume">侧边音量条</string>

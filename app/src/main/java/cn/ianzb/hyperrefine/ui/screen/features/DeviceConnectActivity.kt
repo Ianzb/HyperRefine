@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.hook.connect.ConnectKeys
+import cn.ianzb.hyperrefine.hook.connect.MirrorKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
@@ -44,6 +45,19 @@ class DeviceConnectActivity : BaseSubPageActivity() {
                 ),
             )
         }
+        val mirrorSection = remember {
+            HookSection(
+                titleRes = R.string.section_mirror,
+                specs = listOf(
+                    featureSpec(MirrorKeys.FLOATING_WINDOW),
+                    featureSpec(MirrorKeys.FLOATING_RADIUS),
+                    featureSpec(MirrorKeys.HIDE_POLE),
+                    featureSpec(MirrorKeys.MINIMIZE_ON_SHADE),
+                    featureSpec(MirrorKeys.REFRESH_RATE),
+                    featureSpec(MirrorKeys.REFRESH_RATE_VALUE),
+                ),
+            )
+        }
 
         LazyColumn(
             modifier = Modifier
@@ -63,6 +77,11 @@ class DeviceConnectActivity : BaseSubPageActivity() {
             item {
                 HookSectionCard(featureSection) {
                     featureSection.specs.forEach { HookOptionView(it) }
+                }
+            }
+            item {
+                HookSectionCard(mirrorSection) {
+                    mirrorSection.specs.forEach { HookOptionView(it) }
                 }
             }
         }

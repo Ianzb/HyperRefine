@@ -70,12 +70,12 @@ fun QuickActionDialog(
         title = stringResource(R.string.quick_action_title),
         onDismissRequest = onDismiss,
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+        // 外层限高 + 列表 weight：包名很多时列表占满剩余空间并滚动，底部两个按钮始终可见。
+        Column(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
+            Card(modifier = Modifier.fillMaxWidth().weight(1f, fill = false)) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp)
                         .verticalScroll(rememberScrollState()),
                 ) {
                     packages.forEach { packageName ->

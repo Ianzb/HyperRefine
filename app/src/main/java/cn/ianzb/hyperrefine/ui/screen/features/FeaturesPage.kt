@@ -10,7 +10,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.hook.connect.ConnectKeys
+import cn.ianzb.hyperrefine.hook.connect.MirrorKeys
 import cn.ianzb.hyperrefine.hook.device.DeviceType
+import cn.ianzb.hyperrefine.hook.miuix.MiuixAppLoad
+import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
@@ -51,6 +54,14 @@ fun FeaturesPageView(
                 titleRes = R.string.section_device_connect,
                 specs = listOf(
                     specByKey(specs, KEY_DEVICE_CONNECT),
+                ),
+            ),
+            HookSection(
+                titleRes = R.string.section_top_bar,
+                specs = listOf(
+                    specByKey(specs, TopBarKeys.KEY),
+                    specByKey(specs, TopBarKeys.STRENGTH),
+                    specByKey(specs, TopBarKeys.OPACITY),
                 ),
             ),
         )
@@ -145,6 +156,7 @@ fun FeaturesPageView(
                     "com.milink.service",
                     "com.xiaomi.mirror",
                     AppVolumeKeys.TARGET_PACKAGE,
+                    *MiuixAppLoad.MIUIX_PACKAGES.toTypedArray(),
                 )
             )
         },
@@ -256,12 +268,18 @@ private fun securityCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, KEY_FAST_CHARGE_EXIT),
     )
 
-/** 设备互联二级页内的配置项（三个开关），用于功能页搜索直达。 */
+/** 设备互联二级页内的配置项，用于功能页搜索直达。 */
 fun deviceConnectSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
         specByKey(specs, ConnectKeys.CROSS_DEVICE_NOTIFICATION),
         specByKey(specs, ConnectKeys.PORTRAIT_STREAMING),
         specByKey(specs, ConnectKeys.MILINK_MULTI_CHANNEL),
+        specByKey(specs, MirrorKeys.FLOATING_WINDOW),
+        specByKey(specs, MirrorKeys.FLOATING_RADIUS),
+        specByKey(specs, MirrorKeys.HIDE_POLE),
+        specByKey(specs, MirrorKeys.MINIMIZE_ON_SHADE),
+        specByKey(specs, MirrorKeys.REFRESH_RATE),
+        specByKey(specs, MirrorKeys.REFRESH_RATE_VALUE),
     )
 
 /** 按键取功能配置项（供各功能子页复用同一份声明）。 */
@@ -274,6 +292,10 @@ internal fun featureSpecs(): List<OptionSpec> {
     val securityCenter = listOf("com.miui.securitycenter")
     // 设备互联三项目标包：任一功能开启都同时申请 MiLink 与小米互联，避免 mirror 未授权导致流转/竖屏失效。
     val connect = listOf("com.milink.service", "com.xiaomi.mirror")
+    // 妙享桌面增强只作用于小米互联。
+    val mirror = listOf("com.xiaomi.mirror")
+    // 顶栏渐变作用于设置 / 短信 / 联系人等 MIUIX 应用。
+    val miuixApps = MiuixAppLoad.MIUIX_PACKAGES
     val specs = mutableListOf(
         OptionSpec(
             key = KEY_APPEARANCE,
@@ -388,6 +410,115 @@ internal fun featureSpecs(): List<OptionSpec> {
             defaultBoolean = false,
             targetPackages = connect,
             showStatus = true,
+        ),
+        OptionSpec(
+            key = MirrorKeys.FLOATING_WINDOW,
+            type = OptionType.SWITCH,
+            titleRes = R.string.mirror_floating_window,
+            summaryRes = R.string.mirror_floating_window_summary,
+            defaultBoolean = false,
+            targetPackages = mirror,
+            deviceScope = setOf(DeviceType.PAD, DeviceType.FOLD),
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = MirrorKeys.FLOATING_RADIUS,
+            type = OptionType.SLIDER,
+            titleRes = R.string.mirror_floating_radius,
+            summaryRes = R.string.mirror_floating_radius_summary,
+            defaultFloat = 9f,
+            sliderMin = 0f,
+            sliderMax = 60f,
+            sliderStep = 1f,
+            sliderDecimals = 0,
+            sliderUnitRes = R.string.cc_radius_unit,
+            sliderValueLabelRes = R.string.mirror_floating_radius,
+            targetPackages = mirror,
+            deviceScope = setOf(DeviceType.PAD, DeviceType.FOLD),
+            dependsOn = MirrorKeys.FLOATING_WINDOW,
+        ),
+        OptionSpec(
+            key = MirrorKeys.HIDE_POLE,
+            type = OptionType.SWITCH,
+            titleRes = R.string.mirror_hide_pole,
+            summaryRes = R.string.mirror_hide_pole_summary,
+            defaultBoolean = false,
+            targetPackages = mirror,
+            deviceScope = setOf(DeviceType.PAD, DeviceType.FOLD),
+            dependsOn = MirrorKeys.FLOATING_WINDOW,
+        ),
+        OptionSpec(
+            key = MirrorKeys.MINIMIZE_ON_SHADE,
+            type = OptionType.SWITCH,
+            titleRes = R.string.mirror_minimize_on_shade,
+            summaryRes = R.string.mirror_minimize_on_shade_summary,
+            defaultBoolean = false,
+            targetPackages = mirror,
+            deviceScope = setOf(DeviceType.PAD, DeviceType.FOLD),
+            dependsOn = MirrorKeys.FLOATING_WINDOW,
+        ),
+        OptionSpec(
+            key = MirrorKeys.REFRESH_RATE,
+            type = OptionType.SWITCH,
+            titleRes = R.string.mirror_refresh_rate,
+            summaryRes = R.string.mirror_refresh_rate_summary,
+            defaultBoolean = false,
+            targetPackages = mirror,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = MirrorKeys.REFRESH_RATE_VALUE,
+            type = OptionType.DROPDOWN,
+            titleRes = R.string.mirror_refresh_rate_value,
+            summaryRes = R.string.mirror_refresh_rate_value_summary,
+            defaultString = "120",
+            entryResIds = listOf(
+                R.string.mirror_refresh_rate_60,
+                R.string.mirror_refresh_rate_90,
+                R.string.mirror_refresh_rate_120,
+            ),
+            entryValues = listOf("60", "90", "120"),
+            targetPackages = mirror,
+            dependsOn = MirrorKeys.REFRESH_RATE,
+        ),
+        OptionSpec(
+            key = TopBarKeys.KEY,
+            type = OptionType.SWITCH,
+            titleRes = R.string.top_bar_gradient,
+            summaryRes = R.string.top_bar_gradient_summary,
+            defaultBoolean = false,
+            targetPackages = miuixApps,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = TopBarKeys.STRENGTH,
+            type = OptionType.SLIDER,
+            titleRes = R.string.top_bar_gradient_strength,
+            summaryRes = R.string.top_bar_gradient_strength_summary,
+            defaultFloat = 10f,
+            sliderMin = 0f,
+            sliderMax = 100f,
+            sliderStep = 1f,
+            sliderDecimals = 0,
+            sliderUnitRes = R.string.percent_unit,
+            sliderValueLabelRes = R.string.top_bar_gradient_strength,
+            targetPackages = miuixApps,
+            dependsOn = TopBarKeys.KEY,
+        ),
+        OptionSpec(
+            key = TopBarKeys.OPACITY,
+            type = OptionType.SLIDER,
+            titleRes = R.string.top_bar_gradient_opacity,
+            summaryRes = R.string.top_bar_gradient_opacity_summary,
+            defaultFloat = 100f,
+            sliderMin = 0f,
+            sliderMax = 100f,
+            sliderStep = 1f,
+            sliderDecimals = 0,
+            sliderUnitRes = R.string.percent_unit,
+            sliderValueLabelRes = R.string.top_bar_gradient_opacity,
+            targetPackages = miuixApps,
+            dependsOn = TopBarKeys.KEY,
         ),
     )
     specs += OptionSpec(

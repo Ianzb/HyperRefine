@@ -156,6 +156,31 @@
     <string name="connect_milink_multi_channel">Multi-device streaming</string>
     <string name="connect_milink_multi_channel_summary">Let your phone stream to multiple tablets at once</string>
 
+    <string name="section_mirror">Mi Share Desktop enhancements</string>
+    <string name="mirror_floating_window">Freeform floating window</string>
+    <string name="mirror_floating_window_summary">Draggable, corner-resizable, double-tap the top bar to minimize, collapses to a bubble and remembers its position (receiver / tablet only)</string>
+    <string name="mirror_floating_radius">Window corner radius</string>
+    <string name="mirror_floating_radius_summary">Customize the corner radius of the cast video, mask and bubble (default 9 matches stock)</string>
+    <string name="mirror_hide_pole">Hide left side bar</string>
+    <string name="mirror_hide_pole_summary">Hide the vertical bar (side close handle) on the left of the floating cast window</string>
+    <string name="mirror_minimize_on_shade">Minimize when pulling down shade</string>
+    <string name="mirror_minimize_on_shade_summary">Collapse the cast window when the notification or control center is expanded</string>
+    <string name="mirror_refresh_rate">Cast refresh-rate request</string>
+    <string name="mirror_refresh_rate_summary">Negotiates and requests the selected refresh rate on both sender and receiver</string>
+    <string name="mirror_refresh_rate_value">Refresh rate</string>
+    <string name="mirror_refresh_rate_value_summary">Only changes the negotiation and display request; the actual frame rate is still limited by the screen, encoder, network and thermal conditions</string>
+    <string name="mirror_refresh_rate_60">60 Hz</string>
+    <string name="mirror_refresh_rate_90">90 Hz</string>
+    <string name="mirror_refresh_rate_120">120 Hz</string>
+
+    <string name="section_top_bar">Top bar gradient</string>
+    <string name="top_bar_gradient">Top bar gradient blur</string>
+    <string name="top_bar_gradient_summary">Replace the native top bar scrim in MIUIX apps with a top blur fading transparent downward (Settings / Messages / Contacts)</string>
+    <string name="top_bar_gradient_strength">Blur strength</string>
+    <string name="top_bar_gradient_strength_summary">Height fraction of the blurred region</string>
+    <string name="top_bar_gradient_opacity">Opacity</string>
+    <string name="top_bar_gradient_opacity_summary">Opacity of the blurred layer</string>
+
     <string name="appearance_cc_volume">Volume bar</string>
     <string name="appearance_cc_brightness">Brightness bar</string>
     <string name="appearance_side_volume">Side volume bar</string>

@@ -129,7 +129,7 @@
     <string name="quick_action_restart_success">Restarted</string>
 
     <!-- Features -->
-    <string name="section_system_ui">System UI</string>
+    <string name="section_system_ui">Interface</string>
     <string name="feature_control_center">Control center</string>
     <string name="feature_appearance">Appearance</string>
     <string name="feature_display">Display</string>

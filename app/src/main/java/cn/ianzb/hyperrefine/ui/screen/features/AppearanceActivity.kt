@@ -41,6 +41,7 @@ class AppearanceActivity : BaseSubPageActivity() {
             titleRes = R.string.section_beautify,
             specs = listOf(
                 featureSpec(KEY_GLASS),
+                featureSpec(KEY_TOP_BAR),
                 featureSpec(KEY_CC_RADIUS),
             ),
         )
@@ -78,6 +79,8 @@ class AppearanceActivity : BaseSubPageActivity() {
                                 when (spec.key) {
                                     KEY_GLASS ->
                                         context.startActivity(Intent(context, GlassActivity::class.java))
+                                    KEY_TOP_BAR ->
+                                        context.startActivity(Intent(context, TopBarActivity::class.java))
                                     KEY_CC_RADIUS ->
                                         context.startActivity(Intent(context, CornerRadiusActivity::class.java))
                                 }

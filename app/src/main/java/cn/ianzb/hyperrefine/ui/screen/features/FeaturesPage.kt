@@ -56,14 +56,6 @@ fun FeaturesPageView(
                     specByKey(specs, KEY_DEVICE_CONNECT),
                 ),
             ),
-            HookSection(
-                titleRes = R.string.section_top_bar,
-                specs = listOf(
-                    specByKey(specs, TopBarKeys.KEY),
-                    specByKey(specs, TopBarKeys.STRENGTH),
-                    specByKey(specs, TopBarKeys.OPACITY),
-                ),
-            ),
         )
     }
     // 「外观」为二级页，其下再分子页；通过嵌套 subPages 让搜索直达多级功能。
@@ -73,6 +65,7 @@ fun FeaturesPageView(
                 titleRes = R.string.feature_appearance,
                 specs = listOf(
                     specByKey(specs, KEY_GLASS),
+                    specByKey(specs, KEY_TOP_BAR),
                     specByKey(specs, KEY_CC_RADIUS),
                     specByKey(specs, KEY_DEVICE_CENTER),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_BRIGHTNESS)),
@@ -86,6 +79,11 @@ fun FeaturesPageView(
                         titleRes = R.string.feature_glass,
                         specs = glassSpecs(specs),
                         onOpen = { context.startActivity(Intent(context, GlassActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.section_top_bar,
+                        specs = topBarSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, TopBarActivity::class.java)) },
                     ),
                     HookSubPage(
                         titleRes = R.string.cc_radius_title,
@@ -165,6 +163,7 @@ fun FeaturesPageView(
 
 const val KEY_APPEARANCE = "feature_appearance"
 const val KEY_GLASS = "feature_glass"
+const val KEY_TOP_BAR = "feature_top_bar"
 const val KEY_DEVICE_CENTER = "feature_device_center"
 const val KEY_APP_VOLUME = "feature_app_volume"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
@@ -240,6 +239,14 @@ private fun glassSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, CcGlassKeys.THEME_MATERIAL),
     )
 
+/** 顶栏渐变二级页内的配置项，用于功能页搜索直达。 */
+fun topBarSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, TopBarKeys.KEY),
+        specByKey(specs, TopBarKeys.STRENGTH),
+        specByKey(specs, TopBarKeys.OPACITY),
+    )
+
 /** 融合设备中心二级页内的配置项，用于功能页搜索直达。 */
 private fun deviceCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
@@ -306,6 +313,11 @@ internal fun featureSpecs(): List<OptionSpec> {
             key = KEY_GLASS,
             type = OptionType.ARROW,
             titleRes = R.string.feature_glass,
+        ),
+        OptionSpec(
+            key = KEY_TOP_BAR,
+            type = OptionType.ARROW,
+            titleRes = R.string.section_top_bar,
         ),
         OptionSpec(
             key = KEY_DEVICE_CENTER,

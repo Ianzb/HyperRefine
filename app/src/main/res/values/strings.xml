@@ -129,7 +129,7 @@
     <string name="quick_action_restart_success">重启成功</string>
 
     <!-- Features -->
-    <string name="section_system_ui">系统界面</string>
+    <string name="section_system_ui">界面</string>
     <string name="feature_control_center">控制中心</string>
     <string name="feature_appearance">外观</string>
     <string name="feature_display">显示</string>

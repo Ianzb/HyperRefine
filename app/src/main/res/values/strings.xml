@@ -181,6 +181,12 @@
     <string name="top_bar_gradient_opacity">不透明度</string>
     <string name="top_bar_gradient_opacity_summary">模糊层的不透明度</string>
 
+    <string name="section_experimental">实验性功能</string>
+    <string name="section_weather">天气</string>
+    <string name="feature_weather">天气高级外观</string>
+    <string name="weather_advanced">解锁高级外观</string>
+    <string name="weather_advanced_summary">在部分机型上强制开启渐进模糊、玻璃材质与动态天气（雨雪）特效；需重启天气应用生效</string>
+
     <string name="appearance_cc_volume">音量条</string>
     <string name="appearance_cc_brightness">亮度条</string>
     <string name="appearance_side_volume">侧边音量条</string>
@@ -314,7 +320,7 @@
     <string name="about_telegram">Telegram 群组</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">第三方许可证与致谢</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.5.2</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.5.3</string>
     <string name="license_agpl">GNU AGPL v3.0</string>
     <string name="license_agpl_summary">查看完整协议文本</string>
     <string name="third_party_licenses_title">第三方许可证与致谢</string>

@@ -7,6 +7,7 @@ import cn.ianzb.hyperrefine.hook.misound.MiSoundLoad
 import cn.ianzb.hyperrefine.hook.miuix.MiuixAppLoad
 import cn.ianzb.hyperrefine.hook.securitycenter.SecurityCenterLoad
 import cn.ianzb.hyperrefine.hook.systemui.SystemUiLoad
+import cn.ianzb.hyperrefine.hook.weather.WeatherLoad
 
 /**
  * 目标 Load 注册表。
@@ -23,6 +24,7 @@ object HookEntryRegistry {
         XiaomiMirrorLoad(),
         MiSoundLoad(),
         MiuixAppLoad(),
+        WeatherLoad(),
     )
 
     fun loadsFor(packageName: String): List<BaseLoad> =

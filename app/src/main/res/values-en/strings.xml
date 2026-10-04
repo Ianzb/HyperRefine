@@ -181,6 +181,12 @@
     <string name="top_bar_gradient_opacity">Opacity</string>
     <string name="top_bar_gradient_opacity_summary">Opacity of the blurred layer</string>
 
+    <string name="section_experimental">Experimental</string>
+    <string name="section_weather">Weather</string>
+    <string name="feature_weather">Weather advanced look</string>
+    <string name="weather_advanced">Unlock advanced look</string>
+    <string name="weather_advanced_summary">Force-enable progressive blur, glass material and dynamic weather (rain/snow) effects on some devices. Restart the Weather app to take effect.</string>
+
     <string name="appearance_cc_volume">Volume bar</string>
     <string name="appearance_cc_brightness">Brightness bar</string>
     <string name="appearance_side_volume">Side volume bar</string>
@@ -314,7 +320,7 @@
     <string name="about_telegram">Telegram Group</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.5.2</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.5.3</string>
     <string name="license_agpl">GNU AGPL v3.0</string>
     <string name="license_agpl_summary">View full license text</string>
     <string name="third_party_licenses_title">Third Party Licenses &amp; Credits</string>

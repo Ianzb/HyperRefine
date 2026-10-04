@@ -108,6 +108,7 @@ abstract class BaseLoad {
         }
         if (ok) {
             HookHelper.log("native hook loaded: ${hook.libraryName} @ ${target.packageName}")
+            HookStatusReporter.markInstalled(hook.key)
         } else if (hook.required) {
             HookHelper.log("native hook required but not loaded: ${hook.libraryName}")
         }

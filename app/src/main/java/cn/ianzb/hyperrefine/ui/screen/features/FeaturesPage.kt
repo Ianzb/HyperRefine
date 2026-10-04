@@ -17,6 +17,7 @@ import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
+import cn.ianzb.hyperrefine.hook.weather.WeatherKeys
 import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.prefs.OptionType
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
@@ -54,6 +55,12 @@ fun FeaturesPageView(
                 titleRes = R.string.section_device_connect,
                 specs = listOf(
                     specByKey(specs, KEY_DEVICE_CONNECT),
+                ),
+            ),
+            HookSection(
+                titleRes = R.string.section_experimental,
+                specs = listOf(
+                    specByKey(specs, KEY_EXPERIMENTAL),
                 ),
             ),
         )
@@ -127,6 +134,18 @@ fun FeaturesPageView(
                 specs = deviceConnectSpecs(specs),
                 onOpen = { context.startActivity(Intent(context, DeviceConnectActivity::class.java)) },
             ),
+            HookSubPage(
+                titleRes = R.string.section_experimental,
+                specs = listOf(specByKey(specs, KEY_WEATHER)),
+                onOpen = { context.startActivity(Intent(context, ExperimentalActivity::class.java)) },
+                subPages = listOf(
+                    HookSubPage(
+                        titleRes = R.string.feature_weather,
+                        specs = weatherSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, WeatherActivity::class.java)) },
+                    ),
+                ),
+            ),
         )
     }
 
@@ -144,6 +163,10 @@ fun FeaturesPageView(
                     context.startActivity(Intent(context, SecurityCenterActivity::class.java))
                 KEY_DEVICE_CONNECT ->
                     context.startActivity(Intent(context, DeviceConnectActivity::class.java))
+                KEY_EXPERIMENTAL ->
+                    context.startActivity(Intent(context, ExperimentalActivity::class.java))
+                KEY_WEATHER ->
+                    context.startActivity(Intent(context, WeatherActivity::class.java))
             }
         },
         topBarActions = {
@@ -164,6 +187,8 @@ fun FeaturesPageView(
 const val KEY_APPEARANCE = "feature_appearance"
 const val KEY_GLASS = "feature_glass"
 const val KEY_TOP_BAR = "feature_top_bar"
+const val KEY_EXPERIMENTAL = "feature_experimental"
+const val KEY_WEATHER = "feature_weather"
 const val KEY_DEVICE_CENTER = "feature_device_center"
 const val KEY_APP_VOLUME = "feature_app_volume"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
@@ -247,6 +272,12 @@ fun topBarSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, TopBarKeys.OPACITY),
     )
 
+/** 天气高级外观二级页内的配置项，用于功能页搜索直达。 */
+fun weatherSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, WeatherKeys.ADVANCED),
+    )
+
 /** 融合设备中心二级页内的配置项，用于功能页搜索直达。 */
 private fun deviceCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
@@ -318,6 +349,16 @@ internal fun featureSpecs(): List<OptionSpec> {
             key = KEY_TOP_BAR,
             type = OptionType.ARROW,
             titleRes = R.string.section_top_bar,
+        ),
+        OptionSpec(
+            key = KEY_EXPERIMENTAL,
+            type = OptionType.ARROW,
+            titleRes = R.string.section_experimental,
+        ),
+        OptionSpec(
+            key = KEY_WEATHER,
+            type = OptionType.ARROW,
+            titleRes = R.string.feature_weather,
         ),
         OptionSpec(
             key = KEY_DEVICE_CENTER,
@@ -531,6 +572,15 @@ internal fun featureSpecs(): List<OptionSpec> {
             sliderValueLabelRes = R.string.top_bar_gradient_opacity,
             targetPackages = miuixApps,
             dependsOn = TopBarKeys.KEY,
+        ),
+        OptionSpec(
+            key = WeatherKeys.ADVANCED,
+            type = OptionType.SWITCH,
+            titleRes = R.string.weather_advanced,
+            summaryRes = R.string.weather_advanced_summary,
+            defaultBoolean = false,
+            targetPackages = listOf(WeatherKeys.TARGET_PACKAGE),
+            showStatus = true,
         ),
     )
     specs += OptionSpec(

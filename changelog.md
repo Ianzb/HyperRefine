@@ -1,5 +1,18 @@
 # 更新日志
 
+## 下个版本
+
+### 新增
+
+- **天气高级外观解锁**（目标 `com.miui.weather2`，原生 Hook）：新版天气为 Flutter + Rust 应用，Android 侧无 dex，逻辑在 Dart AOT（`libapp.so`）与渲染引擎 `libhyper_opengl.so`（MajesticGL）。开启后：
+    - **雨雪特效**：引擎 `MajesticGLRenderer::onDrawFrame` 的雨雪物理开关为 `isHighDeviceLevelOS1() && !isPadDevice()`，平板会直接跳过；通过 hook `DeviceUtils::isPadDevice` / `isInPadMode` 置否，放行平板的雨雪粒子物理。
+    - **平板降级修复**：新增 AOT 机器码补丁引擎（`dl_iterate_phdr` 定位目标 `.so` → 指令签名扫描 → `mprotect` 改写 → 刷新 ICache），对天气业务库 `libweather_app.so` 的 `effective_tablet` 判定打补丁，移除 `PassBlurWindow`（渐进模糊）在平板上的降级分支。
+    - 入口：功能页「实验性功能」→「天气高级外观」（新增「实验性功能」二级页）。
+
+### 优化
+
+- **安装包体积大幅精简**：Release 开启 R8 代码与资源压缩、Debug/Release 的 dex 采用传统压缩打包；测试包由 43.7 MB 降至约 16.7 MB，正式包由 31.9 MB 降至约 2.5 MB。压缩时为 hook 侧保留了必要的反混淆规则，功能不受影响。
+
 ## 1.6.0
 
 > 发布于 2026-10-04

@@ -19,12 +19,16 @@ com.android.updater
 com.miui.aod
 com.miui.audiomonitor
 com.miui.backup
+com.miui.bugreport
 com.miui.calculator
 com.miui.cloudbackup
 com.miui.cloudservice
+com.miui.compass
 com.miui.huanji
 com.miui.notes
+com.miui.passwords
 com.miui.powerkeeper
 com.miui.securitycore
+com.miui.voiceassist
 com.xiaomi.account
 com.xiaomi.misettings

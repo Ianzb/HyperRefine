@@ -55,11 +55,18 @@ class NestedHeaderMaskHook : BaseHook() {
     /** 笔记专属适配需总开关 + 应用专属适配总开关 + 笔记开关同时开启。 */
     private fun notesEnabled(): Boolean = enabled() && TopBarKeys.notesAdvancedEnabled()
 
-    /** `NestedHeaderLayout` 直接子项中，容器之外的普通 `View` 即渐变遮罩。 */
+    /**
+     * `NestedHeaderLayout` 在 `onFinishInflate` 里 `addView` 的滚动渐变遮罩：
+     * MIUIX 为 `NestedHeaderOverlayMaskView`（旧版为裸 `View`）。
+     *
+     * 只处理这个遮罩本身 —— 绝不能用「容器之外的普通子 View」来判断：标题等 `TextView`
+     * 也可能是直接子项，误判后 [hookMaskClass] 会把该 framework 类的 `onDraw` 全局置空，
+     * 导致整个进程的文本全部消失。
+     */
     private fun suppressNestedMask(layout: ViewGroup) {
         for (i in 0 until layout.childCount) {
             val child = layout.getChildAt(i)
-            if (child is ViewGroup) continue
+            if (!isNestedMask(child)) continue
             runCatching {
                 child.background = null
                 child.alpha = 0f
@@ -67,6 +74,11 @@ class NestedHeaderMaskHook : BaseHook() {
             }
             hookMaskClass(child.javaClass)
         }
+    }
+
+    private fun isNestedMask(view: View): Boolean {
+        val cls = view.javaClass
+        return cls == View::class.java || cls.name == NESTED_OVERLAY_MASK
     }
 
     private fun hookMaskClass(cls: Class<*>) {
@@ -84,6 +96,7 @@ class NestedHeaderMaskHook : BaseHook() {
 
     private companion object {
         const val NESTED_HEADER = "miuix.nestedheader.widget.NestedHeaderLayout"
+        const val NESTED_OVERLAY_MASK = "miuix.nestedheader.widget.NestedHeaderOverlayMaskView"
         const val NOTES_OVERLAY_MASK =
             "com.miui.notes.notesui.feature.note.presentation.list.widget.OverlayMaskFrameLayout"
     }

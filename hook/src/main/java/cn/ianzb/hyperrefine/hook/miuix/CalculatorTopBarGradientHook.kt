@@ -9,10 +9,11 @@ import java.util.Collections
 import java.util.WeakHashMap
 
 /**
- * 计算器等自带**新版 MIUIX** 的应用专用的顶栏渐变适配。
+ * 计算器等**顶栏下方需要恢复间距**的 MIUIX 应用的顶栏渐变适配。
  *
- * - **遮罩特征**：计算器 `ActionBarContainer` 的滚动遮罩由 `Paint` + `Path` 绘制（不再调用
- *   `getCollapsedHeight`），通用版特征匹配不到，故单独放宽。
+ * 遮罩特征（新版 MIUIX 由 `Paint` + `Path` 绘制）已由 [TopBarGradientHook.isMaskPainter] 统一覆盖，
+ * 本类只处理计算器特有的 overlay / 间距问题：
+ *
  * - **overlay**：内容默认排在顶栏下方；开启 `ActionBarOverlayLayout` 的 overlay 让内容延伸到顶栏
  *   后方，顶栏模糊才真正可见。
  * - **间距**：开启 overlay 后内容顶到 `y=0`，原生间距消失。给 `content` 加 padding 会把内容推离
@@ -237,19 +238,7 @@ class CalculatorTopBarGradientHook : TopBarGradientHook() {
 
     private fun on(): Boolean = enabled()
 
-    override fun isMaskPainter(method: org.luckypray.dexkit.result.MethodData): Boolean =
-        method.returnTypeName == "void" &&
-            method.paramTypeNames == listOf(CANVAS) &&
-            method.invokes.any { it.className == CANVAS && it.name == "drawPath" } &&
-            method.invokes.any {
-                (it.className == PATH && it.name == "addRect") ||
-                    (it.className == PAINT && it.name == "setAlpha")
-            }
-
     private companion object {
-        const val CANVAS = "android.graphics.Canvas"
-        const val PATH = "android.graphics.Path"
-        const val PAINT = "android.graphics.Paint"
         const val BAR = "miuix.appcompat.internal.app.widget.ActionBarContainer"
         const val OVERLAY_LAYOUT = "miuix.appcompat.internal.app.widget.ActionBarOverlayLayout"
         const val ANDROIDX_OVERLAY_LAYOUT = "androidx.appcompat.widget.ActionBarOverlayLayout"

@@ -83,16 +83,23 @@ open class TopBarGradientHook : BaseHook() {
     }
 
     /**
-     * 遮罩绘制方法特征（通用版 / 旧版 MIUIX）：
-     * `void (Canvas)`，调用 `Canvas.drawPath`，并读取 `ActionBarContainer.getCollapsedHeight`。
-     *
-     * 计算器等自带新版 MIUIX 的应用特征不同，见 [CalculatorTopBarGradientHook]。
+     * 遮罩绘制方法特征：
+     * - **旧版 MIUIX**：`void (Canvas)`，`Canvas.drawPath` + `ActionBarContainer.getCollapsedHeight`；
+     * - **新版 MIUIX**（计算器 / 指南针等自带）：遮罩改由 `Paint` + `Path` 绘制，同样是
+     *   `void (Canvas)`，但 `Canvas.drawPath` 搭配 `Path.addRect` / `Paint.setAlpha`，不再调用
+     *   `getCollapsedHeight`。
      */
     protected open fun isMaskPainter(method: org.luckypray.dexkit.result.MethodData): Boolean =
         method.returnTypeName == "void" &&
             method.paramTypeNames == listOf(CANVAS) &&
             method.invokes.any { it.className == CANVAS && it.name == "drawPath" } &&
-            method.invokes.any { it.className == BAR && it.name == "getCollapsedHeight" }
+            (
+                method.invokes.any { it.className == BAR && it.name == "getCollapsedHeight" } ||
+                    method.invokes.any {
+                        (it.className == PATH && it.name == "addRect") ||
+                            (it.className == PAINT && it.name == "setAlpha")
+                    }
+                )
 
     override fun init() {
         val alphaField = maskAlpha ?: return
@@ -286,6 +293,8 @@ open class TopBarGradientHook : BaseHook() {
     private companion object {
         const val BAR = "miuix.appcompat.internal.app.widget.ActionBarContainer"
         const val CANVAS = "android.graphics.Canvas"
+        const val PATH = "android.graphics.Path"
+        const val PAINT = "android.graphics.Paint"
         const val VALUE_ANIMATOR = "android.animation.ValueAnimator"
     }
 }

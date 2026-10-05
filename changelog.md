@@ -1,5 +1,22 @@
 # 更新日志
 
+## 1.8.0
+
+### 新增
+
+- **顶栏渐变模糊支持指南针**（目标 `com.miui.compass`）：指南针自带新版 MIUIX，其 `ActionBarContainer` 的滚动遮罩同样由 `Paint` + `Path` 绘制、不再调用 `getCollapsedHeight`。现将其纳入作用域，与设置 / 计算器等一样自动启用顶栏渐变模糊。
+- **顶栏渐变模糊支持服务与反馈**（目标 `com.miui.bugreport`）：为其全部界面启用顶栏渐变模糊。
+- **顶栏渐变模糊支持超级小爱**（目标 `com.miui.voiceassist`）：为其全部界面启用顶栏渐变模糊。
+- **顶栏渐变模糊支持密码**（目标 `com.miui.passwords`）：为其页面启用顶栏渐变模糊。
+
+### 优化
+
+- **通用顶栏遮罩特征兼容新版 MIUIX**：`TopBarGradientHook` 的遮罩绘制方法匹配由「必须调用 `getCollapsedHeight`」放宽为「旧版 `getCollapsedHeight`」或「新版 `Path.addRect` / `Paint.setAlpha`」二者其一，计算器专用 Hook 不再重复实现该特征。
+
+### 修复
+
+- **「顶栏渐变」导致部分应用界面文本全部消失**：`NestedHeaderMaskHook` 原先把 MIUIX `NestedHeaderLayout` 的「容器之外的任意普通子 View」都当作滚动渐变遮罩，并对其类全局拦截 `onDraw`；服务与反馈（`com.miui.bugreport`）的标题恰为直接子项 `TextView`，被误判后 `TextView.onDraw` 在整个进程被置空，界面文本全部消失。现改为只精确匹配 MIUIX 的 `NestedHeaderOverlayMaskView`（旧版为裸 `View`）。
+
 ## 1.7.0
 
 > 发布于 2026-10-05

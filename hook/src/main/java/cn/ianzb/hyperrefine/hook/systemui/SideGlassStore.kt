@@ -20,14 +20,17 @@ object SideGlassStore {
         calls = kept + Call(name, path, args.copyOf())
     }
 
-    /** 把已记录的所有调用按路径回放到一根列视图上。 */
-    fun applyTo(columnView: View) {
+    /** 把已记录的所有调用按路径回放到一根列视图上；返回是否至少成功回放了一条。 */
+    fun applyTo(columnView: View): Boolean {
         val snapshot = calls
-        if (snapshot.isEmpty()) return
+        if (snapshot.isEmpty()) return false
+        var applied = false
         snapshot.forEach { call ->
             val target = viewAtPath(columnView, call.path) ?: return@forEach
             runCatching { invoke(target, call.name, call.args) }
+            applied = true
         }
+        return applied
     }
 
     private fun invoke(target: View, name: String, args: Array<Any?>) {

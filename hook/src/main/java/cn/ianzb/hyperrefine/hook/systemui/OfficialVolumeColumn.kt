@@ -256,15 +256,20 @@ object OfficialVolumeColumnFactory {
                 view.post { if (view.isAttachedToWindow) applyModuleGlass(view, classLoader) }
                 return
             }
-            VolumeColumnGlass.apply(
-                view,
-                styleRoot = { CcGlassApi.apply(it, VolumeColumnGlass.COLUMN_TOKEN) },
-                styleSlider = {
-                    CcGlassApi.applyStyle(it, CcGlassApi.bionics(VolumeColumnGlass.SLIDER_TOKEN))
-                },
-            )
-            // 回放其它模块（如 HyperLight 柔光玻璃）对侧边一级列实际套用的框架玻璃参数（按子视图路径）。
-            runCatching { SideGlassStore.applyTo(view) }
+            // 先清掉各层不透明深色兜底（无论是否镜像都清）。
+            VolumeColumnGlass.clearDarkBackgrounds(view)
+            // 优先回放其它模块（如 HyperLight 柔光玻璃）对侧边一级列实际套用的框架玻璃参数（按子视图路径）。
+            // 命中则不再叠加模块自身玻璃，避免比侧边一级条偏深；未命中才回退模块玻璃，保证不丢玻璃。
+            val mirrored = runCatching { SideGlassStore.applyTo(view) }.getOrDefault(false)
+            if (!mirrored) {
+                VolumeColumnGlass.apply(
+                    view,
+                    styleRoot = { CcGlassApi.apply(it, VolumeColumnGlass.COLUMN_TOKEN) },
+                    styleSlider = {
+                        CcGlassApi.applyStyle(it, CcGlassApi.bionics(VolumeColumnGlass.SLIDER_TOKEN))
+                    },
+                )
+            }
         }.onFailure { HookHelper.log("OfficialVolumeColumn: applyModuleGlass failed", it) }
     }
 

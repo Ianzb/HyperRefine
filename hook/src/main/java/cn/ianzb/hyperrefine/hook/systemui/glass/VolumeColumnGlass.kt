@@ -46,6 +46,15 @@ object VolumeColumnGlass {
         }
     }
 
+    /** 只清除各层不透明深色兜底（玻璃由镜像 / 模块材质负责）。 */
+    fun clearDarkBackgrounds(columnView: View) {
+        traverse(columnView) { v ->
+            when (idName(v)) {
+                ID_VIEW, ID_SLIDER_BG_BLEND -> v.background = null
+            }
+        }
+    }
+
     private fun traverse(view: View, action: (View) -> Unit) {
         action(view)
         if (view is ViewGroup) {

@@ -114,16 +114,6 @@ object AppVolumePanel {
         return path
     }
 
-    private fun viewAtPath(root: View, path: List<Int>): View? {
-        var c: View = root
-        for (i in path) {
-            val g = c as? ViewGroup ?: return null
-            if (i < 0 || i >= g.childCount) return null
-            c = g.getChildAt(i)
-        }
-        return c
-    }
-
     /** 打开 / 关闭切换。 */
     fun toggle(root: ViewGroup, dialog: View, context: Context, pluginClassLoader: ClassLoader?, anchor: View) {
         if (isShowing()) hide() else show(root, dialog, context, pluginClassLoader, anchor)
@@ -261,18 +251,27 @@ object AppVolumePanel {
             )
         }
         val maxWidth = (context.resources.displayMetrics.widthPixels * 0.92f).toInt()
-        container.addView(
-            panel,
-            FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                marginEnd = (12 * density).toInt()
-                topMargin = (MARGIN_DP * density).toInt()
-                bottomMargin = (MARGIN_DP * density).toInt()
-            },
-        )
+        fun panelLp() = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            marginEnd = (12 * density).toInt()
+            topMargin = (MARGIN_DP * density).toInt()
+            bottomMargin = (MARGIN_DP * density).toInt()
+        }
+        // 面板背景单独成层，作为音量条面板的**兄弟视图**放在其后面（与官方二级面板一致），
+        // 使音量条玻璃取色时不会把面板背景纳入，从而与官方取色一致。
+        val bg = FrameLayout(context).apply {
+            background = null
+            clipChildren = false
+            clipToPadding = false
+            isClickable = false
+            alpha = 0f
+        }
+        container.addView(bg, panelLp())
+        panel.background = null
+        container.addView(panel, panelLp())
 
         panel.addView(
             buildBars(context, density, apps, pluginClassLoader!!, maxWidth),
@@ -285,10 +284,19 @@ object AppVolumePanel {
         // 竖直位置：「高度自动」时与侧边音量条竖直对齐；否则用「高度」百分比（0% 最低、100% 最高、50% 居中）。
         val heightAuto = HookPrefs.getBoolean(AppVolumeKeys.HEIGHT_AUTO, true)
         val heightPercent = HookPrefs.getFloat(AppVolumeKeys.HEIGHT_PERCENT, 50f).coerceIn(0f, 100f)
-        panel.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+        bg.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) = applyPanelBackground(v, context, pluginClassLoader)
             override fun onViewDetachedFromWindow(v: View) {}
         })
+        // 背景层尺寸跟随面板。
+        panel.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            val lp = bg.layoutParams
+            if (lp != null && (lp.width != v.width || lp.height != v.height)) {
+                lp.width = v.width
+                lp.height = v.height
+                bg.layoutParams = lp
+            }
+        }
         // 音量条窗口隐藏（侧边音量条收回 / 超时消失）时一并移除面板，避免下次打开残留在最右。
         container.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) {}
@@ -321,6 +329,16 @@ object AppVolumePanel {
                     }
                     positionLeftOfDialog(container, panel, dialog, density)
                 }
+                // 背景层跟随面板的位置 / 透明度（兄弟层，不参与音量条取色）。
+                bg.translationY = panel.translationY
+                bg.translationX = panel.translationX
+                val pLp = panel.layoutParams as? FrameLayout.LayoutParams
+                val bLp = bg.layoutParams as? FrameLayout.LayoutParams
+                if (pLp != null && bLp != null && bLp.marginEnd != pLp.marginEnd) {
+                    bLp.marginEnd = pLp.marginEnd
+                    bg.layoutParams = bLp
+                }
+                bg.alpha = panel.alpha
                 // 官方可能在展开 / 材质变化后重新应用窗口压暗，这里每帧兜底清除。
                 clearWindowDim(dialog)
                 if (!started && panel.width > 0) {

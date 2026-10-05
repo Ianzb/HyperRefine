@@ -82,6 +82,14 @@
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity
+            android:name=".ui.screen.features.LayoutAdjustActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.features.VolumeBarActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
             android:name=".ui.screen.features.PercentStyleActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />

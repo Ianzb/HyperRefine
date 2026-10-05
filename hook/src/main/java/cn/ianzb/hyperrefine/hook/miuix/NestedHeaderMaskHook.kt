@@ -38,18 +38,22 @@ class NestedHeaderMaskHook : BaseHook() {
             }
         }
 
+        // 笔记专属适配（可单独关闭）。
         Reflect.findClassIfExists(NOTES_OVERLAY_MASK, loader)?.let { cls ->
             Reflect.findMethodIfExists(cls, "setOverlayMaskEnabled", java.lang.Boolean.TYPE)?.let { method ->
-                HookHelper.hookBefore(method) { if (enabled()) it.setArg(0, false) }
+                HookHelper.hookBefore(method) { if (notesEnabled()) it.setArg(0, false) }
                 HookHelper.log("$tag: disabled notes overlay mask")
             }
             Reflect.findMethodIfExists(cls, "setMaskColor", Integer.TYPE)?.let { method ->
-                HookHelper.hookBefore(method) { if (enabled()) it.setArg(0, 0) }
+                HookHelper.hookBefore(method) { if (notesEnabled()) it.setArg(0, 0) }
             }
         }
     }
 
     private fun enabled(): Boolean = HookPrefs.getBoolean(TopBarKeys.KEY, false)
+
+    /** 笔记专属适配需总开关 + 应用专属适配总开关 + 笔记开关同时开启。 */
+    private fun notesEnabled(): Boolean = enabled() && TopBarKeys.notesAdvancedEnabled()
 
     /** `NestedHeaderLayout` 直接子项中，容器之外的普通 `View` 即渐变遮罩。 */
     private fun suppressNestedMask(layout: ViewGroup) {

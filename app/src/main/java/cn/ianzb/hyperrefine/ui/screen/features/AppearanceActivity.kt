@@ -43,6 +43,7 @@ class AppearanceActivity : BaseSubPageActivity() {
                 featureSpec(KEY_GLASS),
                 featureSpec(KEY_TOP_BAR),
                 featureSpec(KEY_CC_RADIUS),
+                featureSpec(KEY_LAYOUT_ADJUST),
             ),
         )
         val componentSection = HookSection(
@@ -83,6 +84,8 @@ class AppearanceActivity : BaseSubPageActivity() {
                                         context.startActivity(Intent(context, TopBarActivity::class.java))
                                     KEY_CC_RADIUS ->
                                         context.startActivity(Intent(context, CornerRadiusActivity::class.java))
+                                    KEY_LAYOUT_ADJUST ->
+                                        context.startActivity(Intent(context, LayoutAdjustActivity::class.java))
                                 }
                             },
                         )

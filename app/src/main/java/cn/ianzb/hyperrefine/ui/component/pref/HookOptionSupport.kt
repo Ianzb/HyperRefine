@@ -34,13 +34,24 @@ fun rememberDeviceScopeEnabled(spec: OptionSpec): Boolean {
     return rememberEffectiveDeviceType() in scope
 }
 
-/** 解析依赖项：依赖项满足条件时组件启用。 */
+/**
+ * 解析依赖项：沿 [OptionSpec.dependsOn] 链向上逐级校验，任一级未满足即禁用（传递依赖）。
+ *
+ * 例如「笔记」依赖「应用专属适配」，「应用专属适配」依赖顶栏总开关；顶栏总开关关闭时，
+ * 「笔记」也会一并禁用。
+ */
 @Composable
 fun rememberDependencyEnabled(spec: OptionSpec): Boolean {
-    val dependencyKey = spec.dependsOn ?: return true
-    val dependencyDefault = OptionRegistry.find(dependencyKey)?.defaultBoolean ?: false
-    val dependencyValue = ConfigState.bool(dependencyKey, dependencyDefault)
-    return if (spec.dependsOnValue) dependencyValue else !dependencyValue
+    var current = spec
+    val visited = HashSet<String>()
+    while (true) {
+        val dependencyKey = current.dependsOn ?: return true
+        if (!visited.add(dependencyKey)) return true
+        val dependencySpec = OptionRegistry.find(dependencyKey) ?: return true
+        val dependencyValue = ConfigState.bool(dependencyKey, dependencySpec.defaultBoolean)
+        if (current.dependsOnValue != dependencyValue) return false
+        current = dependencySpec
+    }
 }
 
 /**

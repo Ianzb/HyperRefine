@@ -42,6 +42,7 @@ class SystemUiLoad : BaseLoad() {
             }
         initHook(CcRadiusHook(), radiusEnabled)
         initHook(AppVolumeEntryHook(), HookPrefs.getBoolean(AppVolumeKeys.ENTRY, false))
+        initHook(VolumeBarSizeHook(), HookPrefs.getBoolean(VolumeBarKeys.BAR_SIZE, false))
     }
 
     companion object {

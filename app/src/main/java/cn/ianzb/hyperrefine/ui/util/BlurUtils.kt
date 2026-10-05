@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
+import cn.ianzb.hyperrefine.prefs.ConfigState
 import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
@@ -52,19 +54,11 @@ val LocalSubPageScrollBehavior: ProvidableCompositionLocal<ScrollBehavior?> =
  * 所有页面的顶栏模糊都从这里读取，修改后重新编译即可全局生效。
  */
 object TopBarBlurConfig {
-    /** 模糊半径（dp），模糊最强处的强度 */
-    const val BlurRadius: Float = 15f
+    /** 模糊半径（dp），模糊最强处的强度。 */
+    const val BlurRadius: Float = 10f
 
     /** 顶栏 surface 着色叠加在模糊之上的透明度（0~1），越大栏越实 */
     const val SurfaceAlpha: Float = 0.3f
-
-    /**
-     * 顶部保持满强度模糊的比例（0~1）。
-     *
-     * 该比例之上为满强度模糊，其下线性渐隐到底边。这样内容在整个顶栏内都被充分模糊，
-     * 只在底边平滑过渡到清晰，而不会在顶栏下半部分留下清晰内容。
-     */
-    const val FullStrengthFraction: Float = 0.55f
 
     /**
      * 滚动渐显距离（dp）：内容下滑该距离内，模糊从透明渐显到完整。
@@ -72,11 +66,14 @@ object TopBarBlurConfig {
      */
     val ScrollFadeDistance: Dp = 0.dp
 
-    /** 顶部满强度模糊 → 底边渐隐的渐进遮罩。 */
+    /**
+     * 模糊半径沿高度**线性递减**：顶部满强度 → 底边 0。
+     *
+     * 对齐官方 `setBackgroundLinearGradientBlur([0,0,r,0,h,0])`（半径由 r 线性到 0）。
+     */
     val progressive: HazeProgressive = HazeProgressive.Brush(
         Brush.verticalGradient(
             0f to Color.Black,
-            FullStrengthFraction to Color.Black,
             1f to Color.Black.copy(alpha = 0f),
         )
     )
@@ -125,6 +122,9 @@ fun BlurredBar(
     content: @Composable () -> Unit,
 ) {
     val blurActive = blurEnabled && state != null
+    // 跟随「顶栏渐变」设置：模糊强度 → 模糊半径，不透明度 → 模糊层透明度。
+    val strength = ConfigState.float(TopBarKeys.STRENGTH, TopBarBlurConfig.BlurRadius).coerceIn(0f, 100f)
+    val opacity = ConfigState.float(TopBarKeys.OPACITY, 100f).coerceIn(0f, 100f)
     val scrollFadePx = with(LocalDensity.current) { TopBarBlurConfig.ScrollFadeDistance.toPx() }
     val surfaceColor = MiuixTheme.colorScheme.surface
     Box {
@@ -132,20 +132,20 @@ fun BlurredBar(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .then(
-                        if (scrollFadePx > 0f) {
-                            Modifier.graphicsLayer {
-                                alpha = scrollBehavior?.state
-                                    ?.let { (-it.contentOffset / scrollFadePx).coerceIn(0f, 1f) }
-                                    ?: 1f
-                            }
+                    .graphicsLayer {
+                        val fade = if (scrollFadePx > 0f) {
+                            scrollBehavior?.state
+                                ?.let { (-it.contentOffset / scrollFadePx).coerceIn(0f, 1f) }
+                                ?: 1f
                         } else {
-                            Modifier
+                            1f
                         }
-                    )
+                        alpha = fade * opacity / 100f
+                    }
                     .hazeEffect(state = state) {
-                        blurRadius = TopBarBlurConfig.BlurRadius.dp
-                        // 关键：模糊层必须不透明。Haze 会先原样绘制一遍来源内容，再叠加模糊副本；
+                        // 线性递减的模糊半径（官方是线性）。
+                        blurRadius = strength.dp
+                        // 关键：模糊层必须不透明。Haze 会先原样绘制一遍来源内容、再叠加模糊副本；
                         // 若模糊层透明，卡片等硬边缘会从模糊层中透出，看起来像「组件盖在模糊之上」。
                         backgroundColor = surfaceColor
                         noiseFactor = 0f

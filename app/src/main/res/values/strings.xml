@@ -137,6 +137,7 @@
     <string name="section_components">组件</string>
     <string name="feature_glass">柔光玻璃</string>
     <string name="section_beautify">美化</string>
+    <string name="section_layout_adjust">布局调整</string>
 
     <string name="section_security_center">安全服务</string>
     <string name="fast_charge_notify">快充加速通知</string>
@@ -176,16 +177,45 @@
     <string name="section_top_bar">顶栏渐变</string>
     <string name="top_bar_gradient">顶栏渐变模糊</string>
     <string name="top_bar_gradient_summary">把 MIUIX 应用顶栏的原生遮罩替换为顶部模糊、向下渐变透明的模糊层（设置 / 短信 / 联系人）</string>
-    <string name="top_bar_gradient_strength">模糊强度</string>
-    <string name="top_bar_gradient_strength_summary">模糊区域的高度占比</string>
+    <string name="top_bar_gradient_strength">模糊半径</string>
+    <string name="top_bar_gradient_strength_summary">模糊半径，越大越模糊</string>
+    <string name="dp_unit">dp</string>
     <string name="top_bar_gradient_opacity">不透明度</string>
     <string name="top_bar_gradient_opacity_summary">模糊层的不透明度</string>
+    <string name="section_top_bar_advanced">应用专属适配</string>
+    <string name="top_bar_advanced">应用专属适配</string>
+    <string name="top_bar_advanced_summary">针对个别应用的额外适配（笔记、计算器）；关闭后这些应用回退为通用实现</string>
+    <string name="top_bar_advanced_notes">笔记</string>
+    <string name="top_bar_advanced_notes_summary">屏蔽笔记「筛选 / 分类标签」栏内置的重复渐变遮罩</string>
+    <string name="top_bar_advanced_calculator">计算器</string>
+    <string name="top_bar_advanced_calculator_summary">适配计算器新版顶栏遮罩，并为各页面恢复顶部间距</string>
 
     <string name="section_experimental">实验性功能</string>
     <string name="section_weather">天气</string>
     <string name="feature_weather">天气高级外观</string>
     <string name="weather_advanced">解锁高级外观</string>
     <string name="weather_advanced_summary">在部分机型上强制开启渐进模糊、玻璃材质与动态天气（雨雪）特效；需重启天气应用生效</string>
+
+    <string name="volume_bar_section">音量条</string>
+    <string name="volume_bar_panel_section">面板背景</string>
+    <string name="volume_bar_panel_bg">多应用面板背景调节</string>
+    <string name="volume_bar_panel_bg_summary">开启后可分别自定义多应用音量面板背景的上下、左右内边距</string>
+    <string name="volume_bar_panel_pad_vertical">上下间距</string>
+    <string name="volume_bar_panel_pad_vertical_summary">面板背景与音量条之间的上下内边距</string>
+    <string name="volume_bar_panel_pad_horizontal">左右间距</string>
+    <string name="volume_bar_panel_pad_horizontal_summary">面板背景与音量条之间的左右内边距</string>
+    <string name="volume_bar_size_section">音量条尺寸</string>
+    <string name="volume_bar_size">音量条高度/宽度调节</string>
+    <string name="volume_bar_size_summary">统一调整多应用音量面板与官方侧边音量条的高度、宽度（不影响音量条之间的间距）</string>
+    <string name="volume_bar_height">高度</string>
+    <string name="volume_bar_height_summary">音量条高度（收起态）</string>
+    <string name="volume_bar_width">宽度</string>
+    <string name="volume_bar_width_summary">音量条宽度（收起态）</string>
+    <string name="volume_bar_spacing_section">音量条间距</string>
+    <string name="volume_bar_spacing">多应用音量条间距调节</string>
+    <string name="volume_bar_spacing_summary">调整多应用音量面板内各音量条之间的水平间距</string>
+    <string name="volume_bar_column_spacing">间距</string>
+    <string name="volume_bar_column_spacing_summary">多应用音量条之间的水平间距</string>
 
     <string name="appearance_cc_volume">音量条</string>
     <string name="appearance_cc_brightness">亮度条</string>

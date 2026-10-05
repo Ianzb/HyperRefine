@@ -6,8 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
-import cn.ianzb.hyperrefine.hook.miuix.MiuixAppLoad
-import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
+import cn.ianzb.hyperrefine.hook.systemui.VolumeBarKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
@@ -17,16 +16,16 @@ import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 
 /**
- * 「顶栏渐变」二级页（外观 → 美化）。
+ * 「音量条」三级页（外观 → 美化 → 布局调整 → 音量条）。
  *
- * 总开关 / 模糊强度 / 不透明度；顶栏提供对目标 MIUIX 应用的重启入口。
+ * 面板背景调节 / 音量条高度宽度 / 多应用音量条间距。
  */
-class TopBarActivity : BaseSubPageActivity() {
+class VolumeBarActivity : BaseSubPageActivity() {
 
-    override val titleRes: Int = R.string.section_top_bar
+    override val titleRes: Int = R.string.volume_bar_section
 
     override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(MiuixAppLoad.MIUIX_PACKAGES) }
+        { QuickActionsAction(listOf("com.android.systemui")) }
 
     @Composable
     override fun SubPageContent(
@@ -34,21 +33,27 @@ class TopBarActivity : BaseSubPageActivity() {
         contentPadding: PaddingValues,
     ) {
         val scrollBehavior = LocalSubPageScrollBehavior.current
-        val section = HookSection(
-            titleRes = R.string.section_top_bar,
+        val panelSection = HookSection(
+            titleRes = R.string.volume_bar_panel_section,
             specs = listOf(
-                featureSpec(TopBarKeys.KEY),
-                featureSpec(TopBarKeys.STRENGTH),
-                featureSpec(TopBarKeys.OPACITY),
+                featureSpec(VolumeBarKeys.PANEL_BG),
+                featureSpec(VolumeBarKeys.PANEL_PAD_VERTICAL),
+                featureSpec(VolumeBarKeys.PANEL_PAD_HORIZONTAL),
             ),
         )
-        // 应用专属适配：统一开关 + 笔记 / 计算器单独开关。
-        val advancedSection = HookSection(
-            titleRes = R.string.section_top_bar_advanced,
+        val sizeSection = HookSection(
+            titleRes = R.string.volume_bar_size_section,
             specs = listOf(
-                featureSpec(TopBarKeys.ADVANCED),
-                featureSpec(TopBarKeys.ADVANCED_NOTES),
-                featureSpec(TopBarKeys.ADVANCED_CALCULATOR),
+                featureSpec(VolumeBarKeys.BAR_SIZE),
+                featureSpec(VolumeBarKeys.BAR_HEIGHT),
+                featureSpec(VolumeBarKeys.BAR_WIDTH),
+            ),
+        )
+        val spacingSection = HookSection(
+            titleRes = R.string.volume_bar_spacing_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.SPACING),
+                featureSpec(VolumeBarKeys.COLUMN_SPACING),
             ),
         )
         LazyColumn(
@@ -67,13 +72,18 @@ class TopBarActivity : BaseSubPageActivity() {
             contentPadding = contentPadding,
         ) {
             item {
-                HookSectionCard(section) {
-                    section.specs.forEach { HookOptionView(it) }
+                HookSectionCard(panelSection) {
+                    panelSection.specs.forEach { HookOptionView(it) }
                 }
             }
             item {
-                HookSectionCard(advancedSection) {
-                    advancedSection.specs.forEach { HookOptionView(it) }
+                HookSectionCard(sizeSection) {
+                    sizeSection.specs.forEach { HookOptionView(it) }
+                }
+            }
+            item {
+                HookSectionCard(spacingSection) {
+                    spacingSection.specs.forEach { HookOptionView(it) }
                 }
             }
         }

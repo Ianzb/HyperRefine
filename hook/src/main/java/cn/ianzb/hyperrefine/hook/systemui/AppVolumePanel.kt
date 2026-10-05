@@ -50,7 +50,6 @@ object AppVolumePanel {
     private const val MARGIN_DP = 16
     private const val SLOT_SIZE_DP = 32
     private const val OVERLAY_INSET_DP = 10
-    private const val COLUMN_MARGIN_DP = 6
 
     private const val SIDE_SLIDER_ID = "volume_column_slider"
 
@@ -182,11 +181,23 @@ object AppVolumePanel {
             isClickable = true
             // 初始透明：避免在展开动画播放前先闪一帧最终形态。
             alpha = 0f
+            // 面板背景内边距：「多应用面板背景调节」开启后按上下 / 左右分别设置，否则维持现状 16dp。
+            val bgCustom = HookPrefs.getBoolean(VolumeBarKeys.PANEL_BG, false)
+            val padV = (if (bgCustom) {
+                HookPrefs.getFloat(VolumeBarKeys.PANEL_PAD_VERTICAL, VolumeBarKeys.DEFAULT_PAD)
+            } else {
+                VolumeBarKeys.DEFAULT_PAD
+            }).coerceIn(0f, 120f)
+            val padH = (if (bgCustom) {
+                HookPrefs.getFloat(VolumeBarKeys.PANEL_PAD_HORIZONTAL, VolumeBarKeys.DEFAULT_PAD)
+            } else {
+                VolumeBarKeys.DEFAULT_PAD
+            }).coerceIn(0f, 120f)
             setPadding(
-                (MARGIN_DP * density).toInt(),
-                (MARGIN_DP * density).toInt(),
-                (MARGIN_DP * density).toInt(),
-                (MARGIN_DP * density).toInt(),
+                (padH * density).toInt(),
+                (padV * density).toInt(),
+                (padH * density).toInt(),
+                (padV * density).toInt(),
             )
         }
         val maxWidth = (context.resources.displayMetrics.widthPixels * 0.92f).toInt()
@@ -485,7 +496,13 @@ object AppVolumePanel {
             clipChildren = false
             clipToPadding = false
         }
-        val margin = (COLUMN_MARGIN_DP * density).toInt()
+        // 音量条间距：「多应用音量条间距调节」开启后按配置值，否则维持现状 6dp。
+        val spacingDp = if (HookPrefs.getBoolean(VolumeBarKeys.SPACING, false)) {
+            HookPrefs.getFloat(VolumeBarKeys.COLUMN_SPACING, VolumeBarKeys.DEFAULT_SPACING)
+        } else {
+            VolumeBarKeys.DEFAULT_SPACING
+        }
+        val margin = (spacingDp.coerceIn(0f, 200f) * density).toInt()
         apps.forEachIndexed { index, pkg ->
             val percent = (currentVolume(context, pkg) * 100f).toInt().coerceIn(0, 100)
             val column = buildOfficialColumn(context, density, pkg, percent, streams.getValue(pkg), pluginClassLoader)

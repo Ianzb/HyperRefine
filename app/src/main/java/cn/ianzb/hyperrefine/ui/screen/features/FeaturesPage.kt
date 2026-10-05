@@ -15,6 +15,7 @@ import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.hook.miuix.MiuixAppLoad
 import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
+import cn.ianzb.hyperrefine.hook.systemui.VolumeBarKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
 import cn.ianzb.hyperrefine.hook.weather.WeatherKeys
@@ -79,6 +80,7 @@ fun FeaturesPageView(
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_VOLUME)),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.SIDE_VOLUME)),
                     specByKey(specs, KEY_APP_VOLUME),
+                    specByKey(specs, KEY_LAYOUT_ADJUST),
                 ),
                 onOpen = { context.startActivity(Intent(context, AppearanceActivity::class.java)) },
                 subPages = listOf(
@@ -121,6 +123,18 @@ fun FeaturesPageView(
                         titleRes = R.string.app_volume_section,
                         specs = appVolumeSpecs(specs),
                         onOpen = { context.startActivity(Intent(context, AppVolumeActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.section_layout_adjust,
+                        specs = listOf(specByKey(specs, KEY_VOLUME_BAR)),
+                        onOpen = { context.startActivity(Intent(context, LayoutAdjustActivity::class.java)) },
+                        subPages = listOf(
+                            HookSubPage(
+                                titleRes = R.string.volume_bar_section,
+                                specs = volumeBarSpecs(specs),
+                                onOpen = { context.startActivity(Intent(context, VolumeBarActivity::class.java)) },
+                            ),
+                        ),
                     ),
                 ),
             ),
@@ -189,6 +203,8 @@ const val KEY_GLASS = "feature_glass"
 const val KEY_TOP_BAR = "feature_top_bar"
 const val KEY_EXPERIMENTAL = "feature_experimental"
 const val KEY_WEATHER = "feature_weather"
+const val KEY_LAYOUT_ADJUST = "feature_layout_adjust"
+const val KEY_VOLUME_BAR = "feature_volume_bar"
 const val KEY_DEVICE_CENTER = "feature_device_center"
 const val KEY_APP_VOLUME = "feature_app_volume"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
@@ -270,6 +286,9 @@ fun topBarSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, TopBarKeys.KEY),
         specByKey(specs, TopBarKeys.STRENGTH),
         specByKey(specs, TopBarKeys.OPACITY),
+        specByKey(specs, TopBarKeys.ADVANCED),
+        specByKey(specs, TopBarKeys.ADVANCED_NOTES),
+        specByKey(specs, TopBarKeys.ADVANCED_CALCULATOR),
     )
 
 /** 天气高级外观二级页内的配置项，用于功能页搜索直达。 */
@@ -297,6 +316,19 @@ private fun appVolumeSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, AppVolumeKeys.HEIGHT_AUTO),
         specByKey(specs, AppVolumeKeys.HEIGHT_PERCENT),
         specByKey(specs, AppVolumeKeys.HIDE_PANEL_BG),
+    )
+
+/** 「音量条」二级页内的配置项，用于功能页搜索直达。 */
+private fun volumeBarSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, VolumeBarKeys.PANEL_BG),
+        specByKey(specs, VolumeBarKeys.PANEL_PAD_VERTICAL),
+        specByKey(specs, VolumeBarKeys.PANEL_PAD_HORIZONTAL),
+        specByKey(specs, VolumeBarKeys.BAR_SIZE),
+        specByKey(specs, VolumeBarKeys.BAR_HEIGHT),
+        specByKey(specs, VolumeBarKeys.BAR_WIDTH),
+        specByKey(specs, VolumeBarKeys.SPACING),
+        specByKey(specs, VolumeBarKeys.COLUMN_SPACING),
     )
 
 /** 安全服务二级页（快充加速通知）内的配置项，用于功能页搜索直达。 */
@@ -359,6 +391,16 @@ internal fun featureSpecs(): List<OptionSpec> {
             key = KEY_WEATHER,
             type = OptionType.ARROW,
             titleRes = R.string.feature_weather,
+        ),
+        OptionSpec(
+            key = KEY_LAYOUT_ADJUST,
+            type = OptionType.ARROW,
+            titleRes = R.string.section_layout_adjust,
+        ),
+        OptionSpec(
+            key = KEY_VOLUME_BAR,
+            type = OptionType.ARROW,
+            titleRes = R.string.volume_bar_section,
         ),
         OptionSpec(
             key = KEY_DEVICE_CENTER,
@@ -553,7 +595,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             sliderMax = 100f,
             sliderStep = 1f,
             sliderDecimals = 0,
-            sliderUnitRes = R.string.percent_unit,
+            sliderUnitRes = R.string.dp_unit,
             sliderValueLabelRes = R.string.top_bar_gradient_strength,
             targetPackages = miuixApps,
             dependsOn = TopBarKeys.KEY,
@@ -572,6 +614,33 @@ internal fun featureSpecs(): List<OptionSpec> {
             sliderValueLabelRes = R.string.top_bar_gradient_opacity,
             targetPackages = miuixApps,
             dependsOn = TopBarKeys.KEY,
+        ),
+        OptionSpec(
+            key = TopBarKeys.ADVANCED,
+            type = OptionType.SWITCH,
+            titleRes = R.string.top_bar_advanced,
+            summaryRes = R.string.top_bar_advanced_summary,
+            defaultBoolean = true,
+            targetPackages = listOf("com.miui.notes", "com.miui.calculator"),
+            dependsOn = TopBarKeys.KEY,
+        ),
+        OptionSpec(
+            key = TopBarKeys.ADVANCED_NOTES,
+            type = OptionType.SWITCH,
+            titleRes = R.string.top_bar_advanced_notes,
+            summaryRes = R.string.top_bar_advanced_notes_summary,
+            defaultBoolean = true,
+            targetPackages = listOf("com.miui.notes"),
+            dependsOn = TopBarKeys.ADVANCED,
+        ),
+        OptionSpec(
+            key = TopBarKeys.ADVANCED_CALCULATOR,
+            type = OptionType.SWITCH,
+            titleRes = R.string.top_bar_advanced_calculator,
+            summaryRes = R.string.top_bar_advanced_calculator_summary,
+            defaultBoolean = true,
+            targetPackages = listOf("com.miui.calculator"),
+            dependsOn = TopBarKeys.ADVANCED,
         ),
         OptionSpec(
             key = WeatherKeys.ADVANCED,
@@ -711,6 +780,7 @@ internal fun featureSpecs(): List<OptionSpec> {
         }
     }
     specs += buildAppVolumeSpecs(systemUi)
+    specs += buildVolumeBarSpecs(systemUi)
     specs += ccRadiusSpecs(systemUi)
     return specs
 }
@@ -896,5 +966,109 @@ private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = list
         defaultBoolean = false,
         targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
         dependsOn = AppVolumeKeys.ENTRY,
+    ),
+)
+
+/** 「音量条」配置项（系统界面：多应用面板 + 官方侧边音量条）。 */
+private fun buildVolumeBarSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
+    OptionSpec(
+        key = VolumeBarKeys.PANEL_BG,
+        type = OptionType.SWITCH,
+        titleRes = R.string.volume_bar_panel_bg,
+        summaryRes = R.string.volume_bar_panel_bg_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.PANEL_PAD_VERTICAL,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_panel_pad_vertical,
+        summaryRes = R.string.volume_bar_panel_pad_vertical_summary,
+        defaultFloat = VolumeBarKeys.DEFAULT_PAD,
+        sliderMin = 0f,
+        sliderMax = 48f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.cc_radius_unit,
+        sliderValueLabelRes = R.string.volume_bar_panel_pad_vertical,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.PANEL_BG,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.PANEL_PAD_HORIZONTAL,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_panel_pad_horizontal,
+        summaryRes = R.string.volume_bar_panel_pad_horizontal_summary,
+        defaultFloat = VolumeBarKeys.DEFAULT_PAD,
+        sliderMin = 0f,
+        sliderMax = 48f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.cc_radius_unit,
+        sliderValueLabelRes = R.string.volume_bar_panel_pad_horizontal,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.PANEL_BG,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.BAR_SIZE,
+        type = OptionType.SWITCH,
+        titleRes = R.string.volume_bar_size,
+        summaryRes = R.string.volume_bar_size_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+        showStatus = true,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.BAR_HEIGHT,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_height,
+        summaryRes = R.string.volume_bar_height_summary,
+        defaultFloat = VolumeBarKeys.DEFAULT_HEIGHT,
+        sliderMin = 80f,
+        sliderMax = 320f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.cc_radius_unit,
+        sliderValueLabelRes = R.string.volume_bar_height,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.BAR_SIZE,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.BAR_WIDTH,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_width,
+        summaryRes = R.string.volume_bar_width_summary,
+        defaultFloat = VolumeBarKeys.DEFAULT_WIDTH,
+        sliderMin = 20f,
+        sliderMax = 140f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.cc_radius_unit,
+        sliderValueLabelRes = R.string.volume_bar_width,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.BAR_SIZE,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.SPACING,
+        type = OptionType.SWITCH,
+        titleRes = R.string.volume_bar_spacing,
+        summaryRes = R.string.volume_bar_spacing_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.COLUMN_SPACING,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_column_spacing,
+        summaryRes = R.string.volume_bar_column_spacing_summary,
+        defaultFloat = VolumeBarKeys.DEFAULT_SPACING,
+        sliderMin = 0f,
+        sliderMax = 48f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.cc_radius_unit,
+        sliderValueLabelRes = R.string.volume_bar_column_spacing,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.SPACING,
     ),
 )

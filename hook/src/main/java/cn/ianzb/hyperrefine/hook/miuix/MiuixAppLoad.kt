@@ -20,7 +20,12 @@ class MiuixAppLoad : BaseLoad() {
         val loader = target.classLoader ?: return
         val enabled = HookPrefs.getBoolean(TopBarKeys.KEY, false)
         if (Reflect.findClassIfExists(BAR_CLASS, loader) != null) {
-            initHook(TopBarGradientHook(), enabled)
+            // 计算器自带新版 MIUIX ActionBarContainer（遮罩由 Paint + Path 渐变绘制），单独适配；
+            // 关闭「应用专属适配」或「计算器」后回退为通用实现。
+            val special = target.packageName in NEW_ACTIONBAR_PACKAGES &&
+                TopBarKeys.calculatorAdvancedEnabled()
+            val hook = if (special) CalculatorTopBarGradientHook() else TopBarGradientHook()
+            initHook(hook, enabled)
         }
         // MIUIX NestedHeaderLayout 自带的滚动渐变遮罩（如笔记标题下方那条）由顶栏渐变接管后多余，隐藏之。
         initHook(NestedHeaderMaskHook(), enabled)
@@ -28,6 +33,9 @@ class MiuixAppLoad : BaseLoad() {
 
     companion object {
         const val BAR_CLASS = "miuix.appcompat.internal.app.widget.ActionBarContainer"
+
+        /** 自带新版 MIUIX（遮罩由 `Paint` + `Path` 渐变绘制）的应用，需用专用适配。 */
+        val NEW_ACTIONBAR_PACKAGES: Set<String> = setOf("com.miui.calculator")
 
         val MIUIX_PACKAGES: List<String> = listOf(
             // 设置 / 通信

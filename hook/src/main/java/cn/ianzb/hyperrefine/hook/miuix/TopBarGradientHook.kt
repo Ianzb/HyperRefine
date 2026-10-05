@@ -28,11 +28,20 @@ import kotlin.math.roundToInt
  *
  * 目标：设置 / 短信 / 联系人等 MIUIX 应用。
  */
-class TopBarGradientHook : BaseHook() {
+open class TopBarGradientHook : BaseHook() {
 
     override val key: String = TopBarKeys.KEY
 
     override fun useDexKit(): Boolean = true
+
+    /**
+     * 顶栏模糊是否**常驻**（不依赖原生滚动遮罩 alpha）。
+     *
+     * 与本模块页面 `TopBarBlurConfig.ScrollFadeDistance = 0`（常驻完整模糊）一致的逻辑。
+     * 通用版跟随原生遮罩（滚动才出现）；计算器自带的新版 MIUIX 顶栏标题常驻收缩、
+     * 原生遮罩 alpha 恒为 0，需常驻模糊。见 [CalculatorTopBarGradientHook]。
+     */
+    protected open val alwaysBlur: Boolean = false
 
     private var maskPainter: Method? = null
     private var maskAlpha: Field? = null
@@ -73,7 +82,13 @@ class TopBarGradientHook : BaseHook() {
         return maskPainter != null && maskAlpha != null
     }
 
-    private fun isMaskPainter(method: org.luckypray.dexkit.result.MethodData): Boolean =
+    /**
+     * 遮罩绘制方法特征（通用版 / 旧版 MIUIX）：
+     * `void (Canvas)`，调用 `Canvas.drawPath`，并读取 `ActionBarContainer.getCollapsedHeight`。
+     *
+     * 计算器等自带新版 MIUIX 的应用特征不同，见 [CalculatorTopBarGradientHook]。
+     */
+    protected open fun isMaskPainter(method: org.luckypray.dexkit.result.MethodData): Boolean =
         method.returnTypeName == "void" &&
             method.paramTypeNames == listOf(CANVAS) &&
             method.invokes.any { it.className == CANVAS && it.name == "drawPath" } &&
@@ -209,7 +224,8 @@ class TopBarGradientHook : BaseHook() {
         val opacity = prefInt(TopBarKeys.OPACITY, 100).coerceIn(0, 100)
         val fraction = runCatching { alphaField.getFloat(bar) }.getOrDefault(0f).coerceIn(0f, 1f)
         val radius = Math.min(strength * bar.resources.displayMetrics.density, bar.height * 0.5f)
-        val alpha = fraction * opacity / 100f
+        // 常驻模式：直接使用配置不透明度（等同本模块页面的 ScrollFadeDistance=0）；否则跟随原生遮罩。
+        val alpha = (if (alwaysBlur) 1f else fraction) * opacity / 100f
         if (radius <= 0f || bar.height <= 0) {
             hide(state, setType, setMode, setViewMode)
             return
@@ -258,7 +274,7 @@ class TopBarGradientHook : BaseHook() {
         if (state.blur.visibility != View.INVISIBLE) state.blur.visibility = View.INVISIBLE
     }
 
-    private fun enabled(): Boolean = HookPrefs.getBoolean(TopBarKeys.KEY, false)
+    protected open fun enabled(): Boolean = HookPrefs.getBoolean(TopBarKeys.KEY, false)
 
     /** 滑块以 Float 存储，优先按 Float 读取，兼容整数存储。 */
     private fun prefInt(key: String, default: Int): Int {

@@ -1,5 +1,7 @@
 package cn.ianzb.hyperrefine.hook.miuix
 
+import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
+
 /**
  * 顶栏渐变配置键。
  *
@@ -15,4 +17,24 @@ object TopBarKeys {
 
     /** 模糊不透明度（0–100）。 */
     const val OPACITY = "top_bar_gradient_opacity"
+
+    /** 应用专属适配（高级功能）总开关：统一控制各应用的单独处理。 */
+    const val ADVANCED = "top_bar_gradient_advanced"
+
+    /** 笔记专属适配：屏蔽笔记「筛选 / 分类标签」栏内置的重复渐变遮罩。 */
+    const val ADVANCED_NOTES = "top_bar_gradient_advanced_notes"
+
+    /** 计算器专属适配：新版 MIUIX 遮罩特征 + 各页滚动区间距。 */
+    const val ADVANCED_CALCULATOR = "top_bar_gradient_advanced_calculator"
+
+    /** 应用专属适配总开关是否开启（默认开启，保持原有行为）。 */
+    fun advancedEnabled(): Boolean = HookPrefs.getBoolean(ADVANCED, true)
+
+    /** 笔记专属适配是否开启。 */
+    fun notesAdvancedEnabled(): Boolean =
+        advancedEnabled() && HookPrefs.getBoolean(ADVANCED_NOTES, true)
+
+    /** 计算器专属适配是否开启。 */
+    fun calculatorAdvancedEnabled(): Boolean =
+        advancedEnabled() && HookPrefs.getBoolean(ADVANCED_CALCULATOR, true)
 }

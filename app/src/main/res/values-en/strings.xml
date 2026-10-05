@@ -137,6 +137,7 @@
     <string name="section_components">Components</string>
     <string name="feature_glass">Soft glass</string>
     <string name="section_beautify">Beautify</string>
+    <string name="section_layout_adjust">Layout adjustment</string>
 
     <string name="section_security_center">Security</string>
     <string name="fast_charge_notify">Fast-charge notification</string>
@@ -176,16 +177,45 @@
     <string name="section_top_bar">Top bar gradient</string>
     <string name="top_bar_gradient">Top bar gradient blur</string>
     <string name="top_bar_gradient_summary">Replace the native top bar scrim in MIUIX apps with a top blur fading transparent downward (Settings / Messages / Contacts)</string>
-    <string name="top_bar_gradient_strength">Blur strength</string>
-    <string name="top_bar_gradient_strength_summary">Height fraction of the blurred region</string>
+    <string name="top_bar_gradient_strength">Blur radius</string>
+    <string name="top_bar_gradient_strength_summary">Blur radius; larger is stronger</string>
+    <string name="dp_unit">dp</string>
     <string name="top_bar_gradient_opacity">Opacity</string>
     <string name="top_bar_gradient_opacity_summary">Opacity of the blurred layer</string>
+    <string name="section_top_bar_advanced">App-specific adaptation</string>
+    <string name="top_bar_advanced">App-specific adaptation</string>
+    <string name="top_bar_advanced_summary">Extra adaptation for specific apps (Notes, Calculator); turning off falls back to the generic implementation</string>
+    <string name="top_bar_advanced_notes">Notes</string>
+    <string name="top_bar_advanced_notes_summary">Suppress the duplicate gradient scrim in the Notes filter/category bar</string>
+    <string name="top_bar_advanced_calculator">Calculator</string>
+    <string name="top_bar_advanced_calculator_summary">Adapt the Calculator new top bar scrim and restore top spacing on its pages</string>
 
     <string name="section_experimental">Experimental</string>
     <string name="section_weather">Weather</string>
     <string name="feature_weather">Weather advanced look</string>
     <string name="weather_advanced">Unlock advanced look</string>
     <string name="weather_advanced_summary">Force-enable progressive blur, glass material and dynamic weather (rain/snow) effects on some devices. Restart the Weather app to take effect.</string>
+
+    <string name="volume_bar_section">Volume bar</string>
+    <string name="volume_bar_panel_section">Panel background</string>
+    <string name="volume_bar_panel_bg">Multi-app panel background</string>
+    <string name="volume_bar_panel_bg_summary">Enable to customize the Multi-app volume panel background padding (vertical and horizontal) separately</string>
+    <string name="volume_bar_panel_pad_vertical">Vertical spacing</string>
+    <string name="volume_bar_panel_pad_vertical_summary">Vertical padding between the panel background and the volume bars</string>
+    <string name="volume_bar_panel_pad_horizontal">Horizontal spacing</string>
+    <string name="volume_bar_panel_pad_horizontal_summary">Horizontal padding between the panel background and the volume bars</string>
+    <string name="volume_bar_size_section">Volume bar size</string>
+    <string name="volume_bar_size">Volume bar height / width</string>
+    <string name="volume_bar_size_summary">Adjust the height and width of both the Multi-app volume bars and the official side volume bar together (bar spacing is not affected)</string>
+    <string name="volume_bar_height">Height</string>
+    <string name="volume_bar_height_summary">Volume bar height (collapsed)</string>
+    <string name="volume_bar_width">Width</string>
+    <string name="volume_bar_width_summary">Volume bar width (collapsed)</string>
+    <string name="volume_bar_spacing_section">Volume bar spacing</string>
+    <string name="volume_bar_spacing">Multi-app volume bar spacing</string>
+    <string name="volume_bar_spacing_summary">Adjust the horizontal spacing between the Multi-app volume bars</string>
+    <string name="volume_bar_column_spacing">Spacing</string>
+    <string name="volume_bar_column_spacing_summary">Horizontal spacing between Multi-app volume bars</string>
 
     <string name="appearance_cc_volume">Volume bar</string>
     <string name="appearance_cc_brightness">Brightness bar</string>

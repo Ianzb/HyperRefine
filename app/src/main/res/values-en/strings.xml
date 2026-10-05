@@ -216,6 +216,12 @@
     <string name="volume_bar_spacing_summary">Adjust the horizontal spacing between the Multi-app volume bars</string>
     <string name="volume_bar_column_spacing">Spacing</string>
     <string name="volume_bar_column_spacing_summary">Horizontal spacing between Multi-app volume bars</string>
+    <string name="volume_bar_l2_pos">Secondary panel position</string>
+    <string name="volume_bar_l2_pos_section">Secondary panel</string>
+    <string name="volume_bar_l2_pos_summary">Move the whole expanded side volume panel up or down</string>
+    <string name="volume_bar_l2_pos_portrait">Portrait position</string>
+    <string name="volume_bar_l2_pos_landscape">Landscape position</string>
+    <string name="volume_bar_l2_pos_percent_summary">100% top edge touches the screen top, 0% bottom edge touches the screen bottom</string>
 
     <string name="appearance_cc_volume">Volume bar</string>
     <string name="appearance_cc_brightness">Brightness bar</string>
@@ -299,6 +305,12 @@
     <string name="side_volume_inside_summary">Off: floating above the volume area; On: inside the bar at the top</string>
     <string name="side_volume_longpress">Long-press to open volume panel</string>
     <string name="side_volume_longpress_summary">Long-press the bar to expand the volume panel and hide its three-dot button</string>
+    <string name="side_volume_pos_section">Vertical position</string>
+    <string name="side_volume_pos">Position</string>
+    <string name="side_volume_pos_summary">Customize the vertical position of the side volume bar on screen</string>
+    <string name="side_volume_pos_portrait">Portrait position</string>
+    <string name="side_volume_pos_landscape">Landscape position</string>
+    <string name="side_volume_pos_percent_summary">100% top edge touches the screen top, 0% bottom edge touches the screen bottom</string>
 
     <string name="app_volume_section">Multi-app volume</string>
     <string name="app_volume_entry">Multi-app volume entry</string>

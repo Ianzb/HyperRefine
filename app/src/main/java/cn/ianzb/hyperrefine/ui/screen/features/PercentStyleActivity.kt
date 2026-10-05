@@ -51,27 +51,18 @@ class PercentStyleActivity : BaseSubPageActivity() {
         } else {
             null
         }
-        val displaySection = HookSection(
+        // 百分比相关选项统一放在一个卡片组（总开关 + 样式 + 显示位置）。
+        val percentSection = HookSection(
             titleRes = R.string.percent_display_section,
-            specs = listOf(featureSpec(masterKey)),
+            specs = buildList {
+                add(featureSpec(masterKey))
+                add(featureSpec("${location}_font_size"))
+                add(featureSpec("${location}_font_weight"))
+                add(featureSpec("${location}_follow_icon"))
+                add(featureSpec(PercentLocation.positionKey(location)))
+                if (location == PercentLocation.SIDE_VOLUME) add(featureSpec(SIDE_INSIDE_KEY))
+            },
         )
-        val styleSection = HookSection(
-            titleRes = R.string.percent_style_section,
-            specs = listOf(
-                featureSpec("${location}_font_size"),
-                featureSpec("${location}_font_weight"),
-                featureSpec("${location}_follow_icon"),
-                featureSpec(PercentLocation.positionKey(location)),
-            ),
-        )
-        val positionSection = if (location == PercentLocation.SIDE_VOLUME) {
-            HookSection(
-                titleRes = R.string.side_volume_position_section,
-                specs = listOf(featureSpec(SIDE_INSIDE_KEY)),
-            )
-        } else {
-            null
-        }
 
         LazyColumn(
             modifier = Modifier
@@ -96,22 +87,10 @@ class PercentStyleActivity : BaseSubPageActivity() {
                     }
                 }
             }
-            item {
-                HookSectionCard(displaySection) {
-                    displaySection.specs.forEach { HookOptionView(it) }
-                }
-            }
             // 规范：依赖百分比总开关的样式项始终显示，未开启时禁用灰显（不隐藏）。
             item {
-                HookSectionCard(styleSection) {
-                    styleSection.specs.forEach { HookOptionView(it) }
-                }
-            }
-            positionSection?.let { section ->
-                item {
-                    HookSectionCard(section) {
-                        section.specs.forEach { HookOptionView(it) }
-                    }
+                HookSectionCard(percentSection) {
+                    percentSection.specs.forEach { HookOptionView(it) }
                 }
             }
         }

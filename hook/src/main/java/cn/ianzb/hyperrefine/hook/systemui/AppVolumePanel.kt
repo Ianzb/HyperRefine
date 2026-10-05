@@ -21,8 +21,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
+import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassApi
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.OfficialExpandedMaterial
+import cn.ianzb.hyperrefine.hook.systemui.glass.VolumeColumnGlass
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
@@ -71,8 +73,63 @@ object AppVolumePanel {
     private var windowAttrsOriginal: Pair<Float, Int>? = null
     private val officialColumns = mutableListOf<OfficialVolumeColumnFactory.Column>()
 
+    /** 最近一次面板使用的插件 ClassLoader 与「玻璃是否已在更靠后的时机同步过」。 */
+    private var lastGlassClassLoader: ClassLoader? = null
+    private var glassSynced = false
+
     /** 面板是否正在显示。 */
     fun isShowing(): Boolean = host != null
+
+    /**
+     * 用与官方侧边音量条**同一套**处理（[VolumeColumnGlass]）重刷面板内音量列的玻璃，并由
+     * [cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassHook] 在更靠后的时机（侧边音量列
+     * `updateVolumeColumnSliderH`）触发，确保与侧边音量条最终一致；同时直接镜像侧边音量列
+     * **实际**的滑条背景 / 进度 drawable，兼容其它模块对玻璃参数的改动。每次展示只刷一次，避免高频开销。
+     */
+    fun refreshColumnGlass() {
+        if (glassSynced) return
+        val cl = lastGlassClassLoader ?: return
+        if (officialColumns.isEmpty()) return
+        glassSynced = true
+        runCatching { CcGlassApi.init(cl) }
+        val sideSlider = card?.rootView?.let { findSideSlider(it) }
+        officialColumns.forEach { column ->
+            runCatching {
+                VolumeColumnGlass.apply(
+                    column.view,
+                    styleRoot = { CcGlassApi.apply(it, VolumeColumnGlass.COLUMN_TOKEN) },
+                    styleSlider = {
+                        CcGlassApi.applyStyle(it, CcGlassApi.bionics(VolumeColumnGlass.SLIDER_TOKEN))
+                    },
+                )
+                sideSlider?.let { copySliderDrawables(column.slider, it) }
+            }
+        }
+        HookHelper.log("$TAG: column glass synced from side")
+    }
+
+    private fun copySliderDrawables(target: android.widget.SeekBar, source: android.widget.SeekBar) {
+        runCatching {
+            if (target.background !== source.background) target.background = source.background
+            if (target.progressDrawable !== source.progressDrawable) target.progressDrawable = source.progressDrawable
+        }
+    }
+
+    /** 在窗口根内查找「非本面板」的真实侧边音量列滑条（面板滑条带 [OfficialVolumeColumnFactory.SLIDER_TAG]）。 */
+    private fun findSideSlider(root: View): android.widget.SeekBar? {
+        if (root is android.widget.SeekBar &&
+            root.tag !== OfficialVolumeColumnFactory.SLIDER_TAG &&
+            runCatching { root.resources.getResourceEntryName(root.id) }.getOrNull() == SIDE_SLIDER_ID
+        ) {
+            return root
+        }
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) {
+                findSideSlider(root.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
+    }
 
     /** 打开 / 关闭切换。 */
     fun toggle(root: ViewGroup, dialog: View, context: Context, pluginClassLoader: ClassLoader?, anchor: View) {
@@ -160,8 +217,20 @@ object AppVolumePanel {
     ) {
         hide()
         closing = false
+        lastGlassClassLoader = pluginClassLoader
+        glassSynced = false
         val density = context.resources.displayMetrics.density
         val apps = activeApps(context)
+
+        // 无正在播放的应用时不显示面板（不再显示「当前无播放」占位）。
+        if (apps.isEmpty()) {
+            HookHelper.log("$TAG: no active app, skip panel")
+            return
+        }
+        if (!OfficialVolumeColumnFactory.isAvailable(pluginClassLoader)) {
+            HookHelper.log("$TAG: official VolumeColumn unavailable")
+            return
+        }
 
         // 全窗口透明容器（不消费触摸），面板放在侧边音量条左侧，二者同时可见。
         val container = FrameLayout(context).apply {
@@ -214,25 +283,13 @@ object AppVolumePanel {
             },
         )
 
-        if (apps.isEmpty() || !OfficialVolumeColumnFactory.isAvailable(pluginClassLoader)) {
-            panel.addView(
-                TextView(context).apply {
-                    text = moduleString(context, "app_volume_empty") ?: "No app is playing"
-                    setTextColor(Color.parseColor("#B3FFFFFF"))
-                    textSize = 15f
-                    gravity = Gravity.CENTER
-                    setPadding((24 * density).toInt(), (28 * density).toInt(), (24 * density).toInt(), (28 * density).toInt())
-                },
-            )
-        } else {
-            panel.addView(
-                buildBars(context, density, apps, pluginClassLoader!!, maxWidth),
-                FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                ),
-            )
-        }
+        panel.addView(
+            buildBars(context, density, apps, pluginClassLoader!!, maxWidth),
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
 
         // 竖直位置：「高度自动」时与侧边音量条竖直对齐；否则用「高度」百分比（0% 最低、100% 最高、50% 居中）。
         val heightAuto = HookPrefs.getBoolean(AppVolumeKeys.HEIGHT_AUTO, true)
@@ -322,8 +379,10 @@ object AppVolumePanel {
             val panelTop = layoutTopTo(panelSlider, root) ?: return
             val dialogTop = layoutTopTo(dialogSlider, root) ?: return
             val panelCenter = panelTop + panelSlider.height / 2f
-            // 侧边面板整体位移（如入口出现时的上移）用 translationY 表示，需保留。
-            val dialogCenter = dialogTop + dialogSlider.height / 2f + dialog.translationY
+            // 侧边音量条整体平移作用在对话框的父容器（`mVolumePanelView`）上；用它的 translationY 保留整体位移，
+            // 同时仍以布局坐标计算，避免跟随音量条拉到端点时的边界弹性动画（列自身的平移 / 缩放）。
+            val dialogShift = (dialog.parent as? View)?.translationY ?: 0f
+            val dialogCenter = dialogTop + dialogSlider.height / 2f + dialogShift
             val ty = dialogCenter - panelCenter
             if (kotlin.math.abs(panel.translationY - ty) > 0.5f) panel.translationY = ty
         }
@@ -736,12 +795,6 @@ object AppVolumePanel {
             set.invoke(am, config, v)
         }
     }
-
-    private fun moduleString(context: Context, name: String): String? = runCatching {
-        val module = context.createPackageContext(AppVolumeKeys.MODULE_PACKAGE, Context.CONTEXT_IGNORE_SECURITY)
-        val id = module.resources.getIdentifier(name, "string", AppVolumeKeys.MODULE_PACKAGE)
-        if (id != 0) module.getString(id) else null
-    }.getOrNull()
 
     private const val TOUCHABLE_INSETS_FRAME = 0
 }

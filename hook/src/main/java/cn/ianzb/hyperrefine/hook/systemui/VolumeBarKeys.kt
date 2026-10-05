@@ -34,7 +34,37 @@ object VolumeBarKeys {
     /** 多应用音量条之间的水平间距（dp）。 */
     const val COLUMN_SPACING = "volume_bar_column_spacing"
 
+    /** 侧边音量条竖直位置调节总开关（关闭 = 官方自动位置，开启 = 按百分比自定义）。 */
+    const val SIDE_POS = "volume_bar_side_pos"
+
+    /** 侧边音量条竖屏位置百分比（100% 上边缘贴屏幕顶部，0% 下边缘贴屏幕底部）。 */
+    const val SIDE_POS_PORTRAIT = "volume_bar_side_pos_portrait"
+
+    /** 侧边音量条横屏位置百分比（100% 上边缘贴屏幕顶部，0% 下边缘贴屏幕底部）。 */
+    const val SIDE_POS_LANDSCAPE = "volume_bar_side_pos_landscape"
+
+    /** 侧边音量条二级（展开）面板整体竖直位置调节总开关。 */
+    const val L2_POS = "volume_bar_l2_pos"
+
+    /** 二级面板整体竖直位置：竖屏百分比（100% 上边缘贴屏幕顶部，0% 下边缘贴屏幕底部）。 */
+    const val L2_POS_PORTRAIT = "volume_bar_l2_pos_portrait"
+
+    /** 二级面板整体竖直位置：横屏百分比（100% 上边缘贴屏幕顶部，0% 下边缘贴屏幕底部）。 */
+    const val L2_POS_LANDSCAPE = "volume_bar_l2_pos_landscape"
+
     // ---------------- 默认值（与官方 / 现状一致，改动前不改变外观） ----------------
+
+    /** 侧边音量条竖屏位置默认百分比。 */
+    const val DEFAULT_SIDE_POS_PORTRAIT = 70f
+
+    /** 侧边音量条横屏位置默认百分比。 */
+    const val DEFAULT_SIDE_POS_LANDSCAPE = 50f
+
+    /** 二级面板竖屏位置默认百分比。 */
+    const val DEFAULT_L2_POS_PORTRAIT = 70f
+
+    /** 二级面板横屏位置默认百分比。 */
+    const val DEFAULT_L2_POS_LANDSCAPE = 50f
 
     /** 面板背景内边距默认值（dp，等同现状的 16dp 四周内边距）。 */
     const val DEFAULT_PAD = 16f

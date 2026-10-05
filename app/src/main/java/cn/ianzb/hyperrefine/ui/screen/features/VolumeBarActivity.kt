@@ -56,6 +56,22 @@ class VolumeBarActivity : BaseSubPageActivity() {
                 featureSpec(VolumeBarKeys.COLUMN_SPACING),
             ),
         )
+        val sidePosSection = HookSection(
+            titleRes = R.string.side_volume_pos_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.SIDE_POS),
+                featureSpec(VolumeBarKeys.SIDE_POS_PORTRAIT),
+                featureSpec(VolumeBarKeys.SIDE_POS_LANDSCAPE),
+            ),
+        )
+        val l2PosSection = HookSection(
+            titleRes = R.string.volume_bar_l2_pos_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.L2_POS),
+                featureSpec(VolumeBarKeys.L2_POS_PORTRAIT),
+                featureSpec(VolumeBarKeys.L2_POS_LANDSCAPE),
+            ),
+        )
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -84,6 +100,16 @@ class VolumeBarActivity : BaseSubPageActivity() {
             item {
                 HookSectionCard(spacingSection) {
                     spacingSection.specs.forEach { HookOptionView(it) }
+                }
+            }
+            item {
+                HookSectionCard(sidePosSection) {
+                    sidePosSection.specs.forEach { HookOptionView(it) }
+                }
+            }
+            item {
+                HookSectionCard(l2PosSection) {
+                    l2PosSection.specs.forEach { HookOptionView(it) }
                 }
             }
         }

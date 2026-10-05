@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.SeekBar
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassApi
+import cn.ianzb.hyperrefine.hook.systemui.glass.VolumeColumnGlass
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
 
@@ -245,9 +246,7 @@ object OfficialVolumeColumnFactory {
     }
 
     /**
-     * 复刻模块对侧边音量列的处理（`CcGlassHook.glassVolumeColumns`）：
-     * 清除各层的深色兜底背景、把滑条进度 drawable 置空，让音量条透出面板自身的材质，
-     * 避免出现「深色压暗」。
+     * 与官方侧边音量条共用同一套列玻璃处理（[VolumeColumnGlass]），保证玻璃参数完全一致。
      */
     private fun applyModuleGlass(view: View, classLoader: ClassLoader) {
         runCatching {
@@ -257,38 +256,15 @@ object OfficialVolumeColumnFactory {
                 view.post { if (view.isAttachedToWindow) applyModuleGlass(view, classLoader) }
                 return
             }
-            CcGlassApi.apply(view, "DefaultContentBgMaterialToken")
-            // 列根视图的深色实心兜底背景（ColorDrawable）也是深色来源之一。
-            if (view.background is android.graphics.drawable.ColorDrawable) view.background = null
-            traverseGlass(view) { v ->
-                when (idName(v)) {
-                    "volume_column_view",
-                    "volume_column_slider_bg_blend",
-                    "volume_column_slider_bg_glass",
-                    -> v.background = null
-                    "volume_column_slider" -> {
-                        v.background = null
-                        if (v is SeekBar) {
-                            runCatching {
-                                v.progressDrawable = android.graphics.drawable.ColorDrawable(
-                                    android.graphics.Color.TRANSPARENT,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            VolumeColumnGlass.apply(
+                view,
+                styleRoot = { CcGlassApi.apply(it, VolumeColumnGlass.COLUMN_TOKEN) },
+                styleSlider = {
+                    CcGlassApi.applyStyle(it, CcGlassApi.bionics(VolumeColumnGlass.SLIDER_TOKEN))
+                },
+            )
         }.onFailure { HookHelper.log("OfficialVolumeColumn: applyModuleGlass failed", it) }
     }
-
-    private fun traverseGlass(root: View, action: (View) -> Unit) {
-        action(root)
-        if (root is ViewGroup) {
-            for (i in 0 until root.childCount) traverseGlass(root.getChildAt(i), action)
-        }
-    }
-
-    private fun idName(v: View): String? = runCatching { v.resources.getResourceEntryName(v.id) }.getOrNull()
 
     private fun defaultValue(type: Class<*>): Any? = when (type) {
         java.lang.Boolean.TYPE -> false

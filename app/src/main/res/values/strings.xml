@@ -216,6 +216,12 @@
     <string name="volume_bar_spacing_summary">调整多应用音量面板内各音量条之间的水平间距</string>
     <string name="volume_bar_column_spacing">间距</string>
     <string name="volume_bar_column_spacing_summary">多应用音量条之间的水平间距</string>
+    <string name="volume_bar_l2_pos">二级面板位置</string>
+    <string name="volume_bar_l2_pos_section">二级面板</string>
+    <string name="volume_bar_l2_pos_summary">整体上下移动展开后的二级面板的位置</string>
+    <string name="volume_bar_l2_pos_portrait">竖屏位置</string>
+    <string name="volume_bar_l2_pos_landscape">横屏位置</string>
+    <string name="volume_bar_l2_pos_percent_summary">100% 上边缘贴屏幕顶部，0% 下边缘贴屏幕底部</string>
 
     <string name="appearance_cc_volume">音量条</string>
     <string name="appearance_cc_brightness">亮度条</string>
@@ -299,6 +305,12 @@
     <string name="side_volume_inside_summary">关闭：在音量区域上方悬浮显示；开启：在音量条内部上方显示</string>
     <string name="side_volume_longpress">长按打开音量面板</string>
     <string name="side_volume_longpress_summary">长按音量条展开音量面板，并隐藏音量条上的三个点按钮</string>
+    <string name="side_volume_pos_section">竖直位置</string>
+    <string name="side_volume_pos">位置调节</string>
+    <string name="side_volume_pos_summary">自定义侧边音量条在屏幕上的竖直位置</string>
+    <string name="side_volume_pos_portrait">竖屏位置</string>
+    <string name="side_volume_pos_landscape">横屏位置</string>
+    <string name="side_volume_pos_percent_summary">100% 上边缘贴屏幕顶部，0% 下边缘贴屏幕底部</string>
 
     <string name="app_volume_section">多应用音量</string>
     <string name="app_volume_entry">多应用音量入口</string>

@@ -562,9 +562,13 @@ class AppVolumeEntryHook : BaseHook() {
         }.getOrDefault(0)
         if (extra <= 0) return
         val target = if (visible) -extra / 2f else 0f
-        if (lastShift[panel] == target) return
-        lastShift[panel] = target
-        panel.animate()
+        // 平移**整个窗口内容**（`mVolumePanelView`：对话框 `MiuiVolumeDialogView` 的父容器）：
+        // 它与音量条对话框、悬浮百分比（`miui_super_volume_*`）并列包含在同一父容器下，
+        // 只有平移该父容器才能让二者一起移动，避免只移动对话框导致悬浮百分比错位。
+        val shiftRoot = panel.parent as? View ?: panel
+        if (lastShift[shiftRoot] == target) return
+        lastShift[shiftRoot] = target
+        shiftRoot.animate()
             .translationY(target)
             .setDuration(SHIFT_DURATION_MS)
             .setInterpolator(android.view.animation.AccelerateDecelerateInterpolator())

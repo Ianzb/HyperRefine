@@ -23,6 +23,7 @@ class SystemUiLoad : BaseLoad() {
         initHook(CcVolumePercentHook(), HookPrefs.getBoolean(CcVolumePercentHook.KEY, false))
         initHook(CcBrightnessPercentHook(), HookPrefs.getBoolean(CcBrightnessPercentHook.KEY, false))
         initHook(SideVolumePercentHook(), HookPrefs.getBoolean(SideVolumePercentHook.KEY, false))
+        initHook(SideVolumeLongPressHook(), HookPrefs.getBoolean(SideVolumeLongPressHook.KEY, false))
         initHook(DeviceCenterMoreHook(), HookPrefs.getBoolean(DeviceCenterMoreHook.KEY, false))
         initHook(
             DeviceCenterHitAreaHook(),
@@ -43,6 +44,8 @@ class SystemUiLoad : BaseLoad() {
         initHook(CcRadiusHook(), radiusEnabled)
         initHook(AppVolumeEntryHook(), HookPrefs.getBoolean(AppVolumeKeys.ENTRY, false))
         initHook(VolumeBarSizeHook(), HookPrefs.getBoolean(VolumeBarKeys.BAR_SIZE, false))
+        initHook(SideVolumePositionHook(), HookPrefs.getBoolean(VolumeBarKeys.SIDE_POS, false))
+        initHook(SidePanelPositionHook(), HookPrefs.getBoolean(VolumeBarKeys.L2_POS, false))
     }
 
     companion object {

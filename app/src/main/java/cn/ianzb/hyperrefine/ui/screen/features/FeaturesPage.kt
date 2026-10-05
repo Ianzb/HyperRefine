@@ -329,6 +329,12 @@ private fun volumeBarSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, VolumeBarKeys.BAR_WIDTH),
         specByKey(specs, VolumeBarKeys.SPACING),
         specByKey(specs, VolumeBarKeys.COLUMN_SPACING),
+        specByKey(specs, VolumeBarKeys.SIDE_POS),
+        specByKey(specs, VolumeBarKeys.SIDE_POS_PORTRAIT),
+        specByKey(specs, VolumeBarKeys.SIDE_POS_LANDSCAPE),
+        specByKey(specs, VolumeBarKeys.L2_POS),
+        specByKey(specs, VolumeBarKeys.L2_POS_PORTRAIT),
+        specByKey(specs, VolumeBarKeys.L2_POS_LANDSCAPE),
     )
 
 /** 安全服务二级页（快充加速通知）内的配置项，用于功能页搜索直达。 */
@@ -781,6 +787,8 @@ internal fun featureSpecs(): List<OptionSpec> {
     }
     specs += buildAppVolumeSpecs(systemUi)
     specs += buildVolumeBarSpecs(systemUi)
+    specs += buildSidePosSpecs(systemUi)
+    specs += buildL2PosSpecs(systemUi)
     specs += ccRadiusSpecs(systemUi)
     return specs
 }
@@ -966,6 +974,92 @@ private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = list
         defaultBoolean = false,
         targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
         dependsOn = AppVolumeKeys.ENTRY,
+    ),
+)
+
+/** 侧边音量条竖直位置调节配置项（系统界面）。 */
+private fun buildSidePosSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
+    OptionSpec(
+        key = VolumeBarKeys.SIDE_POS,
+        type = OptionType.SWITCH,
+        titleRes = R.string.side_volume_pos,
+        summaryRes = R.string.side_volume_pos_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+        showStatus = true,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.SIDE_POS_PORTRAIT,
+        type = OptionType.SLIDER,
+        titleRes = R.string.side_volume_pos_portrait,
+        summaryRes = R.string.side_volume_pos_percent_summary,
+        defaultFloat = VolumeBarKeys.DEFAULT_SIDE_POS_PORTRAIT,
+        sliderMin = 0f,
+        sliderMax = 100f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.percent_unit,
+        sliderValueLabelRes = R.string.side_volume_pos_portrait,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.SIDE_POS,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.SIDE_POS_LANDSCAPE,
+        type = OptionType.SLIDER,
+        titleRes = R.string.side_volume_pos_landscape,
+        summaryRes = R.string.side_volume_pos_percent_summary,
+        defaultFloat = VolumeBarKeys.DEFAULT_SIDE_POS_LANDSCAPE,
+        sliderMin = 0f,
+        sliderMax = 100f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.percent_unit,
+        sliderValueLabelRes = R.string.side_volume_pos_landscape,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.SIDE_POS,
+    ),
+)
+
+/** 侧边音量条二级（展开）面板整体竖直位置调节配置项（系统界面）。 */
+private fun buildL2PosSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
+    OptionSpec(
+        key = VolumeBarKeys.L2_POS,
+        type = OptionType.SWITCH,
+        titleRes = R.string.volume_bar_l2_pos,
+        summaryRes = R.string.volume_bar_l2_pos_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+        showStatus = true,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.L2_POS_PORTRAIT,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_l2_pos_portrait,
+        summaryRes = R.string.volume_bar_l2_pos_percent_summary,
+        defaultFloat = VolumeBarKeys.DEFAULT_L2_POS_PORTRAIT,
+        sliderMin = 0f,
+        sliderMax = 100f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.percent_unit,
+        sliderValueLabelRes = R.string.volume_bar_l2_pos_portrait,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.L2_POS,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.L2_POS_LANDSCAPE,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_l2_pos_landscape,
+        summaryRes = R.string.volume_bar_l2_pos_percent_summary,
+        defaultFloat = VolumeBarKeys.DEFAULT_L2_POS_LANDSCAPE,
+        sliderMin = 0f,
+        sliderMax = 100f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.percent_unit,
+        sliderValueLabelRes = R.string.volume_bar_l2_pos_landscape,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.L2_POS,
     ),
 )
 

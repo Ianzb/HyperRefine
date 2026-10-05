@@ -4,6 +4,7 @@ import android.view.View
 import android.view.ViewGroup
 import cn.ianzb.hyperrefine.hook.base.BaseHook
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
+import cn.ianzb.hyperrefine.hook.systemui.AppVolumePanel
 import cn.ianzb.hyperrefine.hook.systemui.PluginLoader
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
@@ -285,21 +286,20 @@ class CcGlassHook : BaseHook() {
         val applyColumn: (Any?) -> Unit = { column ->
             val columnView = column?.let { call(it, "getView") as? View }
             if (columnView != null) {
-                glass(columnView, signature)
-                // 一次遍历同时清除深色底与滑条兜底色（侧边音量的滑条被系统铺了一层偏深的 flat 兜底色）。
-                traverse(columnView) { v ->
-                    when (idName(v)) {
-                        "volume_column_view", "volume_column_slider_bg_blend" -> v.background = null
-                        "volume_column_slider" -> {
-                            v.background = null
-                            applyStyleOnce(v, signature)
-                        }
-                    }
-                }
+                // 与多应用音量面板共用同一套列玻璃处理，保证两者完全一致。
+                VolumeColumnGlass.apply(
+                    columnView,
+                    styleRoot = { v ->
+                        applyOnce(v, signature) { CcGlassApi.apply(it, VolumeColumnGlass.COLUMN_TOKEN) }
+                    },
+                    styleSlider = { v -> applyStyleOnce(v, signature) },
+                )
             }
         }
         (call(controller, "getColumns") as? List<*>)?.forEach(applyColumn)
         runCatching { Reflect.getObjectField(controller, "mTempColumn") }.getOrNull()?.let(applyColumn)
+        // 在多应用音量面板显示期间，于同一「靠后」时机把侧边的实际玻璃镜像到面板音量列。
+        if (AppVolumePanel.isShowing()) runCatching { AppVolumePanel.refreshColumnGlass() }
     }
 
     /**

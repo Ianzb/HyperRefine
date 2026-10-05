@@ -118,12 +118,11 @@ object OfficialVolumeColumnFactory {
             return null
         }
 
-        // 严格复刻官方 updateColumnH 展开态顺序：expanded -> resource -> tint -> size -> blend。
+        // 与侧边**一级**音量条一致：用收起态样式（展开态会给滑条套 flat 深色，导致面板条偏暗）。
         runCatching {
-            columnClass.getMethod("setExpanded", booleanType).invoke(instance, true)
-            columnClass.getMethod("setSliderResource", booleanType).invoke(instance, true)
-            columnClass.getMethod("setSliderTintColorList", booleanType).invoke(instance, true)
-            // 与侧边音量条一致使用折叠态尺寸（此前传 true 会明显大于侧边条）。
+            columnClass.getMethod("setExpanded", booleanType).invoke(instance, false)
+            columnClass.getMethod("setSliderResource", booleanType).invoke(instance, false)
+            columnClass.getMethod("setSliderTintColorList", booleanType).invoke(instance, false)
             columnClass.getMethod("setSize", booleanType, booleanType).invoke(instance, false, false)
             columnClass.getMethod("setSliderBlendColor", booleanType).invoke(instance, false)
         }.onFailure { HookHelper.log("OfficialVolumeColumn: style setup failed", it) }
@@ -154,7 +153,7 @@ object OfficialVolumeColumnFactory {
 
         (view.parent as? ViewGroup)?.removeView(view)
 
-        // 模块「柔光玻璃」：清除滑条深色兜底背景并对音量列 / 滑条套柔光玻璃。
+        // 多应用面板音量列的玻璃：与侧边一级音量条使用同一套模块玻璃。
         if (glass) applyModuleGlass(view, pluginClassLoader)
 
         val setTracking = runCatching { columnClass.getMethod("setTracking", booleanType) }.getOrNull()
@@ -246,7 +245,8 @@ object OfficialVolumeColumnFactory {
     }
 
     /**
-     * 与官方侧边音量条共用同一套列玻璃处理（[VolumeColumnGlass]），保证玻璃参数完全一致。
+     * 多应用面板音量列的玻璃：与侧边一级音量条使用**同一套**模块玻璃（[VolumeColumnGlass]）——列根套内容材质、
+     * 清掉各层深色兜底、滑条套 SDF 玻璃。这样面板条与侧边一级条一致。
      */
     private fun applyModuleGlass(view: View, classLoader: ClassLoader) {
         runCatching {
@@ -263,6 +263,8 @@ object OfficialVolumeColumnFactory {
                     CcGlassApi.applyStyle(it, CcGlassApi.bionics(VolumeColumnGlass.SLIDER_TOKEN))
                 },
             )
+            // 回放其它模块（如 HyperLight 柔光玻璃）对侧边一级列实际套用的框架玻璃参数（按子视图路径）。
+            runCatching { SideGlassStore.applyTo(view) }
         }.onFailure { HookHelper.log("OfficialVolumeColumn: applyModuleGlass failed", it) }
     }
 

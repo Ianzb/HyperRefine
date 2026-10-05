@@ -4,7 +4,6 @@ import android.view.View
 import android.view.ViewGroup
 import cn.ianzb.hyperrefine.hook.base.BaseHook
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
-import cn.ianzb.hyperrefine.hook.systemui.AppVolumePanel
 import cn.ianzb.hyperrefine.hook.systemui.PluginLoader
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
@@ -43,6 +42,10 @@ class CcGlassHook : BaseHook() {
 
     /** 侧边音量玻璃状态代次：每次面板重新展示 / 初始化时自增，强制重套一次。 */
     private var sideVolumeGeneration = 0L
+
+    /** 最近一次已套玻璃的状态签名；仅音量值变化（签名不变）时跳过整轮遍历。 */
+    @Volatile
+    private var lastSideSignature = Long.MIN_VALUE
 
     /** 视图 id 资源名缓存：`getResourceEntryName` 较慢，高频遍历中复用。 */
     private val idNameCache = java.util.WeakHashMap<View, String>()
@@ -270,6 +273,9 @@ class CcGlassHook : BaseHook() {
         if (!master()) return
         val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") }.getOrNull() as? Boolean ?: false
         val signature = (sideVolumeGeneration shl 1) or (if (expanded) 1L else 0L)
+        // 仅音量值变化时签名不变：跳过本轮遍历（调音量不再重复套玻璃 / 清底），消除卡顿。
+        if (signature == lastSideSignature) return
+        lastSideSignature = signature
         // 侧边二级菜单的**整体面板**背景：清掉系统兜底色后套柔光玻璃（与滑条同样的做法）。
         (call(controller, "getVolumeContentBg") as? View)?.let { v ->
             v.background = null
@@ -298,8 +304,6 @@ class CcGlassHook : BaseHook() {
         }
         (call(controller, "getColumns") as? List<*>)?.forEach(applyColumn)
         runCatching { Reflect.getObjectField(controller, "mTempColumn") }.getOrNull()?.let(applyColumn)
-        // 在多应用音量面板显示期间，于同一「靠后」时机把侧边的实际玻璃镜像到面板音量列。
-        if (AppVolumePanel.isShowing()) runCatching { AppVolumePanel.refreshColumnGlass() }
     }
 
     /**

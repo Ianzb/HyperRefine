@@ -21,10 +21,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
-import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassApi
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.OfficialExpandedMaterial
-import cn.ianzb.hyperrefine.hook.systemui.glass.VolumeColumnGlass
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
@@ -73,62 +71,57 @@ object AppVolumePanel {
     private var windowAttrsOriginal: Pair<Float, Int>? = null
     private val officialColumns = mutableListOf<OfficialVolumeColumnFactory.Column>()
 
-    /** 最近一次面板使用的插件 ClassLoader 与「玻璃是否已在更靠后的时机同步过」。 */
-    private var lastGlassClassLoader: ClassLoader? = null
-    private var glassSynced = false
-
     /** 面板是否正在显示。 */
     fun isShowing(): Boolean = host != null
 
-    /**
-     * 用与官方侧边音量条**同一套**处理（[VolumeColumnGlass]）重刷面板内音量列的玻璃，并由
-     * [cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassHook] 在更靠后的时机（侧边音量列
-     * `updateVolumeColumnSliderH`）触发，确保与侧边音量条最终一致；同时直接镜像侧边音量列
-     * **实际**的滑条背景 / 进度 drawable，兼容其它模块对玻璃参数的改动。每次展示只刷一次，避免高频开销。
-     */
-    fun refreshColumnGlass() {
-        if (glassSynced) return
-        val cl = lastGlassClassLoader ?: return
-        if (officialColumns.isEmpty()) return
-        glassSynced = true
-        runCatching { CcGlassApi.init(cl) }
-        val sideSlider = card?.rootView?.let { findSideSlider(it) }
-        officialColumns.forEach { column ->
-            runCatching {
-                VolumeColumnGlass.apply(
-                    column.view,
-                    styleRoot = { CcGlassApi.apply(it, VolumeColumnGlass.COLUMN_TOKEN) },
-                    styleSlider = {
-                        CcGlassApi.applyStyle(it, CcGlassApi.bionics(VolumeColumnGlass.SLIDER_TOKEN))
-                    },
-                )
-                sideSlider?.let { copySliderDrawables(column.slider, it) }
-            }
-        }
-        HookHelper.log("$TAG: column glass synced from side")
+    /** 记录其它模块对「侧边一级音量列」子视图的框架玻璃调用（按子视图路径），供面板列创建时回放。 */
+    fun recordSideGlass(sourceView: View, methodName: String, args: Array<Any?>) {
+        if (officialColumns.any { isDescendant(sourceView, it.view) }) return
+        val root = columnRoot(sourceView) ?: return
+        val path = indexPath(sourceView, root) ?: return
+        SideGlassStore.record(path, methodName, args)
     }
 
-    private fun copySliderDrawables(target: android.widget.SeekBar, source: android.widget.SeekBar) {
-        runCatching {
-            if (target.background !== source.background) target.background = source.background
-            if (target.progressDrawable !== source.progressDrawable) target.progressDrawable = source.progressDrawable
+    private fun isDescendant(v: View, ancestor: View): Boolean {
+        var c: View? = v
+        while (c != null) {
+            if (c === ancestor) return true
+            c = c.parent as? View
         }
+        return false
     }
 
-    /** 在窗口根内查找「非本面板」的真实侧边音量列滑条（面板滑条带 [OfficialVolumeColumnFactory.SLIDER_TAG]）。 */
-    private fun findSideSlider(root: View): android.widget.SeekBar? {
-        if (root is android.widget.SeekBar &&
-            root.tag !== OfficialVolumeColumnFactory.SLIDER_TAG &&
-            runCatching { root.resources.getResourceEntryName(root.id) }.getOrNull() == SIDE_SLIDER_ID
-        ) {
-            return root
-        }
-        if (root is ViewGroup) {
-            for (i in 0 until root.childCount) {
-                findSideSlider(root.getChildAt(i))?.let { return it }
-            }
+    /** 音量列根（两侧均为 `VolumeBlurFrameLayout`）。 */
+    private fun columnRoot(view: View): View? {
+        var c: View? = view
+        while (c != null) {
+            if (c.javaClass.name.contains("VolumeBlurFrameLayout")) return c
+            c = c.parent as? View
         }
         return null
+    }
+
+    private fun indexPath(view: View, root: View): List<Int>? {
+        val path = ArrayList<Int>()
+        var c: View? = view
+        while (c != null && c !== root) {
+            val p = c.parent as? ViewGroup ?: return null
+            path.add(p.indexOfChild(c))
+            c = p as? View
+        }
+        if (c !== root) return null
+        path.reverse()
+        return path
+    }
+
+    private fun viewAtPath(root: View, path: List<Int>): View? {
+        var c: View = root
+        for (i in path) {
+            val g = c as? ViewGroup ?: return null
+            if (i < 0 || i >= g.childCount) return null
+            c = g.getChildAt(i)
+        }
+        return c
     }
 
     /** 打开 / 关闭切换。 */
@@ -217,8 +210,6 @@ object AppVolumePanel {
     ) {
         hide()
         closing = false
-        lastGlassClassLoader = pluginClassLoader
-        glassSynced = false
         val density = context.resources.displayMetrics.density
         val apps = activeApps(context)
 

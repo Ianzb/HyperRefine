@@ -106,6 +106,14 @@
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity
+            android:name=".ui.screen.features.PasskeyActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
+            android:name=".ui.screen.features.BrowserActivity"
+            android:exported="false"
+            android:theme="@style/Theme.HyperRefine" />
+        <activity
             android:name=".ui.screen.scope.ScopeListActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />

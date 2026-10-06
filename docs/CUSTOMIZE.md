@@ -21,7 +21,7 @@
 | 版权 | `strings.xml` → `copyright` |                                                     |
 | **Based on 标注** | `strings.xml` → `about_based_on` | 应用内「关于」页保留 `Based on MiuixGuiTemplate <版本号>` 并更新为所依据的脚手架版本（README 无需标注） |
 | 参考与致谢 | 应用内 `LicensePage.kt` → `licenses_section_refs` | 保留对参考项目的致谢（可增不可删），文档不展开具体借鉴说明 |
-| 开源协议 | 根目录 `LICENSE`、`README.md`「许可证」、`strings.xml` → `license_lgpl*` | **须保持 LGPL-3.0（或更弱兼容的 GPL-3.0）**，见第 11 节            |
+| 开源协议 | 根目录 `LICENSE`、`README.md`「许可证」、`strings.xml` → `license_agpl*` | **须保持 AGPL-3.0（与 GPL-3.0 兼容）**，见第 11 节            |
 | 许可证列表 | `ui/screen/about/LicensePage.kt` → `licenseSections` | 增删依赖库                                               |
 | 模块元数据 | `hook/src/main/resources/META-INF/xposed/{module.prop,scope.list,java_init.list}` |                                                     |
 | Hook 目标 | `hook/.../base/HookEntryRegistry.kt`、`BaseLoad` 子类 |                                                     |
@@ -117,7 +117,7 @@ android {
 
 > **`about_telegram` 的显示文案须写成「Telegram 群组」（英文 `Telegram Group`）**，不要只写「反馈渠道 / 反馈方式」，否则用户看不出这是 Telegram 群组。`about_telegram_summary` 填群组链接（`https://t.me/...`）。
 
-关于页的「GNU LGPL v3.0」跳转链接为协议官方文本地址；「参考项目」条目跳转第三方许可证页，具体参考与致谢清单在该页维护。关于页 Logo 下方的 `about_based_on` 即 **Based on 标注**，须保留并随脚手架版本更新（见第 11 节）。
+关于页的「GNU AGPL v3.0」跳转链接为协议官方文本地址；「参考项目」条目跳转第三方许可证页，具体参考与致谢清单在该页维护。关于页 Logo 下方的 `about_based_on` 即 **Based on 标注**，须保留并随脚手架版本更新（见第 11 节）。
 
 ---
 
@@ -403,7 +403,7 @@ HookOptionsPage(
 
 ## 11. 开源协议与致谢（必读）
 
-本模板同时包含 LGPL-3.0 与 Apache-2.0 许可的代码（自 [miuix](https://github.com/compose-miuix-ui/miuix) 等引入的文件保留其原始版权与 SPDX 声明），并引用了 LGPL/Apache 双许可的 [DexKit](https://github.com/LuckyPray/DexKit)。按 LGPL-3.0 的传染性要求，**本仓库及其衍生作品须以 LGPL-3.0（或 GPL-3.0）整体授权公开**。
+本模板以 AGPL-3.0 授权，同时包含 Apache-2.0 许可的第三方代码（自 [miuix](https://github.com/compose-miuix-ui/miuix) 等引入的文件保留其原始版权与 SPDX 声明），并引用了 LGPL/Apache 双许可的 [DexKit](https://github.com/LuckyPray/DexKit)。按 AGPL-3.0 的传染性要求，**本仓库及其衍生作品须以 AGPL-3.0（与 GPL-3.0 兼容，见 AGPL-3.0 §13）整体授权公开**。
 
 ### 11.1 参考与致谢
 
@@ -427,9 +427,9 @@ HookOptionsPage(
 
 | # | 事项 | 判定标准 |
 |---|---|---|
-| 1 | `LICENSE` 为 LGPL-3.0 全文 | 根目录存在且未删改条款 |
-| 2 | README「许可证」章节声明 LGPL-3.0 并保留第三方许可说明 | 不得改回 Apache-2.0 |
-| 3 | 关于页协议条目指向 LGPL-3.0 | `license_lgpl*` + `openUri` 指向 LGPL-3.0 文本 |
+| 1 | `LICENSE` 为 AGPL-3.0 全文 | 根目录存在且未删改条款 |
+| 2 | README「许可证」章节声明 AGPL-3.0 并保留第三方许可说明 | 不得改回 Apache-2.0 |
+| 3 | 关于页协议条目指向 AGPL-3.0 | `license_agpl*` + `openUri` 指向 AGPL-3.0 文本 |
 | 4 | 保留参考与致谢 | 应用内 `LicensePage.kt` `licenses_section_refs` 分组保留致谢；文档仅保留指向该页的说明 |
 | 5 | 保留并更新 Based on 标注 | 应用内「关于」页（`about_based_on`），版本号 = 所依据脚手架版本；README 无需标注 |
 | 6 | 第三方许可证页完整 | `licenseSections` 覆盖实际依赖 |

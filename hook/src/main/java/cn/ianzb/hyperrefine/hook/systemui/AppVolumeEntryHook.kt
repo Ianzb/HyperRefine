@@ -547,6 +547,8 @@ class AppVolumeEntryHook : BaseHook() {
     /**
      * 入口出现 / 消失时，把整条侧边音量条（含音量列）向上平移「多出高度的一半」，
      * 使整体视觉中心（平均高度）不变；隐藏时平移回原位。
+     *
+     * 「是否启用自动平衡高度」（竖屏 / 横屏分别控制）关闭时不平移，保持原高度 / 位置。
      */
     private fun shiftPanel(entry: View, visible: Boolean) {
         val parent = entry.parent as? ViewGroup ?: return
@@ -561,7 +563,17 @@ class AppVolumeEntryHook : BaseHook() {
             entryHeight + dividerHeight
         }.getOrDefault(0)
         if (extra <= 0) return
-        val target = if (visible) -extra / 2f else 0f
+        val landscape = entry.resources.configuration.orientation ==
+            android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val balanceKey = if (landscape) {
+            VolumeBarKeys.AUTO_BALANCE_LANDSCAPE
+        } else {
+            VolumeBarKeys.AUTO_BALANCE_PORTRAIT
+        }
+        // 自动平衡：显示入口时上移「多出高度的一半」，保持整条音量条平均高度不变；
+        // 关闭后不平移，高度 / 位置保持原样。
+        val autoBalance = HookPrefs.getBoolean(balanceKey, true)
+        val target = if (visible && autoBalance) -extra / 2f else 0f
         // 平移**整个窗口内容**（`mVolumePanelView`：对话框 `MiuiVolumeDialogView` 的父容器）：
         // 它与音量条对话框、悬浮百分比（`miui_super_volume_*`）并列包含在同一父容器下，
         // 只有平移该父容器才能让二者一起移动，避免只移动对话框导致悬浮百分比错位。

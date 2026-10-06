@@ -20,14 +20,14 @@ internal object MirrorConfig {
     fun hidePole(): Boolean = HookPrefs.getBoolean(MirrorKeys.HIDE_POLE, false)
 
     /**
-     * 自由浮窗圆角（dp），默认 9 与原生 `card_view_round_radius` 一致。
+     * 自由浮窗圆角（dp），默认 [MirrorKeys.FLOATING_RADIUS_DEFAULT]（贴近手机圆角）。
      *
      * App 侧滑块以 Float 存储，优先按 Float 读取，再兼容整数存储。
      */
     fun floatingRadius(): Int {
         val value = HookPrefs.getFloat(MirrorKeys.FLOATING_RADIUS, Float.NaN)
         if (!value.isNaN()) return value.roundToInt().coerceIn(0, 60)
-        return HookPrefs.getInt(MirrorKeys.FLOATING_RADIUS, 9).coerceIn(0, 60)
+        return HookPrefs.getInt(MirrorKeys.FLOATING_RADIUS, MirrorKeys.FLOATING_RADIUS_DEFAULT).coerceIn(0, 60)
     }
 
     fun refreshRateEnabled(): Boolean = HookPrefs.getBoolean(MirrorKeys.REFRESH_RATE, false)

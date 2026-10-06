@@ -17,6 +17,17 @@ object ConnectKeys {
     /** MiLink Multi-Channel。 */
     const val MILINK_MULTI_CHANNEL = "connect_milink_multi_channel"
 
+    /** 提高设备发现频率。 */
+    const val DISCOVERY_FREQUENCY = "connect_discovery_frequency"
+
     /** 融合设备中心流转卡片补柔光玻璃。 */
     const val CARD_GLASS = "device_center_card_glass"
+
+    /**
+     * 「跨设备通知流转设置」跳板 extra。
+     *
+     * `FeatureNotificationActivity` 受签名级权限保护，普通应用无法直接启动；App 侧以该 extra 启动
+     * 目标应用的导出入口 `com.milink.ui.setting.SettingActivity`，由 Hook 侧在同一进程内改启目标页面。
+     */
+    const val EXTRA_OPEN_NOTIFICATION_SETTINGS = "cn.ianzb.hyperrefine.open_notification_settings"
 }

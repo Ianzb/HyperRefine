@@ -55,6 +55,13 @@ internal class FloatState(
         private const val DOUBLE_TAP_TIMEOUT = 300L
 
         const val SINK_VIEW_CLASS = "com.xiaomi.mirror.sink.SinkView"
+
+        /**
+         * 气泡（最小化图标）固定圆角（dp）。
+         *
+         * 气泡是独立的「最小化图标」，不随「浮窗圆角」设置变化，保持固定的圆角外观。
+         */
+        private const val BUBBLE_RADIUS_DP = 14
     }
 
     // 外部协调尺寸
@@ -73,6 +80,13 @@ internal class FloatState(
     var nativeW: Int = sinkWidth
     var nativeH: Int = sinkHeight
     var minWidth: Int = 0
+
+    /**
+     * 基准（默认）窗口尺寸：以首次构建时的默认尺寸为参照，把配置的 dp 圆角按窗口大小
+     * 等比缩放（窗口变大变小则圆角同比例变化，而非始终固定不变）。
+     */
+    private val baseSinkW: Int = Math.max(1, sinkW)
+    private val baseSinkH: Int = Math.max(1, sinkH)
 
     // 位置
     var x: Int = x
@@ -116,6 +130,9 @@ internal class FloatState(
     val bubble: ImageView
     val dragHandle: View
 
+    /** 四角拖拽缩放提示（仅视觉，不拦截触摸）。 */
+    val cornerHints = CornerHintView(root.context)
+
     init {
         updateMinWidth()
 
@@ -127,31 +144,49 @@ internal class FloatState(
             contentDescription = "展开妙享投屏"
             elevation = 0f
             outlineProvider = null
-            background = buildBubbleBackground(MirrorConfig.floatingRadius())
+            background = buildBubbleBackground(BUBBLE_RADIUS_DP)
             setImageDrawable(BubbleGlyphDrawable(root.resources.displayMetrics.density))
             isClickable = true
         }
         imageView.setOnTouchListener { _, event -> onGesture(event) }
         bubble = imageView
 
-        val handle = View(root.context).apply {
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                setColor(0xE7FFFFFF.toInt())
-                cornerRadius = MirrorCompat.dp(root.context, 3).toFloat()
-            }
-            elevation = MirrorCompat.dp(root.context, 10).toFloat()
-            contentDescription = "拖动妙享投屏窗口"
-            val handleW = MirrorCompat.dp(root.context, 56)
-            layoutParams = ViewGroup.MarginLayoutParams(handleW, MirrorCompat.dp(root.context, 5)).apply {
-                leftMargin = Math.max(0, (winW - handleW) / 2)
-                topMargin = MirrorCompat.dp(root.context, 7)
-            }
-        }
-        dragHandle = handle
+        dragHandle = buildHandle().apply { contentDescription = "拖动妙享投屏窗口" }
 
         root.addView(imageView, ViewGroup.LayoutParams(-1, -1))
-        root.addView(handle)
+        root.addView(dragHandle)
+        root.addView(cornerHints, ViewGroup.LayoutParams(-1, -1))
+    }
+
+    /** 顶部拖动条（颜色随深浅色切换）。 */
+    private fun buildHandle(): View = View(root.context).apply {
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(handleColor())
+            cornerRadius = MirrorCompat.dp(root.context, 3).toFloat()
+        }
+        elevation = MirrorCompat.dp(root.context, 10).toFloat()
+        val handleW = MirrorCompat.dp(root.context, 56)
+        layoutParams = ViewGroup.MarginLayoutParams(handleW, MirrorCompat.dp(root.context, 5)).apply {
+            leftMargin = Math.max(0, (winW - handleW) / 2)
+            topMargin = MirrorCompat.dp(root.context, 7)
+        }
+    }
+
+    /** 提示条颜色：深色模式用黑、浅色模式用白。 */
+    private fun handleColor(): Int =
+        if (MirrorCompat.isNightMode(root.context)) 0xE7000000.toInt() else 0xE7FFFFFF.toInt()
+
+    private var lastNight: Boolean? = null
+
+    /** 深浅色切换时刷新两条提示条与圆弧提示的颜色。 */
+    fun refreshHintColors() {
+        val night = MirrorCompat.isNightMode(root.context)
+        if (night == lastNight) return
+        lastNight = night
+        val color = handleColor()
+        (dragHandle.background as? GradientDrawable)?.setColor(color)
+        cornerHints.invalidate()
     }
 
     private fun buildBubbleBackground(radiusDp: Int): LayerDrawable {
@@ -184,13 +219,36 @@ internal class FloatState(
 
     /**
      * 应用自定义圆角：投屏窗口（SinkWindow + 内部 container CardView）、实际画面（SinkView）、
-     * 各层遮罩、系统阴影框与气泡背景。
+     * 全窗口遮罩层与系统阴影框。圆角按窗口大小相对缩放。
      *
      * @param log 是否输出诊断日志（延迟重复应用时置 false，避免刷屏）
      */
     fun applyWindowRadius(log: Boolean = true) {
         val radiusDp = MirrorConfig.floatingRadius()
-        val radiusPx = MirrorCompat.dp(root.context, radiusDp).toFloat()
+        val radiusPx = effectiveRadiusPx()
+        val summary = applyRadius(radiusPx)
+        bubble.background = buildBubbleBackground(BUBBLE_RADIUS_DP)
+        if (log) {
+            HookHelper.log(
+                "MirrorFloat: corner radius ${radiusDp}dp -> ${radiusPx.toInt()}px " +
+                    "hidePole=${MirrorConfig.hidePole()}; $summary"
+            )
+        }
+    }
+
+    /**
+     * 窗口尺寸变化（拖动缩放 / 原生重算）时刷新圆角，使其随窗口大小等比缩放。
+     *
+     * 阴影（`setMiShadow`）与实际画面（`setRoundCorner`）由原生 hook 在窗口更新时自动读取当前尺寸，
+     * 但窗口本体（SinkWindow / container CardView）的圆角只在此手动设置，尺寸变化时必须重设，
+     * 否则会出现「阴影跟随缩放、本体圆角不变」的不一致。
+     */
+    fun refreshWindowRadius() {
+        applyRadius(effectiveRadiusPx())
+    }
+
+    /** 按给定半径设置窗口本体 / 画面 / 遮罩 / 阴影框，返回用于日志的摘要。 */
+    private fun applyRadius(radiusPx: Float): String {
         val sinkOk = runCatching { Reflect.callMethod(view, "setRadius", radiusPx) }.isSuccess
         var containerOk = false
         val containerId = view.resources.getIdentifier("container", "id", "com.xiaomi.mirror")
@@ -217,13 +275,9 @@ internal class FloatState(
         } else {
             false
         }
-        // SinkView 的子轮廓按 (radius - paddingTop) 计算，半径偏小时遮罩会被算成直角，这里直接补圆角。
-        if (sinkView is ViewGroup) {
-            for (i in 0 until sinkView.childCount) {
-                MirrorCompat.applyRoundedOutline(sinkView.getChildAt(i), radiusPx)
-            }
-        }
-        // 其余各层遮罩（不透明 / 半透明 / 加载中）单独补圆角，不依赖父级裁剪。
+        // 只对「全窗口」遮罩层补圆角，使边缘随窗口圆角裁剪。
+        // 注意：不再对窗口内容里的任意子视图（连接提示文本、输入框等）逐一设圆角，
+        // 否则会错误裁剪这些局部组件自身的圆角 / 文本。
         var masks = 0
         for (idName in arrayOf(
             "surfaceview_mask", "mask_view", "mask_view_root",
@@ -235,8 +289,6 @@ internal class FloatState(
                 masks++
             }
         }
-        // 兜底：把窗口内容里所有非 SurfaceView 的层级都裁成同一圆角。
-        roundDescendants(view, radiusPx)
         // 左侧竖条（侧边关闭条）：与 SinkWindow 同级，挂在窗口根布局下，从 root 查找。
         if (MirrorConfig.hidePole()) {
             val poleId = root.resources.getIdentifier("pole_view_root", "id", "com.xiaomi.mirror")
@@ -244,23 +296,19 @@ internal class FloatState(
                 (root.findViewById<View>(poleId) ?: view.findViewById(poleId))?.visibility = View.GONE
             }
         }
-        bubble.background = buildBubbleBackground(radiusDp)
-        if (log) {
-            HookHelper.log(
-                "MirrorFloat: corner radius ${radiusDp}dp hidePole=${MirrorConfig.hidePole()}; " +
-                    "sink=$sinkOk container=$containerOk video=$videoOk masks=$masks shadow=$shadowOk"
-            )
-        }
+        refreshHintColors()
+        return "sink=$sinkOk container=$containerOk video=$videoOk masks=$masks shadow=$shadowOk"
     }
 
-    private fun roundDescendants(parent: View?, radiusPx: Float) {
-        if (parent !is ViewGroup) return
-        for (i in 0 until parent.childCount) {
-            val child = parent.getChildAt(i)
-            if (child is android.view.SurfaceView) continue
-            MirrorCompat.applyRoundedOutline(child, radiusPx)
-            roundDescendants(child, radiusPx)
-        }
+    /**
+     * 当前生效的圆角（px）：以「基准窗口尺寸」为参照，把配置的 dp 圆角按窗口大小等比缩放，
+     * 窗口缩放时圆角同步变化（而非固定不变）。
+     */
+    fun effectiveRadiusPx(): Float {
+        val base = Math.min(baseSinkW, baseSinkH).toFloat()
+        val current = Math.min(sinkW, sinkH).toFloat()
+        val scale = if (base > 0f) current / base else 1f
+        return MirrorCompat.dp(root.context, MirrorConfig.floatingRadius()) * scale.coerceIn(0.25f, 4f)
     }
 
     /** 从 `WindowManager.LayoutParams` 同步到窗口。 */
@@ -470,6 +518,7 @@ internal class FloatState(
             expandedY = y
         }
         updateHandleMargin()
+        refreshWindowRadius()
         HookHelper.log("MirrorFloat: reconciled $winW x $winH screen=${displaySize.x}x${displaySize.y}")
         MirrorCompat.scheduleSurfaceConfiguration(root)
     }
@@ -780,6 +829,9 @@ internal class FloatState(
     private fun onUp(event: MotionEvent): Boolean {
         val kind = gestureKind
         gestureKind = GESTURE_NONE
+        // 本次没有开启任何浮窗手势（普通点击 / 画面内触摸）：DOWN 已下发给画面，
+        // UP 必须同样放行，否则画面只收到 DOWN 收不到 UP，会被远端判定为长按。
+        if (kind == GESTURE_NONE) return false
         if (kind == GESTURE_BUBBLE) {
             if (event.actionMasked != MotionEvent.ACTION_UP) return true
             if (!moved) {
@@ -851,6 +903,7 @@ internal class FloatState(
         updateHandleMargin()
         applyLayout(lp)
         MirrorCompat.updateWindow(root.context, this)
+        refreshWindowRadius()
     }
 
     private fun move(dx: Float, dy: Float) {

@@ -72,6 +72,13 @@ class VolumeBarActivity : BaseSubPageActivity() {
                 featureSpec(VolumeBarKeys.L2_POS_LANDSCAPE),
             ),
         )
+        val autoBalanceSection = HookSection(
+            titleRes = R.string.volume_bar_auto_balance_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.AUTO_BALANCE_PORTRAIT),
+                featureSpec(VolumeBarKeys.AUTO_BALANCE_LANDSCAPE),
+            ),
+        )
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -110,6 +117,11 @@ class VolumeBarActivity : BaseSubPageActivity() {
             item {
                 HookSectionCard(l2PosSection) {
                     l2PosSection.specs.forEach { HookOptionView(it) }
+                }
+            }
+            item {
+                HookSectionCard(autoBalanceSection) {
+                    autoBalanceSection.specs.forEach { HookOptionView(it) }
                 }
             }
         }

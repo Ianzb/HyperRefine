@@ -77,6 +77,13 @@ object HookHelper {
         xposed = module
     }
 
+    /**
+     * 对方法 / 构造器去优化，确保被内联调用的 hook 点能真正命中。
+     * 返回是否成功；未初始化或框架不支持时静默返回 false。
+     */
+    fun deoptimize(executable: Executable): Boolean =
+        if (::xposed.isInitialized) runCatching { xposed.deoptimize(executable) }.getOrDefault(false) else false
+
     fun log(message: String) {
         if (::xposed.isInitialized) xposed.log(4, "MiuixTemplate", message)
     }

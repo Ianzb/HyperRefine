@@ -59,6 +59,7 @@ class MiuixAppLoad : BaseLoad() {
             "com.miui.cloudbackup",
             "com.miui.cloudservice",
             "com.miui.compass",
+            "com.miui.greenguard",
             "com.miui.huanji",
             "com.miui.notes",
             "com.miui.passwords",
@@ -67,6 +68,7 @@ class MiuixAppLoad : BaseLoad() {
             "com.miui.securitycore",
             "com.miui.voiceassist",
             "com.xiaomi.account",
+            "com.xiaomi.finddevice",
             "com.xiaomi.misettings",
         )
     }

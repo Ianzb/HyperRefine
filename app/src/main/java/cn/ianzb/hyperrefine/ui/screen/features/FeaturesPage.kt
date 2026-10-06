@@ -9,12 +9,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.hook.browser.BrowserKeys
 import cn.ianzb.hyperrefine.hook.connect.ConnectKeys
 import cn.ianzb.hyperrefine.hook.connect.MirrorKeys
 import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.hook.miuix.MiuixAppLoad
 import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
+import cn.ianzb.hyperrefine.hook.passkey.PasskeyKeys
 import cn.ianzb.hyperrefine.hook.systemui.VolumeBarKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
@@ -56,6 +58,18 @@ fun FeaturesPageView(
                 titleRes = R.string.section_device_connect,
                 specs = listOf(
                     specByKey(specs, KEY_DEVICE_CONNECT),
+                ),
+            ),
+            HookSection(
+                titleRes = R.string.section_passkey,
+                specs = listOf(
+                    specByKey(specs, KEY_PASSKEY),
+                ),
+            ),
+            HookSection(
+                titleRes = R.string.section_browser,
+                specs = listOf(
+                    specByKey(specs, KEY_BROWSER),
                 ),
             ),
             HookSection(
@@ -149,6 +163,16 @@ fun FeaturesPageView(
                 onOpen = { context.startActivity(Intent(context, DeviceConnectActivity::class.java)) },
             ),
             HookSubPage(
+                titleRes = R.string.feature_passkey,
+                specs = passkeySpecs(specs),
+                onOpen = { context.startActivity(Intent(context, PasskeyActivity::class.java)) },
+            ),
+            HookSubPage(
+                titleRes = R.string.feature_browser,
+                specs = browserSpecs(specs),
+                onOpen = { context.startActivity(Intent(context, BrowserActivity::class.java)) },
+            ),
+            HookSubPage(
                 titleRes = R.string.section_experimental,
                 specs = listOf(specByKey(specs, KEY_WEATHER)),
                 onOpen = { context.startActivity(Intent(context, ExperimentalActivity::class.java)) },
@@ -177,6 +201,10 @@ fun FeaturesPageView(
                     context.startActivity(Intent(context, SecurityCenterActivity::class.java))
                 KEY_DEVICE_CONNECT ->
                     context.startActivity(Intent(context, DeviceConnectActivity::class.java))
+                KEY_PASSKEY ->
+                    context.startActivity(Intent(context, PasskeyActivity::class.java))
+                KEY_BROWSER ->
+                    context.startActivity(Intent(context, BrowserActivity::class.java))
                 KEY_EXPERIMENTAL ->
                     context.startActivity(Intent(context, ExperimentalActivity::class.java))
                 KEY_WEATHER ->
@@ -192,6 +220,13 @@ fun FeaturesPageView(
                     "com.xiaomi.mirror",
                     AppVolumeKeys.TARGET_PACKAGE,
                     *MiuixAppLoad.MIUIX_PACKAGES.toTypedArray(),
+                    BrowserKeys.PKG_MISHARE,
+                    BrowserKeys.PKG_AI_ENGINE,
+                    BrowserKeys.PKG_VOICE_ASSIST,
+                    BrowserKeys.PKG_MARKET,
+                    BrowserKeys.PKG_CONTENT_CATCHER,
+                    BrowserKeys.PKG_AI_VISION,
+                    PasskeyKeys.TARGET_SCANNER,
                 )
             )
         },
@@ -213,6 +248,8 @@ const val KEY_DEVICE_CENTER_SHRINK_HIT_AREA = "device_center_shrink_hit_area"
 const val KEY_DEVICE_CENTER_CARD_GLASS = "device_center_card_glass"
 const val KEY_SECURITY_CENTER = "feature_security_center"
 const val KEY_DEVICE_CONNECT = "feature_device_connect"
+const val KEY_PASSKEY = "feature_passkey"
+const val KEY_BROWSER = "feature_browser"
 const val KEY_CC_RADIUS = "feature_cc_radius"
 const val KEY_FAST_CHARGE_ENTER = "security_center_fast_charge_enter_notify"
 const val KEY_FAST_CHARGE_EXIT = "security_center_fast_charge_exit_notify"
@@ -335,6 +372,8 @@ private fun volumeBarSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, VolumeBarKeys.L2_POS),
         specByKey(specs, VolumeBarKeys.L2_POS_PORTRAIT),
         specByKey(specs, VolumeBarKeys.L2_POS_LANDSCAPE),
+        specByKey(specs, VolumeBarKeys.AUTO_BALANCE_PORTRAIT),
+        specByKey(specs, VolumeBarKeys.AUTO_BALANCE_LANDSCAPE),
     )
 
 /** 安全服务二级页（快充加速通知）内的配置项，用于功能页搜索直达。 */
@@ -350,6 +389,7 @@ fun deviceConnectSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, ConnectKeys.CROSS_DEVICE_NOTIFICATION),
         specByKey(specs, ConnectKeys.PORTRAIT_STREAMING),
         specByKey(specs, ConnectKeys.MILINK_MULTI_CHANNEL),
+        specByKey(specs, ConnectKeys.DISCOVERY_FREQUENCY),
         specByKey(specs, MirrorKeys.FLOATING_WINDOW),
         specByKey(specs, MirrorKeys.FLOATING_RADIUS),
         specByKey(specs, MirrorKeys.HIDE_POLE),
@@ -357,6 +397,28 @@ fun deviceConnectSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, MirrorKeys.REFRESH_RATE),
         specByKey(specs, MirrorKeys.REFRESH_RATE_VALUE),
     )
+
+/** 密码二级页内的配置项，用于功能页搜索直达。 */
+fun passkeySpecs(specs: List<OptionSpec>): List<OptionSpec> = listOf(
+    specByKey(specs, PasskeyKeys.MASTER),
+    specByKey(specs, PasskeyKeys.SYSTEM_SERVER),
+    specByKey(specs, PasskeyKeys.SETTINGS),
+    specByKey(specs, PasskeyKeys.BLOCK_SECURITY_CENTER),
+    specByKey(specs, PasskeyKeys.SCANNER),
+)
+
+/** 浏览器二级页内的配置项，用于功能页搜索直达。 */
+fun browserSpecs(specs: List<OptionSpec>): List<OptionSpec> = listOf(
+    specByKey(specs, BrowserKeys.MASTER),
+    specByKey(specs, BrowserKeys.INTENT_INTERCEPT),
+    specByKey(specs, BrowserKeys.FAKE_INSTALLED),
+    specByKey(specs, BrowserKeys.PENDING_INTENT),
+    specByKey(specs, BrowserKeys.NOTIFICATION_ICON),
+    specByKey(specs, BrowserKeys.MISHARE),
+    specByKey(specs, BrowserKeys.VOICE_ASSIST),
+    specByKey(specs, BrowserKeys.COPY_DIRECT),
+    specByKey(specs, BrowserKeys.ROUTER_SETTINGS),
+)
 
 /** 按键取功能配置项（供各功能子页复用同一份声明）。 */
 fun featureSpec(key: String): OptionSpec =
@@ -372,6 +434,22 @@ internal fun featureSpecs(): List<OptionSpec> {
     val mirror = listOf("com.xiaomi.mirror")
     // 顶栏渐变作用于设置 / 短信 / 联系人等 MIUIX 应用。
     val miuixApps = MiuixAppLoad.MIUIX_PACKAGES
+    // 密码：设置 / 安全中心 / 扫描器（system_server 部分随设备重启生效，不在此申请）。
+    val passkeyTargets = listOf(
+        PasskeyKeys.TARGET_SETTINGS,
+        PasskeyKeys.TARGET_SECURITY_CENTER,
+        PasskeyKeys.TARGET_SCANNER,
+    )
+    // 浏览器：小米互传 / AI 引擎 / 超级小爱 / 设置 / 应用商店 / 内容捕手 / AI 视觉助手。
+    val browserTargets = listOf(
+        BrowserKeys.PKG_MISHARE,
+        BrowserKeys.PKG_AI_ENGINE,
+        BrowserKeys.PKG_VOICE_ASSIST,
+        BrowserKeys.PKG_SETTINGS,
+        BrowserKeys.PKG_MARKET,
+        BrowserKeys.PKG_CONTENT_CATCHER,
+        BrowserKeys.PKG_AI_VISION,
+    )
     val specs = mutableListOf(
         OptionSpec(
             key = KEY_APPEARANCE,
@@ -513,6 +591,15 @@ internal fun featureSpecs(): List<OptionSpec> {
             showStatus = true,
         ),
         OptionSpec(
+            key = ConnectKeys.DISCOVERY_FREQUENCY,
+            type = OptionType.SWITCH,
+            titleRes = R.string.connect_discovery_frequency,
+            summaryRes = R.string.connect_discovery_frequency_summary,
+            defaultBoolean = false,
+            targetPackages = connect,
+            showStatus = true,
+        ),
+        OptionSpec(
             key = MirrorKeys.FLOATING_WINDOW,
             type = OptionType.SWITCH,
             titleRes = R.string.mirror_floating_window,
@@ -527,7 +614,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             type = OptionType.SLIDER,
             titleRes = R.string.mirror_floating_radius,
             summaryRes = R.string.mirror_floating_radius_summary,
-            defaultFloat = 9f,
+            defaultFloat = MirrorKeys.FLOATING_RADIUS_DEFAULT.toFloat(),
             sliderMin = 0f,
             sliderMax = 60f,
             sliderStep = 1f,
@@ -658,6 +745,8 @@ internal fun featureSpecs(): List<OptionSpec> {
             showStatus = true,
         ),
     )
+    specs += passkeyFeatureSpecs(passkeyTargets)
+    specs += browserFeatureSpecs(browserTargets)
     specs += OptionSpec(
         key = CcGlassKeys.MASTER,
         type = OptionType.SWITCH,
@@ -786,12 +875,94 @@ internal fun featureSpecs(): List<OptionSpec> {
         }
     }
     specs += buildAppVolumeSpecs(systemUi)
-    specs += buildVolumeBarSpecs(systemUi)
-    specs += buildSidePosSpecs(systemUi)
-    specs += buildL2PosSpecs(systemUi)
+        specs += buildVolumeBarSpecs(systemUi)
+        specs += buildSidePosSpecs(systemUi)
+        specs += buildL2PosSpecs(systemUi)
+        specs += buildAutoBalanceSpecs(systemUi)
     specs += ccRadiusSpecs(systemUi)
     return specs
 }
+
+/** 密码页配置项（通行密钥修复）。 */
+private fun passkeyFeatureSpecs(targets: List<String>): List<OptionSpec> = listOf(
+    OptionSpec(key = KEY_PASSKEY, type = OptionType.ARROW, titleRes = R.string.feature_passkey),
+    OptionSpec(
+        key = PasskeyKeys.MASTER, type = OptionType.SWITCH,
+        titleRes = R.string.passkey_master, summaryRes = R.string.passkey_master_summary,
+        defaultBoolean = false, targetPackages = targets, showStatus = true,
+    ),
+    OptionSpec(
+        key = PasskeyKeys.SYSTEM_SERVER, type = OptionType.SWITCH,
+        titleRes = R.string.passkey_system_server, summaryRes = R.string.passkey_system_server_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = PasskeyKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = PasskeyKeys.SETTINGS, type = OptionType.SWITCH,
+        titleRes = R.string.passkey_settings, summaryRes = R.string.passkey_settings_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = PasskeyKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = PasskeyKeys.BLOCK_SECURITY_CENTER, type = OptionType.SWITCH,
+        titleRes = R.string.passkey_block_security_center,
+        summaryRes = R.string.passkey_block_security_center_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = PasskeyKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = PasskeyKeys.SCANNER, type = OptionType.SWITCH,
+        titleRes = R.string.passkey_scanner, summaryRes = R.string.passkey_scanner_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = PasskeyKeys.MASTER, showStatus = true,
+    ),
+)
+
+/** 浏览器页配置项。 */
+private fun browserFeatureSpecs(targets: List<String>): List<OptionSpec> = listOf(
+    OptionSpec(key = KEY_BROWSER, type = OptionType.ARROW, titleRes = R.string.feature_browser),
+    OptionSpec(
+        key = BrowserKeys.MASTER, type = OptionType.SWITCH,
+        titleRes = R.string.browser_master, summaryRes = R.string.browser_master_summary,
+        defaultBoolean = false, targetPackages = targets, showStatus = true,
+    ),
+    OptionSpec(
+        key = BrowserKeys.INTENT_INTERCEPT, type = OptionType.SWITCH,
+        titleRes = R.string.browser_intent_intercept, summaryRes = R.string.browser_intent_intercept_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = BrowserKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = BrowserKeys.FAKE_INSTALLED, type = OptionType.SWITCH,
+        titleRes = R.string.browser_fake_installed, summaryRes = R.string.browser_fake_installed_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = BrowserKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = BrowserKeys.PENDING_INTENT, type = OptionType.SWITCH,
+        titleRes = R.string.browser_pending_intent, summaryRes = R.string.browser_pending_intent_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = BrowserKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = BrowserKeys.NOTIFICATION_ICON, type = OptionType.SWITCH,
+        titleRes = R.string.browser_notification_icon, summaryRes = R.string.browser_notification_icon_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = BrowserKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = BrowserKeys.MISHARE, type = OptionType.SWITCH,
+        titleRes = R.string.browser_mishare, summaryRes = R.string.browser_mishare_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = BrowserKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = BrowserKeys.VOICE_ASSIST, type = OptionType.SWITCH,
+        titleRes = R.string.browser_voice_assist, summaryRes = R.string.browser_voice_assist_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = BrowserKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = BrowserKeys.COPY_DIRECT, type = OptionType.SWITCH,
+        titleRes = R.string.browser_copy_direct, summaryRes = R.string.browser_copy_direct_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = BrowserKeys.MASTER, showStatus = true,
+    ),
+    OptionSpec(
+        key = BrowserKeys.ROUTER_SETTINGS, type = OptionType.SWITCH,
+        titleRes = R.string.browser_router_settings, summaryRes = R.string.browser_router_settings_summary,
+        defaultBoolean = true, targetPackages = targets, dependsOn = BrowserKeys.MASTER, showStatus = true,
+    ),
+)
 
 /** 控制中心「圆角调整」配置项：总开关 + 组件/背景统一圆角 + 各子项自定义。 */
 private fun ccRadiusSpecs(systemUi: List<String>): List<OptionSpec> = buildList {
@@ -1060,6 +1231,26 @@ private fun buildL2PosSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
         sliderValueLabelRes = R.string.volume_bar_l2_pos_landscape,
         targetPackages = systemUi,
         dependsOn = VolumeBarKeys.L2_POS,
+    ),
+)
+
+/** 显示多应用音量入口时是否自动平衡整体平均高度（系统界面，竖屏 / 横屏分别控制）。 */
+private fun buildAutoBalanceSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
+    OptionSpec(
+        key = VolumeBarKeys.AUTO_BALANCE_PORTRAIT,
+        type = OptionType.SWITCH,
+        titleRes = R.string.volume_bar_auto_balance_portrait,
+        summaryRes = R.string.volume_bar_auto_balance_summary,
+        defaultBoolean = true,
+        targetPackages = systemUi,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.AUTO_BALANCE_LANDSCAPE,
+        type = OptionType.SWITCH,
+        titleRes = R.string.volume_bar_auto_balance_landscape,
+        summaryRes = R.string.volume_bar_auto_balance_summary,
+        defaultBoolean = true,
+        targetPackages = systemUi,
     ),
 )
 

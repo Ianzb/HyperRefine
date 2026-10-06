@@ -153,6 +153,18 @@ private val licenseSections: List<LicenseSection> = listOf(
         titleRes = R.string.licenses_section_refs,
         libraries = listOf(
             LibraryInfo(
+                "HyperPasskey",
+                "-",
+                "GPL-3.0，通行密钥修复思路参考（未复用其代码）",
+                "https://github.com/Howard20181/HyperPasskey",
+            ),
+            LibraryInfo(
+                "Fxxk-MiBrowser",
+                "-",
+                "MIT，浏览器跳转修复思路参考（未复用其代码）",
+                "https://github.com/DuhMatt/Fxxk-MiBrowser",
+            ),
+            LibraryInfo(
                 "HyperConnectToolkit",
                 "-",
                 "Apache-2.0，设备互联功能移植",

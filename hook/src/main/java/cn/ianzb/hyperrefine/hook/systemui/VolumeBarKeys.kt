@@ -52,6 +52,17 @@ object VolumeBarKeys {
     /** 二级面板整体竖直位置：横屏百分比（100% 上边缘贴屏幕顶部，0% 下边缘贴屏幕底部）。 */
     const val L2_POS_LANDSCAPE = "volume_bar_l2_pos_landscape"
 
+    /**
+     * 显示多应用音量入口时是否自动平衡整体平均高度：竖屏。
+     *
+     * 开启（默认）：入口出现时把整条音量条上移「多出高度的一半」，保持平均高度不变；
+     * 关闭：不平移，音量条高度 / 位置保持不变。
+     */
+    const val AUTO_BALANCE_PORTRAIT = "volume_bar_auto_balance_portrait"
+
+    /** 显示多应用音量入口时是否自动平衡整体平均高度：横屏。 */
+    const val AUTO_BALANCE_LANDSCAPE = "volume_bar_auto_balance_landscape"
+
     // ---------------- 默认值（与官方 / 现状一致，改动前不改变外观） ----------------
 
     /** 侧边音量条竖屏位置默认百分比。 */

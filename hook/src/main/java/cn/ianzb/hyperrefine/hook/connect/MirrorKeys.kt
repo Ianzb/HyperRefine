@@ -13,6 +13,9 @@ object MirrorKeys {
     /** 自由浮窗圆角大小（dp）。 */
     const val FLOATING_RADIUS = "mirror_floating_radius"
 
+    /** 自由浮窗圆角默认值（dp，贴近手机屏幕圆角）。 */
+    const val FLOATING_RADIUS_DEFAULT = 40
+
     /** 隐藏窗口左侧竖条（侧边关闭条）。 */
     const val HIDE_POLE = "mirror_hide_pole"
 

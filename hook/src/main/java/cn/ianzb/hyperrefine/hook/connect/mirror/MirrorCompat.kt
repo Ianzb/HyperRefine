@@ -1,6 +1,7 @@
 package cn.ianzb.hyperrefine.hook.connect.mirror
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Outline
 import android.graphics.Point
 import android.view.Surface
@@ -41,6 +42,11 @@ internal object MirrorCompat {
         Math.round(value * context.resources.displayMetrics.density)
 
     fun clamp(value: Int, min: Int, max: Int): Int = Math.max(min, Math.min(max, value))
+
+    /** 是否深色模式（浮窗提示条 / 圆角圆弧据此在黑 / 白之间切换）。 */
+    fun isNightMode(context: Context): Boolean =
+        (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
 
     fun displaySize(context: Context): Point {
         val display = (context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay

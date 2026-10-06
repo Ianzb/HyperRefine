@@ -38,11 +38,16 @@ class XposedEntry : XposedModule() {
     }
 
     override fun onSystemServerStarting(param: SystemServerStartingParam) {
-        // 模板默认不处理 system_server；如需支持可在此注册对应 Load。
-        // 同样接入兜底机制，防止 system_server 崩溃导致无法开机。
+        // 接入兜底机制，防止 system_server 崩溃导致无法开机。
         SafeModeManager.init(this)
         if (SafeModeManager.handleStart("system")) {
             HookHelper.log("SafeMode: system_server is in safe mode, skip hooks")
+            return
+        }
+        val target = PackageTarget.fromSystemServer(param)
+        HookEntryRegistry.systemServerLoads().forEach { load ->
+            runCatching { load.onPackageReady(target) }
+                .onFailure { HookHelper.log("system-server load failed: ${load.javaClass.simpleName}", it) }
         }
     }
 }

@@ -96,7 +96,28 @@ class MirrorFloatingWindowHook : BaseHook() {
                     if (!MirrorConfig.floatingWindow()) return@hookBeforeAll
                     val view = param.thisObject as? View ?: return@hookBeforeAll
                     if (param.args.isEmpty()) return@hookBeforeAll
-                    param.setArg(0, MirrorCompat.dp(view.context, MirrorConfig.floatingRadius()).toFloat())
+                    param.setArg(
+                        0,
+                        MirrorFloatStore.activeFloatingState?.effectiveRadiusPx()
+                            ?: MirrorCompat.dp(view.context, MirrorConfig.floatingRadius()).toFloat(),
+                    )
+                }
+            }
+        }
+
+        // 窗口本体圆角：SinkWindow.setRadius 会被原生在尺寸 / 状态变化时重设，统一替换为按窗口大小
+        // 等比缩放的圆角，避免「阴影跟随缩放、本体圆角不变」。
+        var radiusOwner: Class<*>? = sinkWindow
+        while (radiusOwner != null && radiusOwner.declaredMethods.none { it.name == "setRadius" }) {
+            radiusOwner = radiusOwner.superclass
+        }
+        radiusOwner?.let { owner ->
+            hookBeforeAll(owner, "setRadius") { param ->
+                if (!MirrorConfig.floatingWindow()) return@hookBeforeAll
+                val view = param.thisObject as? View ?: return@hookBeforeAll
+                val state = MirrorFloatStore.floatingStates[view] ?: return@hookBeforeAll
+                if (param.args.isNotEmpty() && param.args[0] is Float) {
+                    param.setArg(0, state.effectiveRadiusPx())
                 }
             }
         }
@@ -118,7 +139,11 @@ class MirrorFloatingWindowHook : BaseHook() {
                 val args = param.args
                 if (args.size >= 7 && args[6] is Float) {
                     val density = android.content.res.Resources.getSystem().displayMetrics.density
-                    param.setArg(6, MirrorConfig.floatingRadius() * density)
+                    param.setArg(
+                        6,
+                        MirrorFloatStore.activeFloatingState?.effectiveRadiusPx()
+                            ?: (MirrorConfig.floatingRadius() * density),
+                    )
                 }
             }
         }
@@ -264,6 +289,8 @@ class MirrorFloatingWindowHook : BaseHook() {
                 state.listenersInstalled = true
                 content.viewTreeObserver.addOnGlobalLayoutListener {
                     state.updateWindowFocusState()
+                    state.updateHandleMargin()
+                    state.refreshHintColors()
                     if (MirrorConfig.minimizeOnShade() && state.windowNotFocused && state.mode == 0 && !state.busy) {
                         state.collapseViaNative()
                     }

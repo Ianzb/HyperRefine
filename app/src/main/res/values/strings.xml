@@ -159,6 +159,8 @@
     <string name="connect_milink_multi_channel_summary">手机可同时与多台平板流转</string>
     <string name="connect_discovery_frequency">提高设备发现频率</string>
     <string name="connect_discovery_frequency_summary">更快发现附近设备、刷新列表（更耗电）</string>
+    <string name="connect_clipboard_sync_boost">剪贴板同步加速</string>
+    <string name="connect_clipboard_sync_boost_summary">压缩跨设备剪贴板的识别、发布与接收延迟，复制后更快同步到另一台设备</string>
 
     <string name="section_mirror">妙享桌面增强</string>
     <string name="mirror_floating_window">自由浮窗</string>
@@ -190,8 +192,10 @@
     <string name="top_bar_advanced_summary">针对笔记、计算器的额外美化；关闭后回退为通用效果</string>
     <string name="top_bar_advanced_notes">笔记</string>
     <string name="top_bar_advanced_notes_summary">去掉笔记筛选栏重复的渐变遮罩</string>
-    <string name="top_bar_advanced_calculator">计算器</string>
-    <string name="top_bar_advanced_calculator_summary">适配计算器顶栏并恢复顶部间距</string>
+ <string name="top_bar_advanced_calculator">计算器</string>
+ <string name="top_bar_advanced_calculator_summary">适配计算器顶栏并恢复顶部间距</string>
+ <string name="top_bar_advanced_file_explorer">文件管理</string>
+ <string name="top_bar_advanced_file_explorer_summary">修复文件夹页文件列表被路径栏遮挡，主页等不受影响</string>
 
     <string name="section_experimental">实验性功能</string>
     <string name="section_weather">天气</string>
@@ -241,12 +245,27 @@
     <string name="section_device_center">融合设备中心</string>
     <string name="device_center_hide_more">隐藏省略号</string>
     <string name="device_center_hide_more_summary">隐藏末尾的「…」，设备占满一行时不再换行</string>
+    <string name="device_center_fast_load">加快图标加载</string>
+    <string name="device_center_fast_load_summary">打开控制中心立即显示已连接设备图标，不再等待扫描延迟</string>
     <string name="device_center_landscape_right">横屏融合设备中心右置</string>
     <string name="device_center_landscape_right_summary">横屏时把融合设备中心移到控制中心右侧</string>
     <string name="device_center_shrink_hit_area">缩小设备点击范围</string>
     <string name="device_center_shrink_hit_area_summary">点击范围缩小到图标本身，点卡片空白处改为打开融合设备中心</string>
     <string name="device_center_card_glass">流转卡片玻璃</string>
     <string name="device_center_card_glass_summary">给流转卡片补上系统柔光玻璃，设备不可用时也有玻璃效果</string>
+    <string name="network_section">网络</string>
+    <string name="aod_section">息屏</string>
+    <string name="five_g_switch">5G 开关</string>
+    <string name="five_g_switch_summary">在移动网络面板顶部显示 5G 网络开关，仅支持 5G 的设备可用</string>
+    <string name="aod_battery_style_keep">息屏电池保持原样式</string>
+    <string name="aod_battery_style_keep_summary">息屏显示时不把电量数字移到电池图标外，保持与状态栏一致的电池样式</string>
+ <string name="aod_full_screen_keep">保持全屏息屏显示</string>
+ <string name="aod_full_screen_keep_summary">从锁屏相机 / 手电筒返回息屏时，仍显示全屏（压暗锁屏内容）的息屏界面，而不是只显示时间的纯黑界面</string>
+ <string name="aod_keep_bottom_icons">息屏保留快捷功能图标</string>
+ <string name="aod_keep_bottom_icons_summary">息屏时不隐藏锁屏左下角 / 右下角的快捷功能图标，让手电筒、相机等入口在息屏界面依然可见</string>
+ <string name="sr_animation_radius">识屏动画圆角适配</string>
+ <string name="sr_animation_radius_summary">超级小爱识屏的缩小动画从屏幕自带圆角开始过渡，消除动画起始时的直角</string>
+ <string name="section_voice_assist">超级小爱</string>
 
     <string name="section_cc_glass">柔光玻璃</string>
     <string name="cc_glass_master">启用柔光玻璃</string>

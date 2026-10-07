@@ -50,6 +50,9 @@ class AppearanceActivity : BaseSubPageActivity() {
             titleRes = R.string.section_components,
             specs = listOf(
                 featureSpec(KEY_DEVICE_CENTER),
+                featureSpec(KEY_NETWORK),
+                featureSpec(KEY_AOD),
+                featureSpec(KEY_VOICE_ASSIST),
                 featureSpec(PercentLocation.entryKey(PercentLocation.CC_BRIGHTNESS)),
                 featureSpec(PercentLocation.entryKey(PercentLocation.CC_VOLUME)),
                 featureSpec(PercentLocation.entryKey(PercentLocation.SIDE_VOLUME)),
@@ -101,6 +104,12 @@ class AppearanceActivity : BaseSubPageActivity() {
                                 when (spec.key) {
                                     KEY_DEVICE_CENTER ->
                                         context.startActivity(Intent(context, DeviceCenterActivity::class.java))
+                                    KEY_NETWORK ->
+                                        context.startActivity(Intent(context, NetworkActivity::class.java))
+                                    KEY_AOD ->
+                                        context.startActivity(Intent(context, AodActivity::class.java))
+                                    KEY_VOICE_ASSIST ->
+                                        context.startActivity(Intent(context, VoiceAssistActivity::class.java))
                                     PercentLocation.entryKey(PercentLocation.CC_BRIGHTNESS) ->
                                         context.startActivity(percentStyleIntent(context, PercentLocation.CC_BRIGHTNESS))
                                     PercentLocation.entryKey(PercentLocation.CC_VOLUME) ->

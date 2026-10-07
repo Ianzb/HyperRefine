@@ -17,9 +17,14 @@ import cn.ianzb.hyperrefine.hook.miuix.MiuixAppLoad
 import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.passkey.PasskeyKeys
+import cn.ianzb.hyperrefine.hook.systemui.AodBatteryStyleHook
+import cn.ianzb.hyperrefine.hook.systemui.AodBottomIconsHook
+import cn.ianzb.hyperrefine.hook.systemui.AodFullScreenKeepHook
+import cn.ianzb.hyperrefine.hook.systemui.FiveGSwitchHook
 import cn.ianzb.hyperrefine.hook.systemui.VolumeBarKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
+import cn.ianzb.hyperrefine.hook.voiceassist.ScreenRecognitionRadiusHook
 import cn.ianzb.hyperrefine.hook.weather.WeatherKeys
 import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.prefs.OptionType
@@ -90,6 +95,9 @@ fun FeaturesPageView(
                     specByKey(specs, KEY_TOP_BAR),
                     specByKey(specs, KEY_CC_RADIUS),
                     specByKey(specs, KEY_DEVICE_CENTER),
+                    specByKey(specs, KEY_NETWORK),
+                    specByKey(specs, KEY_AOD),
+                    specByKey(specs, KEY_VOICE_ASSIST),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_BRIGHTNESS)),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_VOLUME)),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.SIDE_VOLUME)),
@@ -117,6 +125,21 @@ fun FeaturesPageView(
                         titleRes = R.string.section_device_center,
                         specs = deviceCenterSpecs(specs),
                         onOpen = { context.startActivity(Intent(context, DeviceCenterActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.network_section,
+                        specs = networkSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, NetworkActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.aod_section,
+                        specs = aodSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, AodActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.section_voice_assist,
+                        specs = listOf(specByKey(specs, KEY_SR_ANIMATION_RADIUS)),
+                        onOpen = { context.startActivity(Intent(context, VoiceAssistActivity::class.java)) },
                     ),
                     HookSubPage(
                         titleRes = R.string.appearance_cc_brightness,
@@ -243,6 +266,7 @@ const val KEY_VOLUME_BAR = "feature_volume_bar"
 const val KEY_DEVICE_CENTER = "feature_device_center"
 const val KEY_APP_VOLUME = "feature_app_volume"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
+const val KEY_DEVICE_CENTER_FAST_LOAD = "device_center_fast_load"
 const val KEY_DEVICE_CENTER_LANDSCAPE_RIGHT = "device_center_landscape_right"
 const val KEY_DEVICE_CENTER_SHRINK_HIT_AREA = "device_center_shrink_hit_area"
 const val KEY_DEVICE_CENTER_CARD_GLASS = "device_center_card_glass"
@@ -250,6 +274,15 @@ const val KEY_SECURITY_CENTER = "feature_security_center"
 const val KEY_DEVICE_CONNECT = "feature_device_connect"
 const val KEY_PASSKEY = "feature_passkey"
 const val KEY_BROWSER = "feature_browser"
+const val KEY_NETWORK = "feature_network"
+const val KEY_AOD = "feature_aod"
+const val KEY_FIVE_G = FiveGSwitchHook.KEY
+const val KEY_AOD_BATTERY = AodBatteryStyleHook.KEY
+const val KEY_AOD_FULL = AodFullScreenKeepHook.KEY
+const val KEY_AOD_BOTTOM_ICONS = AodBottomIconsHook.KEY
+const val KEY_CLIPBOARD_SYNC_BOOST = ConnectKeys.CLIPBOARD_SYNC_BOOST
+const val KEY_SR_ANIMATION_RADIUS = ScreenRecognitionRadiusHook.KEY
+const val KEY_VOICE_ASSIST = "feature_voice_assist"
 const val KEY_CC_RADIUS = "feature_cc_radius"
 const val KEY_FAST_CHARGE_ENTER = "security_center_fast_charge_enter_notify"
 const val KEY_FAST_CHARGE_EXIT = "security_center_fast_charge_exit_notify"
@@ -326,6 +359,7 @@ fun topBarSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, TopBarKeys.ADVANCED),
         specByKey(specs, TopBarKeys.ADVANCED_NOTES),
         specByKey(specs, TopBarKeys.ADVANCED_CALCULATOR),
+        specByKey(specs, TopBarKeys.ADVANCED_FILE_EXPLORER),
     )
 
 /** 天气高级外观二级页内的配置项，用于功能页搜索直达。 */
@@ -341,6 +375,20 @@ private fun deviceCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
         specByKey(specs, KEY_DEVICE_CENTER_SHRINK_HIT_AREA),
         specByKey(specs, KEY_DEVICE_CENTER_CARD_GLASS),
+    )
+
+/** 「网络」二级页内的配置项，用于功能页搜索直达。 */
+private fun networkSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, KEY_FIVE_G),
+    )
+
+/** 「息屏」二级页内的配置项，用于功能页搜索直达。 */
+private fun aodSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+    listOf(
+        specByKey(specs, KEY_AOD_BATTERY),
+        specByKey(specs, KEY_AOD_FULL),
+        specByKey(specs, KEY_AOD_BOTTOM_ICONS),
     )
 
 /** 多应用音量二级页内的配置项，用于功能页搜索直达。 */
@@ -390,6 +438,7 @@ fun deviceConnectSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, ConnectKeys.PORTRAIT_STREAMING),
         specByKey(specs, ConnectKeys.MILINK_MULTI_CHANNEL),
         specByKey(specs, ConnectKeys.DISCOVERY_FREQUENCY),
+        specByKey(specs, ConnectKeys.CLIPBOARD_SYNC_BOOST),
         specByKey(specs, MirrorKeys.FLOATING_WINDOW),
         specByKey(specs, MirrorKeys.FLOATING_RADIUS),
         specByKey(specs, MirrorKeys.HIDE_POLE),
@@ -506,6 +555,15 @@ internal fun featureSpecs(): List<OptionSpec> {
             showStatus = true,
         ),
         OptionSpec(
+            key = KEY_DEVICE_CENTER_FAST_LOAD,
+            type = OptionType.SWITCH,
+            titleRes = R.string.device_center_fast_load,
+            summaryRes = R.string.device_center_fast_load_summary,
+            defaultBoolean = false,
+            targetPackages = systemUi,
+            showStatus = true,
+        ),
+        OptionSpec(
             key = KEY_DEVICE_CENTER_LANDSCAPE_RIGHT,
             type = OptionType.SWITCH,
             titleRes = R.string.device_center_landscape_right,
@@ -532,6 +590,75 @@ internal fun featureSpecs(): List<OptionSpec> {
             defaultBoolean = false,
             targetPackages = listOf("com.milink.service"),
             showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_NETWORK,
+            type = OptionType.ARROW,
+            titleRes = R.string.network_section,
+        ),
+        OptionSpec(
+            key = KEY_AOD,
+            type = OptionType.ARROW,
+            titleRes = R.string.aod_section,
+        ),
+        OptionSpec(
+            key = KEY_FIVE_G,
+            type = OptionType.SWITCH,
+            titleRes = R.string.five_g_switch,
+            summaryRes = R.string.five_g_switch_summary,
+            defaultBoolean = false,
+            targetPackages = systemUi,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_AOD_BATTERY,
+            type = OptionType.SWITCH,
+            titleRes = R.string.aod_battery_style_keep,
+            summaryRes = R.string.aod_battery_style_keep_summary,
+            defaultBoolean = false,
+            targetPackages = systemUi,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_AOD_FULL,
+            type = OptionType.SWITCH,
+            titleRes = R.string.aod_full_screen_keep,
+            summaryRes = R.string.aod_full_screen_keep_summary,
+            defaultBoolean = false,
+            targetPackages = systemUi,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_AOD_BOTTOM_ICONS,
+            type = OptionType.SWITCH,
+            titleRes = R.string.aod_keep_bottom_icons,
+            summaryRes = R.string.aod_keep_bottom_icons_summary,
+            defaultBoolean = false,
+            targetPackages = systemUi,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_CLIPBOARD_SYNC_BOOST,
+            type = OptionType.SWITCH,
+            titleRes = R.string.connect_clipboard_sync_boost,
+            summaryRes = R.string.connect_clipboard_sync_boost_summary,
+            defaultBoolean = false,
+            targetPackages = listOf("com.milink.service"),
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_SR_ANIMATION_RADIUS,
+            type = OptionType.SWITCH,
+            titleRes = R.string.sr_animation_radius,
+            summaryRes = R.string.sr_animation_radius_summary,
+            defaultBoolean = false,
+            targetPackages = listOf("com.miui.voiceassist"),
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_VOICE_ASSIST,
+            type = OptionType.ARROW,
+            titleRes = R.string.section_voice_assist,
         ),
         OptionSpec(
             key = KEY_SECURITY_CENTER,
@@ -733,6 +860,15 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = R.string.top_bar_advanced_calculator_summary,
             defaultBoolean = true,
             targetPackages = listOf("com.miui.calculator"),
+            dependsOn = TopBarKeys.ADVANCED,
+        ),
+        OptionSpec(
+            key = TopBarKeys.ADVANCED_FILE_EXPLORER,
+            type = OptionType.SWITCH,
+            titleRes = R.string.top_bar_advanced_file_explorer,
+            summaryRes = R.string.top_bar_advanced_file_explorer_summary,
+            defaultBoolean = true,
+            targetPackages = listOf("com.android.fileexplorer"),
             dependsOn = TopBarKeys.ADVANCED,
         ),
         OptionSpec(

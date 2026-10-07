@@ -59,6 +59,7 @@ class CcGlassHook : BaseHook() {
             hookBrightnessTileDetailFlag(pluginCl)
             hookMoreButton(pluginCl)
             hookDetailItems(systemCl)
+            hookToggleItems(systemCl)
             hookRingerButtons(pluginCl)
             hookSideVolume(pluginCl)
         }
@@ -166,6 +167,51 @@ class CcGlassHook : BaseHook() {
                 view.post { if (master()) runCatching { applyDetailGlass(view, index, adapter) } }
             }
         }.onFailure { HookHelper.log("$tag: hook detail items failed", it) }
+    }
+
+    /**
+     * 移动网络（SIM）详情里的「5G 网络」开关卡片是一个 `ToggleItem`：系统的
+     * [updateSelectableItemBackground] 对非 `SelectableItem` 会直接 `return`，因此该卡片
+     * 不会走玻璃分支。这里在该卡片绑定完成后，套用与详情页「更多设置」按钮一致的
+     * 柔光玻璃材质（`DefaultContentBgMaterialToken`），并按分组位置设置圆角
+     * （`ToggleItem` 恒为单项，四角皆圆）。
+     */
+    private fun hookToggleItems(systemCl: ClassLoader) {
+        val cls = Reflect.findClassIfExists(DETAIL_ADAPTER_CLASS, systemCl)
+        if (cls == null) {
+            HookHelper.log("$tag: hookToggleItems $DETAIL_ADAPTER_CLASS not found")
+            return
+        }
+        val methods = cls.declaredMethods.filter {
+            it.name == "onBindViewHolder" && it.parameterCount == 2
+        }
+        methods.forEach { method ->
+            method.isAccessible = true
+            runCatching {
+                HookHelper.hookAfter(method) { param ->
+                    if (!master()) return@hookAfter
+                    val holder = param.args.getOrNull(0) ?: return@hookAfter
+                    val index = param.args.getOrNull(1) as? Int ?: return@hookAfter
+                    val adapter = param.thisObject ?: return@hookAfter
+                    val content = Reflect.getObjectField(adapter, "this\$0") ?: return@hookAfter
+                    // 仅处理移动网络详情里的开关项（本模块注入的「5G 网络」）。
+                    if (Reflect.getObjectField(content, "suffix") != "Cellular") return@hookAfter
+                    val items = Reflect.getObjectField(content, "items") as? Array<*> ?: return@hookAfter
+                    val item = items.getOrNull(index) ?: return@hookAfter
+                    if (!item.javaClass.name.endsWith("ToggleItem")) return@hookAfter
+                    val view = Reflect.getObjectField(holder, "itemView") as? View ?: return@hookAfter
+                    applyToggleGlass(view)
+                    view.post { if (master()) runCatching { applyToggleGlass(view) } }
+                }
+            }.onFailure { HookHelper.log("$tag: hook toggle items failed", it) }
+        }
+    }
+
+    /** 5G 开关卡片：与「更多设置」按钮同款柔光玻璃材质（`DefaultContentBgMaterialToken`）。 */
+    private fun applyToggleGlass(view: View): Boolean {
+        // 系统在绑定 ToggleItem 时已按 `universalCornerRadius` 设置好圆角轮廓，这里只需换材质背景。
+        view.background = null
+        return CcGlassApi.apply(view, TOKEN_GLASS)
     }
 
     private fun applyDetailGlass(view: View, index: Int?, adapter: Any) {

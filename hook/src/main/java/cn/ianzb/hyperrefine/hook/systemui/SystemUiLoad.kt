@@ -26,6 +26,14 @@ class SystemUiLoad : BaseLoad() {
         initHook(SideVolumeLongPressHook(), HookPrefs.getBoolean(SideVolumeLongPressHook.KEY, false))
         initHook(DeviceCenterMoreHook(), HookPrefs.getBoolean(DeviceCenterMoreHook.KEY, false))
         initHook(
+            DeviceCenterFastLoadHook(),
+            HookPrefs.getBoolean(DeviceCenterFastLoadHook.KEY, false),
+        )
+        initHook(FiveGSwitchHook(), HookPrefs.getBoolean(FiveGSwitchHook.KEY, false))
+        initHook(AodBatteryStyleHook(), HookPrefs.getBoolean(AodBatteryStyleHook.KEY, false))
+        initHook(AodFullScreenKeepHook(), HookPrefs.getBoolean(AodFullScreenKeepHook.KEY, false))
+        initHook(AodBottomIconsHook(), HookPrefs.getBoolean(AodBottomIconsHook.KEY, false))
+        initHook(
             DeviceCenterHitAreaHook(),
             HookPrefs.getBoolean(DeviceCenterHitAreaHook.KEY, false),
         )

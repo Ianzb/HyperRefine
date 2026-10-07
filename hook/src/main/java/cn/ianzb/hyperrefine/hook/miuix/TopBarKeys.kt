@@ -27,6 +27,9 @@ object TopBarKeys {
     /** 计算器专属适配：新版 MIUIX 遮罩特征 + 各页滚动区间距。 */
     const val ADVANCED_CALCULATOR = "top_bar_gradient_advanced_calculator"
 
+    /** 文件管理专属适配：修复文件夹页文件列表被路径栏遮挡。 */
+    const val ADVANCED_FILE_EXPLORER = "top_bar_gradient_advanced_file_explorer"
+
     /** 应用专属适配总开关是否开启（默认开启，保持原有行为）。 */
     fun advancedEnabled(): Boolean = HookPrefs.getBoolean(ADVANCED, true)
 
@@ -37,4 +40,8 @@ object TopBarKeys {
     /** 计算器专属适配是否开启。 */
     fun calculatorAdvancedEnabled(): Boolean =
         advancedEnabled() && HookPrefs.getBoolean(ADVANCED_CALCULATOR, true)
+
+    /** 文件管理专属适配是否开启。 */
+    fun fileExplorerAdvancedEnabled(): Boolean =
+        advancedEnabled() && HookPrefs.getBoolean(ADVANCED_FILE_EXPLORER, true)
 }

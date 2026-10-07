@@ -9,6 +9,7 @@ import cn.ianzb.hyperrefine.hook.miuix.MiuixAppLoad
 import cn.ianzb.hyperrefine.hook.passkey.PasskeyLoad
 import cn.ianzb.hyperrefine.hook.securitycenter.SecurityCenterLoad
 import cn.ianzb.hyperrefine.hook.systemui.SystemUiLoad
+import cn.ianzb.hyperrefine.hook.voiceassist.VoiceAssistLoad
 import cn.ianzb.hyperrefine.hook.weather.WeatherLoad
 
 /**
@@ -32,6 +33,7 @@ object HookEntryRegistry {
         WeatherLoad(),
         PasskeyLoad(),
         BrowserLoad(),
+        VoiceAssistLoad(),
     )
 
     fun loadsFor(packageName: String): List<BaseLoad> =

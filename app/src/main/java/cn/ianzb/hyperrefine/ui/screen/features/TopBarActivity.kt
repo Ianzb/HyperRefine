@@ -42,13 +42,14 @@ class TopBarActivity : BaseSubPageActivity() {
                 featureSpec(TopBarKeys.OPACITY),
             ),
         )
-        // 应用专属适配：统一开关 + 笔记 / 计算器单独开关。
+        // 应用专属适配：统一开关 + 笔记 / 计算器 / 文件管理单独开关。
         val advancedSection = HookSection(
             titleRes = R.string.section_top_bar_advanced,
             specs = listOf(
                 featureSpec(TopBarKeys.ADVANCED),
                 featureSpec(TopBarKeys.ADVANCED_NOTES),
                 featureSpec(TopBarKeys.ADVANCED_CALCULATOR),
+                featureSpec(TopBarKeys.ADVANCED_FILE_EXPLORER),
             ),
         )
         LazyColumn(

@@ -45,6 +45,10 @@ class MiLinkLoad : BaseLoad() {
         if (loader != null && Reflect.findClassIfExists(START_DISCOVERY_OPTIONS, loader) != null) {
             initHook(MiLinkDiscoveryFrequencyHook(), HookPrefs.getBoolean(ConnectKeys.DISCOVERY_FREQUENCY, false))
         }
+        // 跨设备剪贴板加速：安装到含跨设备剪贴板实现的进程。
+        if (loader != null && Reflect.findClassIfExists(CLIPBOARD_PUBLISHER, loader) != null) {
+            initHook(ClipboardSyncBoostHook(), HookPrefs.getBoolean(ConnectKeys.CLIPBOARD_SYNC_BOOST, false))
+        }
     }
 
     companion object {
@@ -54,5 +58,6 @@ class MiLinkLoad : BaseLoad() {
         const val PROCESS_FLOW = "com.milink.crossdeviceservice"
         const val PROCESS_CORE = "com.milink.service:core"
         const val START_DISCOVERY_OPTIONS = "com.xiaomi.continuity.netbus.StartDiscoveryOptions"
+        const val CLIPBOARD_PUBLISHER = "com.xiaomi.dist.universalclipboardservice.UniversalClipDataPublisher"
     }
 }

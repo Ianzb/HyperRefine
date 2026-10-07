@@ -29,10 +29,16 @@ class MiuixAppLoad : BaseLoad() {
         }
         // MIUIX NestedHeaderLayout 自带的滚动渐变遮罩（如笔记标题下方那条）由顶栏渐变接管后多余，隐藏之。
         initHook(NestedHeaderMaskHook(), enabled)
+        // 文件管理：修复顶栏渐变接管遮罩后文件列表上边距被清零、首个文件被路径栏遮挡的问题。
+        // 由「应用专属适配 > 文件管理」单独开关控制。
+        if (target.packageName == FILE_EXPLORER) {
+            initHook(FileExplorerPathBarFix(), TopBarKeys.fileExplorerAdvancedEnabled())
+        }
     }
 
     companion object {
         const val BAR_CLASS = "miuix.appcompat.internal.app.widget.ActionBarContainer"
+        const val FILE_EXPLORER = "com.android.fileexplorer"
 
         /** 自带新版 MIUIX（遮罩由 `Paint` + `Path` 渐变绘制）的应用，需用专用适配。 */
         val NEW_ACTIONBAR_PACKAGES: Set<String> = setOf("com.miui.calculator")

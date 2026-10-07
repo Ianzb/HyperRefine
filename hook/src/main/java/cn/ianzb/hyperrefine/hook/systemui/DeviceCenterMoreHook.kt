@@ -6,6 +6,7 @@ import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.HookParam
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
+import java.util.concurrent.Executor
 
 /**
  * 融合设备中心（控制中心）隐藏末尾「…」省略卡片。
@@ -72,6 +73,10 @@ class DeviceCenterMoreHook : BaseHook() {
      * 官方数据侧 (`DeviceCenterController`) 默认最多只向卡片推送 7 个设备，为省略号留位。
      * 省略号隐藏后重新构造前 [MAX_DEVICES] 个设备的 wrapper 列表并通知监听者，让第 8 个
      * 设备也能显示、填满两行。
+     *
+     * 注意：官方 `handleDeviceListUpdate` 内部会向 `uiExecutor` 投递一个「截断到 7 个」的任务，
+     * 若在回调线程直接通知监听者，可能与它并发、被其覆盖，导致第 8 个设备时有时无或出现很慢。
+     * 因此这里同样回到控制器的 `uiExecutor` 上提交，排在官方任务之后执行，保证最终列表为 8 个。
      */
     private fun raiseDeviceLimit(param: HookParam, pluginCl: ClassLoader) {
         if (!HookPrefs.getBoolean(KEY, false)) return
@@ -85,10 +90,6 @@ class DeviceCenterMoreHook : BaseHook() {
             .getOrNull() ?: return
         val context = runCatching { Reflect.getObjectField(controller, "context") }
             .getOrNull() ?: return
-        val wrapperList = runCatching { Reflect.getObjectField(controller, "wrapperList") as? MutableList<Any?> }
-            .getOrNull() ?: return
-        val listeners = runCatching { Reflect.getObjectField(controller, "listeners") as? List<*> }
-            .getOrNull() ?: return
 
         val count = minOf(deviceList.size, MAX_DEVICES)
         val wrappers = ArrayList<Any?>(count)
@@ -100,6 +101,21 @@ class DeviceCenterMoreHook : BaseHook() {
         }
         if (wrappers.isEmpty()) return
 
+        val uiExecutor = runCatching { Reflect.getObjectField(controller, "uiExecutor") as? Executor }
+            .getOrNull()
+        if (uiExecutor == null) {
+            commitExpandedList(controller, wrappers)
+        } else {
+            runCatching { uiExecutor.execute { commitExpandedList(controller, wrappers) } }
+                .onFailure { HookHelper.log("$tag: post expanded device list failed", it) }
+        }
+    }
+
+    private fun commitExpandedList(controller: Any, wrappers: List<Any?>) {
+        val wrapperList = runCatching { Reflect.getObjectField(controller, "wrapperList") as? MutableList<Any?> }
+            .getOrNull() ?: return
+        val listeners = runCatching { Reflect.getObjectField(controller, "listeners") as? List<*> }
+            .getOrNull() ?: return
         wrapperList.clear()
         wrapperList.addAll(wrappers)
         listeners.forEach { listener ->

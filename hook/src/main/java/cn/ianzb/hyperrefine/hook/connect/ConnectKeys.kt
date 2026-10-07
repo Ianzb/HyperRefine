@@ -20,6 +20,9 @@ object ConnectKeys {
     /** 提高设备发现频率。 */
     const val DISCOVERY_FREQUENCY = "connect_discovery_frequency"
 
+    /** 跨设备剪贴板同步加速。 */
+    const val CLIPBOARD_SYNC_BOOST = "connect_clipboard_sync_boost"
+
     /** 融合设备中心流转卡片补柔光玻璃。 */
     const val CARD_GLASS = "device_center_card_glass"
 

@@ -53,6 +53,7 @@ class DeviceConnectActivity : BaseSubPageActivity() {
                     featureSpec(ConnectKeys.PORTRAIT_STREAMING),
                     featureSpec(ConnectKeys.MILINK_MULTI_CHANNEL),
                     featureSpec(ConnectKeys.DISCOVERY_FREQUENCY),
+                    featureSpec(ConnectKeys.CLIPBOARD_SYNC_BOOST),
                 ),
             )
         }

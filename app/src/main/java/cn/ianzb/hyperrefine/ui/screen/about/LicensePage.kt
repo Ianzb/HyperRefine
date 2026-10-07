@@ -171,6 +171,12 @@ private val licenseSections: List<LicenseSection> = listOf(
                 "https://github.com/silverpoetry/HyperConnectToolkit",
             ),
             LibraryInfo(
+                "Hyper5GSwitch",
+                "-",
+                "Apache-2.0，移动网络面板 5G 开关思路参考（未复用其代码）",
+                "https://github.com/buffcow/Hyper5GSwitch",
+            ),
+            LibraryInfo(
                 "妙享桌面增强（酷安 @ayyya）",
                 "1.10.4",
                 "非开源，妙享桌面（自由浮窗 / 下拉最小化 / 投屏刷新率）功能移植",

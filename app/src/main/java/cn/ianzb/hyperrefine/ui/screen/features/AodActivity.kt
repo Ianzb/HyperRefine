@@ -15,14 +15,14 @@ import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 
 /**
- * 「融合设备中心」二级页。
+ * 「息屏」二级页。
  */
-class DeviceCenterActivity : BaseSubPageActivity() {
+class AodActivity : BaseSubPageActivity() {
 
-    override val titleRes: Int = R.string.section_device_center
+    override val titleRes: Int = R.string.aod_section
 
     override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui", "com.milink.service")) }
+        { QuickActionsAction(listOf("com.android.systemui")) }
 
     @Composable
     override fun SubPageContent(
@@ -30,14 +30,12 @@ class DeviceCenterActivity : BaseSubPageActivity() {
         contentPadding: PaddingValues,
     ) {
         val scrollBehavior = LocalSubPageScrollBehavior.current
-        val deviceSection = HookSection(
-            titleRes = R.string.section_device_center,
+        val aodSection = HookSection(
+            titleRes = R.string.aod_section,
             specs = listOf(
-                featureSpec(KEY_DEVICE_CENTER_FAST_LOAD),
-                featureSpec(KEY_DEVICE_CENTER_HIDE_MORE),
-                featureSpec(KEY_DEVICE_CENTER_SHRINK_HIT_AREA),
-                featureSpec(KEY_DEVICE_CENTER_CARD_GLASS),
-                featureSpec(KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
+                featureSpec(KEY_AOD_FULL),
+                featureSpec(KEY_AOD_BATTERY),
+                featureSpec(KEY_AOD_BOTTOM_ICONS),
             ),
         )
         LazyColumn(
@@ -56,8 +54,8 @@ class DeviceCenterActivity : BaseSubPageActivity() {
             contentPadding = contentPadding,
         ) {
             item {
-                HookSectionCard(deviceSection) {
-                    deviceSection.specs.forEach { HookOptionView(it) }
+                HookSectionCard(aodSection) {
+                    aodSection.specs.forEach { HookOptionView(it) }
                 }
             }
         }

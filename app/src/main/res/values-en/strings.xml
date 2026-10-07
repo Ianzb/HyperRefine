@@ -159,6 +159,8 @@
     <string name="connect_milink_multi_channel_summary">Stream from your phone to multiple tablets at once</string>
     <string name="connect_discovery_frequency">Higher device discovery frequency</string>
     <string name="connect_discovery_frequency_summary">Discover nearby devices and refresh the list faster (uses more battery)</string>
+    <string name="connect_clipboard_sync_boost">Clipboard sync boost</string>
+    <string name="connect_clipboard_sync_boost_summary">Reduce detection, publish and receive delays so clipboard copies sync to the other device faster</string>
 
     <string name="section_mirror">Mi Share Desktop enhancements</string>
     <string name="mirror_floating_window">Freeform floating window</string>
@@ -190,8 +192,10 @@
     <string name="top_bar_advanced_summary">Extra polish for Notes and Calculator; turn off to use the generic effect</string>
     <string name="top_bar_advanced_notes">Notes</string>
     <string name="top_bar_advanced_notes_summary">Remove the duplicate gradient scrim from the Notes filter bar</string>
-    <string name="top_bar_advanced_calculator">Calculator</string>
-    <string name="top_bar_advanced_calculator_summary">Adapt the Calculator top bar and restore top spacing</string>
+ <string name="top_bar_advanced_calculator">Calculator</string>
+ <string name="top_bar_advanced_calculator_summary">Adapt the Calculator top bar and restore top spacing</string>
+ <string name="top_bar_advanced_file_explorer">Files</string>
+ <string name="top_bar_advanced_file_explorer_summary">Fix the file list being covered by the path bar on folder pages; the home page is unaffected</string>
 
     <string name="section_experimental">Experimental</string>
     <string name="section_weather">Weather</string>
@@ -241,12 +245,27 @@
     <string name="section_device_center">Fusion Device Center</string>
     <string name="device_center_hide_more">Hide overflow</string>
     <string name="device_center_hide_more_summary">Hide the “…” at the end so a full row no longer wraps</string>
+    <string name="device_center_fast_load">Faster icon loading</string>
+    <string name="device_center_fast_load_summary">Show connected device icons the moment Control Center opens, with no scan delay</string>
     <string name="device_center_landscape_right">Landscape device center on right</string>
     <string name="device_center_landscape_right_summary">In landscape, move the fusion device center to the right side of Control Center</string>
     <string name="device_center_shrink_hit_area">Shrink device tap area</string>
     <string name="device_center_shrink_hit_area_summary">Shrink the tap area to the icon; tapping blank space opens the Fusion Device Center</string>
     <string name="device_center_card_glass">Flow card glass</string>
     <string name="device_center_card_glass_summary">Add system soft glass to the flow card, even when the device is unavailable</string>
+    <string name="network_section">Network</string>
+    <string name="aod_section">Always-on display</string>
+    <string name="five_g_switch">5G switch</string>
+    <string name="five_g_switch_summary">Show a 5G network toggle at the top of the mobile network panel (5G devices only)</string>
+    <string name="aod_battery_style_keep">Keep battery style in Always-on display</string>
+    <string name="aod_battery_style_keep_summary">Keep the battery icon style consistent with the status bar; don’t move the percentage outside the icon on the AOD</string>
+ <string name="aod_full_screen_keep">Keep full-screen AOD</string>
+ <string name="aod_full_screen_keep_summary">After using the lock-screen camera/flashlight, still show the full-screen (dimmed lock screen) AOD instead of the plain black clock</string>
+ <string name="aod_keep_bottom_icons">Keep shortcut icons on AOD</string>
+ <string name="aod_keep_bottom_icons_summary">Don’t hide the lock-screen bottom-left/right shortcut icons on the AOD, so the flashlight/camera entries stay visible while the screen is off</string>
+ <string name="sr_animation_radius">Match corner radius of the recognition animation</string>
+ <string name="sr_animation_radius_summary">Start Xiao Ai’s screen-recognition shrink animation from the device’s rounded corners, removing the square corners at the start</string>
+ <string name="section_voice_assist">Xiao Ai</string>
 
     <string name="section_cc_glass">Soft glass</string>
     <string name="cc_glass_master">Enable soft glass</string>

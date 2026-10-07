@@ -72,8 +72,6 @@ object CcGlassApi {
                     ?.also { it.isAccessible = true }
             }
         }.onFailure { HookHelper.log("CcGlass: init failed", it) }
-
-        HookHelper.log("CcGlass: init apply=${applyMethod != null} style=${setBackgroundStyleMethod != null}")
     }
 
     /** 初始化主 APK（systemui）里的 `com.miui.systemui.util.MiBlurCompat`（供详情项玻璃使用）。 */

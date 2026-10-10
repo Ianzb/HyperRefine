@@ -13,8 +13,8 @@ android {
         applicationId = "cn.ianzb.hyperrefine"
         minSdk = 35
         targetSdk = 37
-        versionCode = 17
-        versionName = "1.10.0"
+        versionCode = 18
+        versionName = "1.10.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -94,6 +94,7 @@ dependencies {
     implementation(libs.material.icons)
     implementation(libs.haze)
 }
+
 
 
 

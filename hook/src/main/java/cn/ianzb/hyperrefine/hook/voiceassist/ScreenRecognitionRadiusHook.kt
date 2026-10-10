@@ -23,6 +23,11 @@ import kotlin.math.min
  * 2. 应用侧对圆角有「不超过 endCorner」的上限裁剪，起始圆角大于卡片圆角时会被裁成常量（无过渡）。
  *    因此在动画插值回调 `ClipImageView$b#onUpdate` 之后，按进度重新写入未裁剪的圆角，
  *    使圆角能从「屏幕圆角」平滑过渡到「卡片圆角」。
+ *
+ * 注意屏幕圆角**不保证**大于卡片圆角：平板上常见「屏幕圆角 < 卡片圆角」（Xiaomi Pad 7 Ultra：
+ * 圆角 54px、密度 440dpi ≈ 19.6dp，而卡片圆角 `screen_recognition_container_radius` 为 24dp）。
+ * 这种设备上应用自身「取小」的裁剪不会出问题，但起始圆角仍应按屏幕圆角过渡（19.6dp → 24dp），
+ * 因此是否改写只与「应用写死的起始圆角」比较，不能与卡片圆角比较。
  */
 class ScreenRecognitionRadiusHook : BaseHook() {
 
@@ -54,13 +59,18 @@ class ScreenRecognitionRadiusHook : BaseHook() {
                 val config = param.args.getOrNull(2) ?: return@hookBefore
                 val view = param.thisObject as? View ?: return@hookBefore
                 val end = cornerOf(config, "getEndCornerDp") ?: return@hookBefore
+                // 应用写死的起始圆角：约 5px（未乘密度）≈ 1.8dp，观感为直角。
+                val original = cornerOf(config, "getStartCornerDp") ?: return@hookBefore
                 val cornerPx = screenCornerPx(view)
                 if (cornerPx <= 0) return@hookBefore
                 val density = view.resources.displayMetrics.density
                 if (density <= 0f) return@hookBefore
                 val startDp = cornerPx / density
-                if (startDp <= end) return@hookBefore
+                // 仅当屏幕圆角比原起始圆角更大时才需要改写；与卡片圆角 [end] 无关：
+                // 大屏 / 高密度设备上屏幕圆角可能小于卡片圆角，此时动画同样应从屏幕圆角开始过渡。
+                if (startDp <= original) return@hookBefore
                 val rebuilt = rebuild(config, startDp, end) ?: return@hookBefore
+                HookHelper.log("$tag: corner ${startDp}dp (screen ${cornerPx}px) -> card ${end}dp")
                 param.setArg(2, rebuilt)
             }
         }.onFailure { HookHelper.log("$tag: hook startAnimation failed", it) }

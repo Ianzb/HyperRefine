@@ -129,15 +129,12 @@
     <string name="quick_action_restart_success">Restarted</string>
 
     <!-- Features -->
-    <string name="section_system_ui">Interface</string>
+    <string name="feature_system_ui">System UI</string>
+    <string name="feature_system_apps">System apps</string>
     <string name="feature_control_center">Control center</string>
-    <string name="feature_appearance">Appearance</string>
-    <string name="feature_display">Display</string>
-    <string name="feature_percent">Percentage</string>
-    <string name="section_components">Components</string>
+    <string name="section_volume">Volume</string>
+    <string name="section_lock_aod">Lock screen &amp; AOD</string>
     <string name="feature_glass">Soft glass</string>
-    <string name="section_beautify">Beautify</string>
-    <string name="section_layout_adjust">Layout adjustment</string>
 
     <string name="section_security_center">Security</string>
     <string name="fast_charge_notify">Fast-charge notification</string>
@@ -203,7 +200,7 @@
     <string name="weather_advanced">Unlock advanced look</string>
     <string name="weather_advanced_summary">Force-enable progressive blur, glass material and dynamic weather effects. Restart the Weather app to take effect.</string>
 
-    <string name="volume_bar_section">Volume bar</string>
+    <string name="volume_bar_layout_title">Volume bar layout</string>
     <string name="volume_bar_panel_section">Panel background</string>
     <string name="volume_bar_panel_bg">Multi-app panel background</string>
     <string name="volume_bar_panel_bg_summary">Customize the Multi-app volume panel background padding separately</string>
@@ -234,7 +231,7 @@
     <string name="volume_bar_auto_balance_landscape">Landscape</string>
     <string name="volume_bar_auto_balance_summary">Auto-shift to keep the average height unchanged when the multi-app volume entry appears</string>
 
-    <string name="appearance_cc_volume">Volume bar</string>
+    <string name="appearance_cc_volume">Control center volume</string>
     <string name="appearance_cc_brightness">Brightness bar</string>
     <string name="appearance_side_volume">Side volume bar</string>
 
@@ -266,6 +263,7 @@
  <string name="sr_animation_radius">Match corner radius of the recognition animation</string>
  <string name="sr_animation_radius_summary">Start Xiao Ai’s screen-recognition shrink animation from the device’s rounded corners, removing the square corners at the start</string>
  <string name="section_voice_assist">Xiao Ai</string>
+ <string name="section_screen_recognition">Screen recognition</string>
 
     <string name="section_cc_glass">Soft glass</string>
     <string name="cc_glass_master">Enable soft glass</string>
@@ -273,7 +271,6 @@
     <string name="cc_glass_theme_material">Force material under third-party themes</string>
     <string name="cc_glass_theme_material_summary">Force-enable the system soft glass under third-party themes</string>
 
-    <string name="section_cc_radius">Appearance</string>
     <string name="cc_radius_title">Corner radius</string>
     <string name="cc_radius_master_summary">Uniformly adjust the corner radius of Control Center components</string>
     <string name="cc_radius_component">Component radius</string>
@@ -401,7 +398,8 @@
 
     <string name="section_passkey">Passkey</string>
     <string name="feature_passkey">Passkeys</string>
-    <string name="passkey_section">Passkey</string>
+    <string name="passkey_section_route">System service routing</string>
+    <string name="passkey_section_apps">In-app adaptation</string>
     <string name="passkey_master">Enable passkeys</string>
     <string name="passkey_master_summary">Let apps sign in with Google passkeys. Google Play services required.</string>
     <string name="passkey_system_server">System-wide support</string>

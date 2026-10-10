@@ -54,13 +54,14 @@ import top.yukonga.miuix.kmp.basic.Text as MiuixText
 /**
  * 一个组件分区。
  *
- * @param titleRes 分区标题（中文描述）字符串资源。
+ * @param titleRes 分区标题（中文描述）字符串资源；传 `0` 表示该分区不显示小标题
+ *   （用于「一级就是一张扁平卡片列表」的页面，避免再套一层无意义的小标题）。
  * @param specs 分区内包含的配置项，按顺序渲染。
  * @param titleEn 英文组件名，非空时以「中文（English）」拼接。**仅用于模板示例展示 API 英文名**；
  *   实际功能页应省略该参数，保持单语言小标题。
  */
 data class HookSection(
-    val titleRes: Int,
+    val titleRes: Int = 0,
     val specs: List<OptionSpec>,
     val titleEn: String = "",
 )
@@ -97,13 +98,19 @@ private fun flattenSubPages(
     listOf(subPage to path) + flattenSubPages(subPage.subPages, path)
 }
 
-/** 分区标题：默认仅渲染 `titleRes`；`titleEn` 非空时拼接为 `中文（English）`（仅示例 / API 展示用）。 */
+/**
+ * 分区标题：`titleRes` 为 `0` 时返回空串（该分区不显示小标题）；
+ * `titleEn` 非空时拼接为 `中文（English）`（仅示例 / API 展示用）。
+ */
 @Composable
-fun hookSectionTitle(section: HookSection): String = buildString {
-    append(stringResource(section.titleRes))
-    if (section.titleEn.isNotBlank()) {
-        append("（").append(section.titleEn).append("）")
+fun hookSectionTitle(section: HookSection): String = when {
+    section.titleRes != 0 -> buildString {
+        append(stringResource(section.titleRes))
+        if (section.titleEn.isNotBlank()) {
+            append("（").append(section.titleEn).append("）")
+        }
     }
+    else -> section.titleEn
 }
 
 /**
@@ -282,7 +289,8 @@ fun HookOptionsPage(
                                     BasicComponent(
                                         title = stringResource(spec.titleRes),
                                         summary = when (target) {
-                                            is SearchTarget.Section -> hookSectionTitle(target.section)
+                                    is SearchTarget.Section ->
+                                        hookSectionTitle(target.section).takeIf { it.isNotBlank() }
                                             is SearchTarget.SubPage -> target.path.map { stringResource(it) }.joinToString(" / ")
                                             null -> null
                                         },
@@ -306,7 +314,7 @@ fun HookOptionsPage(
 
                 if (!expanded) {
                     sections.forEach { section ->
-                        item(key = section.titleRes) {
+                        item(key = if (section.titleRes != 0) section.titleRes else section.specs.firstOrNull()?.key) {
                             HookSectionCard(section) {
                                 section.specs.forEach { spec ->
                                     HookOptionView(
@@ -340,7 +348,10 @@ fun HookSectionCard(
     content: @Composable () -> Unit,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        SmallTitle(text = hookSectionTitle(section))
+        val title = hookSectionTitle(section)
+        if (title.isNotBlank()) {
+            SmallTitle(text = title)
+        }
         Card(modifier = Modifier.padding(horizontal = 12.dp).padding(bottom = 12.dp)) {
             content()
         }

@@ -138,7 +138,7 @@ fun HomePageView(
                     // 模块已激活但无 Root：重启等功能不可用，单独提示。
                     val rootMissing = activated && rootChecked && !rootAvailable
                     val scopeCount = XposedServiceManager.scope.size
-                    val featureCount = OptionRegistry.all().count { it.type == OptionType.SWITCH && it.key.endsWith("_percent") }
+                    val featureCount = OptionRegistry.all().count { it.type == OptionType.SWITCH }
 
                     val statusColor = when {
                         !activated -> when {

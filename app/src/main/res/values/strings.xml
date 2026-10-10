@@ -129,15 +129,12 @@
     <string name="quick_action_restart_success">重启成功</string>
 
     <!-- Features -->
-    <string name="section_system_ui">界面</string>
+    <string name="feature_system_ui">系统界面</string>
+    <string name="feature_system_apps">系统应用</string>
     <string name="feature_control_center">控制中心</string>
-    <string name="feature_appearance">外观</string>
-    <string name="feature_display">显示</string>
-    <string name="feature_percent">百分比</string>
-    <string name="section_components">组件</string>
+    <string name="section_volume">音量</string>
+    <string name="section_lock_aod">锁屏与息屏</string>
     <string name="feature_glass">柔光玻璃</string>
-    <string name="section_beautify">美化</string>
-    <string name="section_layout_adjust">布局调整</string>
 
     <string name="section_security_center">安全服务</string>
     <string name="fast_charge_notify">快充加速通知</string>
@@ -203,7 +200,7 @@
     <string name="weather_advanced">解锁高级外观</string>
     <string name="weather_advanced_summary">强制开启渐进模糊、玻璃材质与动态天气特效；重启天气应用后生效</string>
 
-    <string name="volume_bar_section">音量条</string>
+    <string name="volume_bar_layout_title">音量条布局</string>
     <string name="volume_bar_panel_section">面板背景</string>
     <string name="volume_bar_panel_bg">多应用面板背景调节</string>
     <string name="volume_bar_panel_bg_summary">分别自定义多应用音量面板背景的上下、左右内边距</string>
@@ -234,7 +231,7 @@
     <string name="volume_bar_auto_balance_landscape">横屏</string>
     <string name="volume_bar_auto_balance_summary">显示多应用音量入口时自动平移，保持整体平均高度不变</string>
 
-    <string name="appearance_cc_volume">音量条</string>
+    <string name="appearance_cc_volume">控制中心音量条</string>
     <string name="appearance_cc_brightness">亮度条</string>
     <string name="appearance_side_volume">侧边音量条</string>
 
@@ -266,6 +263,7 @@
  <string name="sr_animation_radius">识屏动画圆角适配</string>
  <string name="sr_animation_radius_summary">超级小爱识屏的缩小动画从屏幕自带圆角开始过渡，消除动画起始时的直角</string>
  <string name="section_voice_assist">超级小爱</string>
+ <string name="section_screen_recognition">识屏</string>
 
     <string name="section_cc_glass">柔光玻璃</string>
     <string name="cc_glass_master">启用柔光玻璃</string>
@@ -273,7 +271,6 @@
     <string name="cc_glass_theme_material">第三方主题下强制启用材质</string>
     <string name="cc_glass_theme_material_summary">使用第三方主题时也强制启用系统柔光玻璃</string>
 
-    <string name="section_cc_radius">外观</string>
     <string name="cc_radius_title">圆角调整</string>
     <string name="cc_radius_master_summary">统一调整控制中心各组件的圆角</string>
     <string name="cc_radius_component">组件圆角</string>
@@ -401,7 +398,8 @@
 
     <string name="section_passkey">密码</string>
     <string name="feature_passkey">通行密钥</string>
-    <string name="passkey_section">通行密钥</string>
+    <string name="passkey_section_route">系统服务路由</string>
+    <string name="passkey_section_apps">应用适配</string>
     <string name="passkey_master">启用通行密钥</string>
     <string name="passkey_master_summary">让应用可以正常调用 Google 通行密钥登录。需要启用 Google 基础服务。</string>
     <string name="passkey_system_server">系统级支持</string>

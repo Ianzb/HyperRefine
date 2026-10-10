@@ -31,7 +31,7 @@ class VoiceAssistActivity : BaseSubPageActivity() {
     ) {
         val scrollBehavior = LocalSubPageScrollBehavior.current
         val section = HookSection(
-            titleRes = R.string.section_voice_assist,
+            titleRes = R.string.section_screen_recognition,
             specs = listOf(
                 featureSpec(KEY_SR_ANIMATION_RADIUS),
             ),

@@ -19,7 +19,7 @@ import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
  */
 class SecurityCenterActivity : BaseSubPageActivity() {
 
-    override val titleRes: Int = R.string.fast_charge_notify
+    override val titleRes: Int = R.string.section_security_center
 
     override val topBarActions: (@Composable () -> Unit)? =
         { QuickActionsAction(listOf("com.miui.securitycenter")) }

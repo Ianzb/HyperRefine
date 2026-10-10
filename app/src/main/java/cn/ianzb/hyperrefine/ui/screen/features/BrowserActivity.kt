@@ -23,7 +23,7 @@ import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
  */
 class BrowserActivity : BaseSubPageActivity() {
 
-    override val titleRes: Int = R.string.feature_browser
+    override val titleRes: Int = R.string.section_browser
 
     override val topBarActions: (@Composable () -> Unit)? = {
         QuickActionsAction(

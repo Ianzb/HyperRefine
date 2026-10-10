@@ -23,7 +23,7 @@ import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
  */
 class PasskeyActivity : BaseSubPageActivity() {
 
-    override val titleRes: Int = R.string.feature_passkey
+    override val titleRes: Int = R.string.section_passkey
 
     override val topBarActions: (@Composable () -> Unit)? = {
         QuickActionsAction(
@@ -41,12 +41,19 @@ class PasskeyActivity : BaseSubPageActivity() {
         contentPadding: PaddingValues,
     ) {
         val scrollBehavior = LocalSubPageScrollBehavior.current
-        val section = remember {
+        val routeSection = remember {
             HookSection(
-                titleRes = R.string.passkey_section,
+                titleRes = R.string.passkey_section_route,
                 specs = listOf(
                     featureSpec(PasskeyKeys.MASTER),
                     featureSpec(PasskeyKeys.SYSTEM_SERVER),
+                ),
+            )
+        }
+        val appSection = remember {
+            HookSection(
+                titleRes = R.string.passkey_section_apps,
+                specs = listOf(
                     featureSpec(PasskeyKeys.SETTINGS),
                     featureSpec(PasskeyKeys.BLOCK_SECURITY_CENTER),
                     featureSpec(PasskeyKeys.SCANNER),
@@ -70,8 +77,13 @@ class PasskeyActivity : BaseSubPageActivity() {
             contentPadding = contentPadding,
         ) {
             item {
-                HookSectionCard(section) {
-                    section.specs.forEach { HookOptionView(it) }
+                HookSectionCard(routeSection) {
+                    routeSection.specs.forEach { HookOptionView(it) }
+                }
+            }
+            item {
+                HookSectionCard(appSection) {
+                    appSection.specs.forEach { HookOptionView(it) }
                 }
             }
         }

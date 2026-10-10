@@ -54,7 +54,7 @@
             android:label="@string/third_party_licenses_title"
             android:theme="@style/Theme.HyperRefine" />
         <activity
-            android:name=".ui.screen.features.AppearanceActivity"
+            android:name=".ui.screen.features.SystemUiActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity
@@ -82,7 +82,7 @@
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity
-            android:name=".ui.screen.features.TopBarActivity"
+            android:name=".ui.screen.features.SystemAppsActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity
@@ -94,11 +94,7 @@
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity
-            android:name=".ui.screen.features.LayoutAdjustActivity"
-            android:exported="false"
-            android:theme="@style/Theme.HyperRefine" />
-        <activity
-            android:name=".ui.screen.features.VolumeBarActivity"
+            android:name=".ui.screen.features.VolumeBarLayoutActivity"
             android:exported="false"
             android:theme="@style/Theme.HyperRefine" />
         <activity

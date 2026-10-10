@@ -37,7 +37,7 @@ class ExperimentalActivity : BaseSubPageActivity() {
         val context = LocalContext.current
         val scrollBehavior = LocalSubPageScrollBehavior.current
         val section = HookSection(
-            titleRes = R.string.section_experimental,
+            titleRes = R.string.section_weather,
             specs = listOf(
                 featureSpec(KEY_WEATHER),
             ),

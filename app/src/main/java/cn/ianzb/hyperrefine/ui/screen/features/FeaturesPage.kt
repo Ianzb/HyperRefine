@@ -45,66 +45,41 @@ fun FeaturesPageView(
 ) {
     val context = LocalContext.current
     val specs = remember { featureSpecs() }
+    // 一级入口是一个扁平列表（不套小标题）：系统类目标在前，跨应用功能集在后。
     val sections = remember(specs) {
         listOf(
             HookSection(
-                titleRes = R.string.section_system_ui,
                 specs = listOf(
-                    specByKey(specs, KEY_APPEARANCE),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.section_security_center,
-                specs = listOf(
-                    specByKey(specs, KEY_SECURITY_CENTER),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.section_device_connect,
-                specs = listOf(
+                    specByKey(specs, KEY_SYSTEM_UI),
+                    specByKey(specs, KEY_SYSTEM_APPS),
                     specByKey(specs, KEY_DEVICE_CONNECT),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.section_passkey,
-                specs = listOf(
+                    specByKey(specs, KEY_SECURITY_CENTER),
+                    specByKey(specs, KEY_VOICE_ASSIST),
                     specByKey(specs, KEY_PASSKEY),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.section_browser,
-                specs = listOf(
                     specByKey(specs, KEY_BROWSER),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.section_experimental,
-                specs = listOf(
                     specByKey(specs, KEY_EXPERIMENTAL),
                 ),
             ),
         )
     }
-    // 「外观」为二级页，其下再分子页；通过嵌套 subPages 让搜索直达多级功能。
+    // 每个一级入口都是二级页；通过嵌套 subPages 让搜索直达多级功能。
     val subPages = remember(specs) {
         listOf(
             HookSubPage(
-                titleRes = R.string.feature_appearance,
+                titleRes = R.string.feature_system_ui,
                 specs = listOf(
                     specByKey(specs, KEY_GLASS),
-                    specByKey(specs, KEY_TOP_BAR),
                     specByKey(specs, KEY_CC_RADIUS),
+                    specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_BRIGHTNESS)),
                     specByKey(specs, KEY_DEVICE_CENTER),
                     specByKey(specs, KEY_NETWORK),
-                    specByKey(specs, KEY_AOD),
-                    specByKey(specs, KEY_VOICE_ASSIST),
-                    specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_BRIGHTNESS)),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.CC_VOLUME)),
                     specByKey(specs, PercentLocation.entryKey(PercentLocation.SIDE_VOLUME)),
                     specByKey(specs, KEY_APP_VOLUME),
-                    specByKey(specs, KEY_LAYOUT_ADJUST),
+                    specByKey(specs, KEY_VOLUME_BAR_LAYOUT),
+                    specByKey(specs, KEY_AOD),
                 ),
-                onOpen = { context.startActivity(Intent(context, AppearanceActivity::class.java)) },
+                onOpen = { context.startActivity(Intent(context, SystemUiActivity::class.java)) },
                 subPages = listOf(
                     HookSubPage(
                         titleRes = R.string.feature_glass,
@@ -112,14 +87,14 @@ fun FeaturesPageView(
                         onOpen = { context.startActivity(Intent(context, GlassActivity::class.java)) },
                     ),
                     HookSubPage(
-                        titleRes = R.string.section_top_bar,
-                        specs = topBarSpecs(specs),
-                        onOpen = { context.startActivity(Intent(context, TopBarActivity::class.java)) },
-                    ),
-                    HookSubPage(
                         titleRes = R.string.cc_radius_title,
                         specs = cornerRadiusSpecs(specs),
                         onOpen = { context.startActivity(Intent(context, CornerRadiusActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.appearance_cc_brightness,
+                        specs = locationSpecs(specs, PercentLocation.CC_BRIGHTNESS),
+                        onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.CC_BRIGHTNESS)) },
                     ),
                     HookSubPage(
                         titleRes = R.string.section_device_center,
@@ -130,21 +105,6 @@ fun FeaturesPageView(
                         titleRes = R.string.network_section,
                         specs = networkSpecs(specs),
                         onOpen = { context.startActivity(Intent(context, NetworkActivity::class.java)) },
-                    ),
-                    HookSubPage(
-                        titleRes = R.string.aod_section,
-                        specs = aodSpecs(specs),
-                        onOpen = { context.startActivity(Intent(context, AodActivity::class.java)) },
-                    ),
-                    HookSubPage(
-                        titleRes = R.string.section_voice_assist,
-                        specs = listOf(specByKey(specs, KEY_SR_ANIMATION_RADIUS)),
-                        onOpen = { context.startActivity(Intent(context, VoiceAssistActivity::class.java)) },
-                    ),
-                    HookSubPage(
-                        titleRes = R.string.appearance_cc_brightness,
-                        specs = locationSpecs(specs, PercentLocation.CC_BRIGHTNESS),
-                        onOpen = { context.startActivity(percentStyleIntent(context, PercentLocation.CC_BRIGHTNESS)) },
                     ),
                     HookSubPage(
                         titleRes = R.string.appearance_cc_volume,
@@ -162,23 +122,21 @@ fun FeaturesPageView(
                         onOpen = { context.startActivity(Intent(context, AppVolumeActivity::class.java)) },
                     ),
                     HookSubPage(
-                        titleRes = R.string.section_layout_adjust,
-                        specs = listOf(specByKey(specs, KEY_VOLUME_BAR)),
-                        onOpen = { context.startActivity(Intent(context, LayoutAdjustActivity::class.java)) },
-                        subPages = listOf(
-                            HookSubPage(
-                                titleRes = R.string.volume_bar_section,
-                                specs = volumeBarSpecs(specs),
-                                onOpen = { context.startActivity(Intent(context, VolumeBarActivity::class.java)) },
-                            ),
-                        ),
+                        titleRes = R.string.volume_bar_layout_title,
+                        specs = volumeBarLayoutSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, VolumeBarLayoutActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.aod_section,
+                        specs = aodSpecs(specs),
+                        onOpen = { context.startActivity(Intent(context, AodActivity::class.java)) },
                     ),
                 ),
             ),
             HookSubPage(
-                titleRes = R.string.fast_charge_notify,
-                specs = securityCenterSpecs(specs),
-                onOpen = { context.startActivity(Intent(context, SecurityCenterActivity::class.java)) },
+                titleRes = R.string.feature_system_apps,
+                specs = topBarSpecs(specs),
+                onOpen = { context.startActivity(Intent(context, SystemAppsActivity::class.java)) },
             ),
             HookSubPage(
                 titleRes = R.string.device_connect,
@@ -186,12 +144,22 @@ fun FeaturesPageView(
                 onOpen = { context.startActivity(Intent(context, DeviceConnectActivity::class.java)) },
             ),
             HookSubPage(
-                titleRes = R.string.feature_passkey,
+                titleRes = R.string.section_security_center,
+                specs = securityCenterSpecs(specs),
+                onOpen = { context.startActivity(Intent(context, SecurityCenterActivity::class.java)) },
+            ),
+            HookSubPage(
+                titleRes = R.string.section_voice_assist,
+                specs = listOf(specByKey(specs, KEY_SR_ANIMATION_RADIUS)),
+                onOpen = { context.startActivity(Intent(context, VoiceAssistActivity::class.java)) },
+            ),
+            HookSubPage(
+                titleRes = R.string.section_passkey,
                 specs = passkeySpecs(specs),
                 onOpen = { context.startActivity(Intent(context, PasskeyActivity::class.java)) },
             ),
             HookSubPage(
-                titleRes = R.string.feature_browser,
+                titleRes = R.string.section_browser,
                 specs = browserSpecs(specs),
                 onOpen = { context.startActivity(Intent(context, BrowserActivity::class.java)) },
             ),
@@ -218,12 +186,16 @@ fun FeaturesPageView(
         extraBottomPadding = extraBottomPadding,
         onArrowClick = { spec ->
             when (spec.key) {
-                KEY_APPEARANCE ->
-                    context.startActivity(Intent(context, AppearanceActivity::class.java))
+                KEY_SYSTEM_UI ->
+                    context.startActivity(Intent(context, SystemUiActivity::class.java))
+                KEY_SYSTEM_APPS ->
+                    context.startActivity(Intent(context, SystemAppsActivity::class.java))
                 KEY_SECURITY_CENTER ->
                     context.startActivity(Intent(context, SecurityCenterActivity::class.java))
                 KEY_DEVICE_CONNECT ->
                     context.startActivity(Intent(context, DeviceConnectActivity::class.java))
+                KEY_VOICE_ASSIST ->
+                    context.startActivity(Intent(context, VoiceAssistActivity::class.java))
                 KEY_PASSKEY ->
                     context.startActivity(Intent(context, PasskeyActivity::class.java))
                 KEY_BROWSER ->
@@ -256,13 +228,12 @@ fun FeaturesPageView(
     )
 }
 
-const val KEY_APPEARANCE = "feature_appearance"
+const val KEY_SYSTEM_UI = "feature_system_ui"
+const val KEY_SYSTEM_APPS = "feature_system_apps"
 const val KEY_GLASS = "feature_glass"
-const val KEY_TOP_BAR = "feature_top_bar"
 const val KEY_EXPERIMENTAL = "feature_experimental"
 const val KEY_WEATHER = "feature_weather"
-const val KEY_LAYOUT_ADJUST = "feature_layout_adjust"
-const val KEY_VOLUME_BAR = "feature_volume_bar"
+const val KEY_VOLUME_BAR_LAYOUT = "feature_volume_bar_layout"
 const val KEY_DEVICE_CENTER = "feature_device_center"
 const val KEY_APP_VOLUME = "feature_app_volume"
 const val KEY_DEVICE_CENTER_HIDE_MORE = "device_center_hide_more"
@@ -403,8 +374,8 @@ private fun appVolumeSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, AppVolumeKeys.HIDE_PANEL_BG),
     )
 
-/** 「音量条」二级页内的配置项，用于功能页搜索直达。 */
-private fun volumeBarSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+/** 「音量条布局」二级页内的配置项，用于功能页搜索直达。 */
+private fun volumeBarLayoutSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
         specByKey(specs, VolumeBarKeys.PANEL_BG),
         specByKey(specs, VolumeBarKeys.PANEL_PAD_VERTICAL),
@@ -501,19 +472,19 @@ internal fun featureSpecs(): List<OptionSpec> {
     )
     val specs = mutableListOf(
         OptionSpec(
-            key = KEY_APPEARANCE,
+            key = KEY_SYSTEM_UI,
             type = OptionType.ARROW,
-            titleRes = R.string.feature_appearance,
+            titleRes = R.string.feature_system_ui,
+        ),
+        OptionSpec(
+            key = KEY_SYSTEM_APPS,
+            type = OptionType.ARROW,
+            titleRes = R.string.feature_system_apps,
         ),
         OptionSpec(
             key = KEY_GLASS,
             type = OptionType.ARROW,
             titleRes = R.string.feature_glass,
-        ),
-        OptionSpec(
-            key = KEY_TOP_BAR,
-            type = OptionType.ARROW,
-            titleRes = R.string.section_top_bar,
         ),
         OptionSpec(
             key = KEY_EXPERIMENTAL,
@@ -526,14 +497,9 @@ internal fun featureSpecs(): List<OptionSpec> {
             titleRes = R.string.feature_weather,
         ),
         OptionSpec(
-            key = KEY_LAYOUT_ADJUST,
+            key = KEY_VOLUME_BAR_LAYOUT,
             type = OptionType.ARROW,
-            titleRes = R.string.section_layout_adjust,
-        ),
-        OptionSpec(
-            key = KEY_VOLUME_BAR,
-            type = OptionType.ARROW,
-            titleRes = R.string.volume_bar_section,
+            titleRes = R.string.volume_bar_layout_title,
         ),
         OptionSpec(
             key = KEY_DEVICE_CENTER,
@@ -663,7 +629,7 @@ internal fun featureSpecs(): List<OptionSpec> {
         OptionSpec(
             key = KEY_SECURITY_CENTER,
             type = OptionType.ARROW,
-            titleRes = R.string.fast_charge_notify,
+            titleRes = R.string.section_security_center,
         ),
         OptionSpec(
             key = KEY_FAST_CHARGE_ENTER,
@@ -1021,7 +987,7 @@ internal fun featureSpecs(): List<OptionSpec> {
 
 /** 密码页配置项（通行密钥修复）。 */
 private fun passkeyFeatureSpecs(targets: List<String>): List<OptionSpec> = listOf(
-    OptionSpec(key = KEY_PASSKEY, type = OptionType.ARROW, titleRes = R.string.feature_passkey),
+    OptionSpec(key = KEY_PASSKEY, type = OptionType.ARROW, titleRes = R.string.section_passkey),
     OptionSpec(
         key = PasskeyKeys.MASTER, type = OptionType.SWITCH,
         titleRes = R.string.passkey_master, summaryRes = R.string.passkey_master_summary,
@@ -1052,7 +1018,7 @@ private fun passkeyFeatureSpecs(targets: List<String>): List<OptionSpec> = listO
 
 /** 浏览器页配置项。 */
 private fun browserFeatureSpecs(targets: List<String>): List<OptionSpec> = listOf(
-    OptionSpec(key = KEY_BROWSER, type = OptionType.ARROW, titleRes = R.string.feature_browser),
+    OptionSpec(key = KEY_BROWSER, type = OptionType.ARROW, titleRes = R.string.section_browser),
     OptionSpec(
         key = BrowserKeys.MASTER, type = OptionType.SWITCH,
         titleRes = R.string.browser_master, summaryRes = R.string.browser_master_summary,

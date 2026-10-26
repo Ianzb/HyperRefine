@@ -86,7 +86,7 @@ class WallpaperDarkDimHook : BaseHook() {
                 override fun onLowMemory() {}
             })
         }.onFailure { HookHelper.log("$tag: registerComponentCallbacks failed", it) }
-        runCatching { HookPrefs.registerListener { applyDim(app) } }
+        runCatching { HookPrefs.registerListener { applyDim(app, force = true) } }
             .onFailure { HookHelper.log("$tag: prefs listener unavailable", it) }
         applyDim(app, force = true)
     }

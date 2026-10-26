@@ -316,8 +316,9 @@
  <string name="aod_keep_bottom_icons_summary">息屏时不隐藏锁屏左下角 / 右下角的快捷功能图标，让手电筒、相机等入口在息屏界面依然可见</string>
  <string name="section_wallpaper">壁纸</string>
  <string name="wallpaper_dark_dim">深色模式自动压暗壁纸</string>
- <string name="wallpaper_dark_dim_summary">深色模式下自动压暗壁纸，切回浅色模式时自动恢复</string>
- <string name="wallpaper_dark_dim_amount">压暗程度</string>
+ <string name="wallpaper_dark_dim_summary">深色模式下分别压暗桌面与锁屏壁纸，切回浅色模式时自动恢复</string>
+ <string name="wallpaper_dark_dim_amount">桌面压暗程度</string>
+ <string name="wallpaper_dark_dim_lock_amount">锁屏压暗程度</string>
  <string name="dark_mode_schedule_immediate">定时切换立即生效</string>
  <string name="dark_mode_schedule_immediate_summary">定时深色模式到点后直接切换，不再等待第一次息屏；重启设备生效</string>
  <string name="sr_animation_radius">识屏动画圆角适配</string>

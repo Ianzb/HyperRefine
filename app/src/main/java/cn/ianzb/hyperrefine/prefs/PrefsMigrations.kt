@@ -2,6 +2,7 @@ package cn.ianzb.hyperrefine.prefs
 
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconKeys
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconRegistry
+import cn.ianzb.hyperrefine.hook.systemui.wallpaper.WallpaperDimKeys
 
 /**
  * 一次性配置迁移。应用启动时执行，已执行的迁移由标记键去重，不会重复改写用户配置。
@@ -22,6 +23,7 @@ object PrefsMigrations {
     private const val MARKER_CLOCK_CUSTOM = "migration_clock_custom_switches"
     private const val MARKER_SPEED_STYLE = "migration_speed_style_v2"
     private const val MARKER_SPEED_OPTIONS_V3 = "migration_speed_options_v3"
+    private const val MARKER_WALLPAPER_DIM_LOCK = "migration_wallpaper_dim_lock_amount"
 
     /** 执行所有迁移。 */
     fun run() {
@@ -30,6 +32,7 @@ object PrefsMigrations {
         migrateClockCustomSwitches()
         migrateSpeedStyle()
         migrateSpeedOptionsV3()
+        migrateWallpaperDimLockAmount()
     }
 
     /**
@@ -137,5 +140,19 @@ object PrefsMigrations {
         }
         PrefsStore.remove(StatusBarIconKeys.speedDualArrows(id))
         PrefsStore.put(MARKER_SPEED_OPTIONS_V3, true)
+    }
+
+    /**
+     * 壁纸压暗从单一值拆成桌面 / 锁屏两个值。
+     * 旧安装没有锁屏键时，用当前桌面值补齐，保持升级前后的观感一致；
+     * 用户已经单独设置过锁屏值时不覆盖。
+     */
+    private fun migrateWallpaperDimLockAmount() {
+        if (PrefsStore.getBoolean(MARKER_WALLPAPER_DIM_LOCK, false)) return
+        if (!PrefsStore.getAll().containsKey(WallpaperDimKeys.LOCK_AMOUNT)) {
+            val home = PrefsStore.getFloat(WallpaperDimKeys.AMOUNT, WallpaperDimKeys.DEFAULT_AMOUNT)
+            PrefsStore.put(WallpaperDimKeys.LOCK_AMOUNT, home)
+        }
+        PrefsStore.put(MARKER_WALLPAPER_DIM_LOCK, true)
     }
 }

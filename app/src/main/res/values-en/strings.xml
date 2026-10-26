@@ -316,8 +316,9 @@
  <string name="aod_keep_bottom_icons_summary">Keep the lock-screen shortcuts at the bottom left and right visible on the always-on display, including the flashlight and camera</string>
  <string name="section_wallpaper">Wallpaper</string>
  <string name="wallpaper_dark_dim">Dim wallpaper in dark mode</string>
- <string name="wallpaper_dark_dim_summary">Automatically dim the wallpaper in dark mode and restore it in light mode</string>
- <string name="wallpaper_dark_dim_amount">Dim amount</string>
+ <string name="wallpaper_dark_dim_summary">Dim the home and lock-screen wallpapers separately in dark mode and restore them in light mode</string>
+ <string name="wallpaper_dark_dim_amount">Home dim amount</string>
+ <string name="wallpaper_dark_dim_lock_amount">Lock-screen dim amount</string>
  <string name="dark_mode_schedule_immediate">Apply scheduled switch immediately</string>
  <string name="dark_mode_schedule_immediate_summary">Switch dark mode as soon as the schedule starts instead of waiting for the first screen-off; reboot to apply</string>
  <string name="sr_animation_radius">Match screen-recognition animation corners</string>

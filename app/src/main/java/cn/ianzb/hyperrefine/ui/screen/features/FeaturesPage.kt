@@ -326,6 +326,7 @@ const val KEY_AOD_FULL = AodFullScreenKeepHook.KEY
 const val KEY_AOD_BOTTOM_ICONS = AodBottomIconsHook.KEY
 const val KEY_WALLPAPER_DIM = WallpaperDimKeys.ENABLED
 const val KEY_WALLPAPER_DIM_AMOUNT = WallpaperDimKeys.AMOUNT
+const val KEY_WALLPAPER_DIM_LOCK_AMOUNT = WallpaperDimKeys.LOCK_AMOUNT
 const val KEY_CLIPBOARD_SYNC_BOOST = ConnectKeys.CLIPBOARD_SYNC_BOOST
 const val KEY_SR_ANIMATION_RADIUS = ScreenRecognitionRadiusHook.KEY
 const val KEY_LONG_PRESS_HOME_INTENT_BALL = VoiceAssistKeys.LONG_PRESS_HOME_INTENT_BALL
@@ -852,6 +853,19 @@ internal fun featureSpecs(): List<OptionSpec> {
             type = OptionType.SLIDER,
             titleRes = R.string.wallpaper_dark_dim_amount,
             sliderValueLabelRes = R.string.wallpaper_dark_dim_amount,
+            defaultFloat = WallpaperDimKeys.DEFAULT_AMOUNT,
+            sliderMin = 0f,
+            sliderMax = 100f,
+            sliderStep = 1f,
+            sliderDecimals = 0,
+            targetPackages = systemUi,
+            dependsOn = KEY_WALLPAPER_DIM,
+        ),
+        OptionSpec(
+            key = KEY_WALLPAPER_DIM_LOCK_AMOUNT,
+            type = OptionType.SLIDER,
+            titleRes = R.string.wallpaper_dark_dim_lock_amount,
+            sliderValueLabelRes = R.string.wallpaper_dark_dim_lock_amount,
             defaultFloat = WallpaperDimKeys.DEFAULT_AMOUNT,
             sliderMin = 0f,
             sliderMax = 100f,

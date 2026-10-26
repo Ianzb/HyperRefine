@@ -80,6 +80,9 @@ object HookPrefs {
     fun getFloat(key: String, defaultValue: Float = 0f): Float =
         safe(defaultValue) { it.getFloat(key(key), defaultValue) }
 
+    /** 是否显式写入过该键；用于区分「未设置」与「设置为默认值」。 */
+    fun contains(key: String): Boolean = prefs?.contains(key(key)) == true
+
     fun getStringSet(key: String, defaultValue: Set<String> = emptySet()): Set<String> =
         safe(defaultValue) { it.getStringSet(key(key), defaultValue) ?: defaultValue }
 

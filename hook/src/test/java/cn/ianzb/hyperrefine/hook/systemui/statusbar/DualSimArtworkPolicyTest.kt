@@ -50,6 +50,7 @@ class DualSimArtworkPolicyTest {
         assertTrue(lower.first().bottom - lower.first().top < upper.first().bottom - upper.first().top)
         // Both rows fit a compact silhouette rather than filling the host's tall drawable bounds.
         assertTrue(lower.last().bottom - upper.last().top < 16f)
+        assertTrue(lower.first().top - upper.first().bottom > 1.5f)
         cells.forEach {
             val shortSide = minOf(it.right - it.left, it.bottom - it.top)
             assertTrue(it.radius > shortSide * 0.4f)
@@ -64,13 +65,15 @@ class DualSimArtworkPolicyTest {
         assertTrue(DualSimArtworkPolicy.cells(16f, Float.POSITIVE_INFINITY).isEmpty())
     }
 
-    @Test fun canonicalViewportMatchesTheApprovedNormalSvg() {
+    @Test fun canonicalViewportIsCentredWithClearRowGap() {
         val cells = DualSimArtworkPolicy.cells(16f, 20f)
         assertEquals(0.72f, cells.first().left, 0.00001f)
         assertEquals(2.56f, cells.first().right - cells.first().left, 0.00001f)
-        assertEquals(7.2f, cells[3].top, 0.00001f)
-        assertEquals(17.6448f, cells[4].top, 0.00001f)
-        assertEquals(20f, cells.last().bottom, 0f)
+        assertEquals(3.6f, cells[3].top, 0.00001f)
+        assertEquals(13.8912f, cells[4].top, 0.00001f)
+        assertEquals(16.4f, cells.last().bottom, 0.00001f)
+        assertEquals(10f, (cells[3].top + cells.last().bottom) / 2f, 0.00001f)
+        assertEquals(2.048f, cells[4].top - cells[0].bottom, 0.00001f)
     }
 
     @Test fun aspectChangesScaleUniformlyWithoutMorphingTheBarsOrCorners() {
@@ -83,7 +86,9 @@ class DualSimArtworkPolicyTest {
                 assertEquals((before.bottom - before.top) * scale, after.bottom - after.top, 0.00001f)
                 assertEquals(before.radius * scale, after.radius, 0.00001f)
             }
-            assertEquals(height, cells.last().bottom, 0.00001f)
+            assertEquals(height / 2f, (cells[3].top + cells.last().bottom) / 2f, 0.00001f)
+            val offsetY = (height - 20f * scale) / 2f
+            assertEquals(offsetY + 16.4f * scale, cells.last().bottom, 0.00001f)
         }
     }
 

@@ -33,14 +33,16 @@ internal object DualSimArtworkPolicy {
         if (!width.isFinite() || !height.isFinite() || width <= 0f || height <= 0f) return emptyList()
         val scale = min(width / VIEWPORT_WIDTH, height / VIEWPORT_HEIGHT)
         val offsetX = (width - VIEWPORT_WIDTH * scale) / 2f
-        val offsetY = height - VIEWPORT_HEIGHT * scale
+        val offsetY = (height - VIEWPORT_HEIGHT * scale) / 2f
         val step = VIEWPORT_WIDTH / CELL_COUNT
         val barWidth = step * 0.64f
+        // Keep the whole two-row artwork optically centred in the status-bar slot. The old
+        // bottom-anchored geometry sat ~3.6dp too low and left only ~1.1dp between the rows.
         val artworkHeight = min(VIEWPORT_HEIGHT * 0.72f, VIEWPORT_WIDTH * 0.80f)
-        val artworkTop = VIEWPORT_HEIGHT - artworkHeight
-        val bottomHeight = min(artworkHeight * 0.24f, barWidth * 0.92f)
-        val bottomTop = VIEWPORT_HEIGHT - bottomHeight
-        val upperBaseline = bottomTop - artworkHeight * 0.09f
+        val artworkTop = (VIEWPORT_HEIGHT - artworkHeight) / 2f
+        val bottomHeight = min(artworkHeight * 0.22f, barWidth * 0.98f)
+        val bottomTop = VIEWPORT_HEIGHT - artworkTop - bottomHeight
+        val upperBaseline = bottomTop - artworkHeight * 0.16f
         val upperHeight = upperBaseline - artworkTop
         val cells = (0 until CELL_COUNT).map { column ->
             val left = column * step + (step - barWidth) / 2f
@@ -50,7 +52,7 @@ internal object DualSimArtworkPolicy {
         } + (0 until CELL_COUNT).map { column ->
             val left = column * step + (step - barWidth) / 2f
             val radius = min(barWidth, bottomHeight) * 0.48f
-            Cell(1, column, left, bottomTop, left + barWidth, VIEWPORT_HEIGHT, radius)
+            Cell(1, column, left, bottomTop, left + barWidth, bottomTop + bottomHeight, radius)
         }
         return cells.map { it.copy(left = offsetX + it.left * scale, top = offsetY + it.top * scale,
             right = offsetX + it.right * scale, bottom = offsetY + it.bottom * scale, radius = it.radius * scale) }

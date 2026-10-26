@@ -33,4 +33,14 @@ object HookStatusContract {
 
     /** 本进程已成功安装的配置键集合（`ArrayList<String>`）。 */
     const val EXTRA_INSTALLED_KEYS = "installed_keys"
+
+    /**
+     * 本进程实际尝试安装的配置键集合（`ArrayList<String>`，含成功与失败）。
+     *
+     * App 侧用它区分「目标进程已启动但该功能未生效」与「目标进程尚未回报」。
+     */
+    const val EXTRA_EVALUATED_KEYS = "evaluated_keys"
+
+    /** 本进程安装失败的配置键集合（`ArrayList<String>`）。 */
+    const val EXTRA_FAILED_KEYS = "failed_keys"
 }

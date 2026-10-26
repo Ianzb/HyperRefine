@@ -25,6 +25,8 @@ import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 object HookStatusReporter {
 
     private val installedKeys = LinkedHashSet<String>()
+    private val evaluatedKeys = LinkedHashSet<String>()
+    private val failedKeys = LinkedHashSet<String>()
 
     @Volatile
     private var pendingSource: Pair<String, String>? = null
@@ -38,19 +40,36 @@ object HookStatusReporter {
     @Volatile
     private var deferredRetryScheduled = false
 
+    /** 记录一个本进程实际尝试安装的配置键（无论成功或失败）。 */
+    @Synchronized
+    fun markEvaluated(key: String) {
+        if (key.isNotBlank()) evaluatedKeys.add(key)
+    }
+
     /** 记录一个已成功安装的配置键。 */
     @Synchronized
     fun markInstalled(key: String) {
-        if (key.isNotBlank()) installedKeys.add(key)
+        if (key.isBlank()) return
+        evaluatedKeys.add(key)
+        failedKeys.remove(key)
+        installedKeys.add(key)
+    }
+
+    /** 记录一个安装失败的配置键，用于 App 侧显示「不可用」。 */
+    @Synchronized
+    fun markFailed(key: String) {
+        if (key.isBlank()) return
+        evaluatedKeys.add(key)
+        if (key !in installedKeys) failedKeys.add(key)
     }
 
     /**
-     * 合并上报当前进程已安装的配置键；无已安装键时静默跳过。
+     * 合并上报当前进程尝试安装的配置键；无任何尝试时静默跳过。
      */
     @Synchronized
     fun flush(sourcePackage: String, sourceProcess: String) {
         pendingSource = sourcePackage to sourceProcess
-        if (installedKeys.isEmpty()) return
+        if (evaluatedKeys.isEmpty()) return
         val context = currentApplication() ?: systemContext()
         if (context != null) {
             reportIfPending(context)
@@ -63,6 +82,8 @@ object HookStatusReporter {
     @Synchronized
     fun reset() {
         installedKeys.clear()
+        evaluatedKeys.clear()
+        failedKeys.clear()
         reported = false
     }
 
@@ -90,8 +111,15 @@ object HookStatusReporter {
     @Synchronized
     private fun reportIfPending(context: Context) {
         val source = pendingSource ?: return
-        if (reported || installedKeys.isEmpty()) return
-        report(context, source.first, source.second, ArrayList(installedKeys))
+        if (reported || evaluatedKeys.isEmpty()) return
+        report(
+            context = context,
+            sourcePackage = source.first,
+            sourceProcess = source.second,
+            installed = ArrayList(installedKeys),
+            evaluated = ArrayList(evaluatedKeys),
+            failed = ArrayList(failedKeys),
+        )
         reported = true
     }
 
@@ -99,7 +127,9 @@ object HookStatusReporter {
         context: Context,
         sourcePackage: String,
         sourceProcess: String,
-        keys: ArrayList<String>,
+        installed: ArrayList<String>,
+        evaluated: ArrayList<String>,
+        failed: ArrayList<String>,
     ) {
         try {
             val intent = Intent(HookStatusContract.ACTION_HOOKS_ACTIVE)
@@ -112,7 +142,9 @@ object HookStatusReporter {
                 .putExtra(HookStatusContract.EXTRA_SOURCE_PACKAGE, sourcePackage)
                 .putExtra(HookStatusContract.EXTRA_SOURCE_PROCESS, sourceProcess)
                 .putExtra(HookStatusContract.EXTRA_MODULE_VERSION, moduleVersionCode(context))
-                .putStringArrayListExtra(HookStatusContract.EXTRA_INSTALLED_KEYS, keys)
+                .putStringArrayListExtra(HookStatusContract.EXTRA_INSTALLED_KEYS, installed)
+                .putStringArrayListExtra(HookStatusContract.EXTRA_EVALUATED_KEYS, evaluated)
+                .putStringArrayListExtra(HookStatusContract.EXTRA_FAILED_KEYS, failed)
                 .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES or Intent.FLAG_RECEIVER_FOREGROUND)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
@@ -123,7 +155,9 @@ object HookStatusReporter {
             } else {
                 context.sendBroadcast(intent)
             }
-            HookHelper.log("hook status reported: keys=$keys @ $sourceProcess")
+            HookHelper.log(
+                "hook status reported: installed=$installed failed=$failed @ $sourceProcess"
+            )
         } catch (t: Throwable) {
             HookHelper.log("hook status report failed @ $sourceProcess", t)
         }

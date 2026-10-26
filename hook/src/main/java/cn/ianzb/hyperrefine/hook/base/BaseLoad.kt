@@ -66,6 +66,8 @@ abstract class BaseLoad {
 
     private fun install(hook: BaseHook) {
         val target = currentTarget ?: return
+        val keys = hook.keys
+        keys.forEach { HookStatusReporter.markEvaluated(it) }
         try {
             if (hook.useDexKit()) {
                 hook.dexKitInitInProgress = true
@@ -76,26 +78,31 @@ abstract class BaseLoad {
                 }
                 if (!ok) {
                     HookHelper.log("${hook.tag} skipped: initDexKit returned false")
+                    keys.forEach { HookStatusReporter.markFailed(it) }
                     return
                 }
             }
             val variant = hook.apply(target)
             HookHelper.log("${hook.tag} hook success${variant?.let { " [$it]" } ?: ""} @ ${target.packageName}")
-            hook.keys.forEach { HookStatusReporter.markInstalled(it) }
+            keys.forEach { HookStatusReporter.markInstalled(it) }
         } catch (t: HookSkippedException) {
             // 版本 / 设备筛选未命中属于主动跳过。
             HookHelper.log("${hook.tag} skipped @ ${target.packageName}: ${t.message}")
+            keys.forEach { HookStatusReporter.markFailed(it) }
         } catch (t: Throwable) {
             HookHelper.log("${hook.tag} hook failed @ ${target.packageName}", t)
+            keys.forEach { HookStatusReporter.markFailed(it) }
         }
     }
 
     private fun installNative(hook: BaseNativeHook) {
         val target = currentTarget ?: return
+        HookStatusReporter.markEvaluated(hook.key)
         if (hook.versionGate != null || !hook.deviceScope.isNullOrEmpty()) {
             val context = VersionContext.of(target.packageName, target.appVersionName, target.appVersionCode)
             if (!hook.appliesTo(context)) {
                 HookHelper.log("${hook.key} skipped @ ${target.packageName}: gate not matched | $context")
+                HookStatusReporter.markFailed(hook.key)
                 return
             }
         }
@@ -108,8 +115,11 @@ abstract class BaseLoad {
         if (ok) {
             HookHelper.log("native hook loaded: ${hook.libraryName} @ ${target.packageName}")
             HookStatusReporter.markInstalled(hook.key)
-        } else if (hook.required) {
-            HookHelper.log("native hook required but not loaded: ${hook.libraryName}")
+        } else {
+            if (hook.required) {
+                HookHelper.log("native hook required but not loaded: ${hook.libraryName}")
+            }
+            HookStatusReporter.markFailed(hook.key)
         }
     }
 }

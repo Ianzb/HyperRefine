@@ -948,6 +948,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = R.string.voice_assist_ime_global_material_summary,
             defaultBoolean = false,
             targetPackages = listOf(VoiceAssistImeKeys.PKG_VOICE_ASSIST_IME),
+            showStatus = true,
         ),
         OptionSpec(
             key = KEY_VOICE_ASSIST,
@@ -1439,6 +1440,7 @@ private fun ccRadiusSpecs(systemUi: List<String>): List<OptionSpec> = buildList 
             summaryRes = R.string.cc_radius_master_summary,
             defaultBoolean = false,
             targetPackages = systemUi,
+            showStatus = true,
         )
     )
     add(
@@ -1560,6 +1562,7 @@ private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = list
         defaultBoolean = false,
         targetPackages = systemUi,
         dependsOn = AppVolumeKeys.ENTRY,
+        showStatus = true,
     ),
     OptionSpec(
         key = AppVolumeKeys.AUTO_SHOW,

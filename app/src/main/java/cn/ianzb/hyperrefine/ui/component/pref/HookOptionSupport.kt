@@ -3,11 +3,13 @@ package cn.ianzb.hyperrefine.ui.component.pref
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import cn.ianzb.hyperrefine.hook.device.DeviceContext
 import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.prefs.OptionRegistry
 import cn.ianzb.hyperrefine.prefs.OptionSpec
+import cn.ianzb.hyperrefine.xposed.HookStatus
 import cn.ianzb.hyperrefine.xposed.HookStatusStore
 import cn.ianzb.hyperrefine.xposed.XposedServiceManager
 
@@ -69,14 +71,26 @@ fun rememberOptionEnabled(spec: OptionSpec): Boolean =
     rememberDependencyEnabled(spec) && rememberDeviceScopeEnabled(spec)
 
 /**
- * 该配置键是否已在目标进程生效（由目标进程广播回报，App 侧按版本 + 开机号作用域持久化）。
+ * 该配置项在当前版本 / 当前开机内的四态状态。
  *
- * 读取 [HookStatusStore.state]，目标进程重新回报后自动刷新。
+ * 读取 [HookStatusStore.snapshot]；目标进程重新回报后自动刷新。
+ * 灰色「不可用」只表示 UI 前置条件不满足：作用域未勾选，或设备形态不在白名单内。
+ * 条件满足后才看目标进程回报：有成功记录为「已生效」，已回报但无成功记录为「未生效」，
+ * 完全没回报为「等待启动」。安装失败不再单独显示灰色。
  */
 @Composable
-fun rememberHookApplied(key: String): Boolean {
-    val applied by HookStatusStore.state.collectAsState()
-    return key in applied
+fun rememberHookStatus(spec: OptionSpec): HookStatus {
+    val snapshot by HookStatusStore.snapshot.collectAsState()
+    val grantedScope = XposedServiceManager.scope
+    val deviceSupported = rememberDeviceScopeEnabled(spec)
+    val scopeGranted = spec.targetPackages.isEmpty() || spec.targetPackages.all { it in grantedScope }
+    // 订阅快照 / 作用域 / 设备形态以触发重组；状态判定统一走 statusFor，避免 UI 与存储两套规则漂移。
+    return remember(snapshot, spec, deviceSupported, scopeGranted) {
+        when {
+            !deviceSupported || !scopeGranted -> HookStatus.UNAVAILABLE
+            else -> HookStatusStore.statusFor(spec.key, spec.targetPackages)
+        }
+    }
 }
 
 /**

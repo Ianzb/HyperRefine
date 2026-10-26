@@ -78,6 +78,8 @@
     <string name="module_status_root_hint">Root access not granted. App restart and other root-dependent features are unavailable.</string>
     <string name="hook_status_applied">Active</string>
     <string name="hook_status_not_applied">Inactive</string>
+    <string name="hook_status_waiting">Waiting</string>
+    <string name="hook_status_unavailable">Unavailable</string>
     <string name="module_scope">Scope</string>
     <string name="module_scope_count">Apps in scope: %d</string>
     <string name="module_scope_request">Request Scope for All Target Apps</string>

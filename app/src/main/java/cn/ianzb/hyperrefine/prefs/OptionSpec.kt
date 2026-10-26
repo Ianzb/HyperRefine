@@ -17,7 +17,7 @@ import cn.ianzb.hyperrefine.hook.device.DeviceType
  * @param entryValues 与 [entryResIds] 对应的取值
  * @param targetPackages 依赖的目标包（用于作用域申请）
  * @param deviceScope 设备形态白名单（手机 / 平板 / 折叠屏）；为空表示各设备通用。非白名单设备上组件**禁用不隐藏**，改动设备类型后实时生效
- * @param showStatus 是否在副标题末尾展示 Hook 生效状态（「已生效 / 未生效」，来自目标进程回报）
+ * @param showStatus 是否在标题后展示四态 Hook 徽标：「不可用」由作用域 / 设备形态判定，「等待启动 / 已生效 / 未生效」来自目标进程回报
  * @param dependsOn 依赖的配置键；为空表示无依赖
  * @param dependsOnValue 依赖键需要等于该布尔值时才启用
  * @param dependsOnValues 非空时改为比较依赖键的字符串值，命中任一值才启用

@@ -471,7 +471,7 @@ data class OptionSpec(
     val entryValues: List<String> = emptyList(),
     val targetPackages: List<String> = emptyList(),
     val deviceScope: Set<DeviceType>? = null,   // 设备形态白名单；空 = 各设备通用（非白名单设备禁用不隐藏）
-    val showStatus: Boolean = false,            // 副标题展示 Hook 生效状态（已生效 / 未生效）
+    val showStatus: Boolean = false,            // 标题后展示四态 Hook 徽标（等待启动 / 已生效 / 未生效 / 不可用）
     val dependsOn: String? = null,              // 依赖键（绑定机制）
     val dependsOnValue: Boolean = true,
     val masterKey: String? = null,              // 滑块主开关键
@@ -501,7 +501,7 @@ data class OptionSpec(
 | `sliderUnitRes` / `sliderValueLabelRes` | SLIDER | `sliderUnitRes`=数值**右侧**单位；`sliderValueLabelRes`=数值**左侧**标签。**两者都不设时**标题才会显示在滑块外面，详见下文「`HookSliderCard` 细则」 |
 | `targetPackages` | 全部 | 目标包，用于作用域申请 |
 | `deviceScope` | 全部 | 设备形态白名单（`PHONE` / `PAD` / `FOLD`）；非白名单设备上组件**禁用灰显不隐藏**，更改「当前设备类型」后实时刷新。空 = 各设备通用 |
-| `showStatus` | SWITCH / CHECKBOX | 在副标题末尾展示该键在目标进程的 Hook 生效状态（见 [4.5 Hook 生效状态](#45-hook-生效状态广播回报)），目标进程重启后刷新；仅在功能已启用且开关打开时展示 |
+| `showStatus` | SWITCH / CHECKBOX | 在标题后展示该键的四态徽标（见 [4.5 Hook 生效状态](#45-hook-生效状态四态徽标)），目标进程重启后刷新；仅在功能已启用且开关打开时展示 |
 
 ### 3.2 `OptionRegistry`
 
@@ -672,44 +672,75 @@ object SafeModeReader {
 - `XposedEntry.onPackageReady` 与 `onSystemServerStarting` 均已接入，避免系统应用反复崩溃导致无法开机。
 - 作用域页会标注「安全模式」并提供一键恢复（`SafeModeReader.reset`）。
 
-### 4.5 Hook 生效状态（广播回报）
+### 4.5 Hook 生效状态（四态徽标）
 
-判断某功能「是否真的在目标进程装上了 Hook」不能靠读远程偏好（Hook 侧只读）或「模块已启用」来猜，而应由**被注入的目标进程主动回报**。
+判断某功能「是否真的在目标进程装上了 Hook」不能靠读远程偏好（Hook 侧只读）或「模块已启用」来猜，而应由**被注入的目标进程主动回报**。App 侧把回报归一为四种状态，并在选项标题后显示 Miuix `Badge`：
+
+| 状态 | 含义 | 颜色 |
+|---|---|---|
+| `WAITING` | 目标进程尚未回报（通常是还没启动），或开关刚变更、尚未重新回报 | 黄色「等待启动」 |
+| `APPLIED` | 目标进程明确回报该键安装成功 | 绿色「已生效」 |
+| `NOT_APPLIED` | 目标进程已回报，但没有该键的成功记录（安装失败 / 被跳过也归入此类） | 红色「未生效」 |
+| `UNAVAILABLE` | UI 前置条件不满足：作用域未勾选，或设备形态不在 `deviceScope` 白名单内 | 灰色「不可用」 |
+
+「不可用」只由 App 侧的作用域 / 设备形态判断，**不再**依赖目标进程回报。安装失败仍然是「进程已回报但没装上」，应显示红色「未生效」，不能显示灰色。
 
 **Hook 侧（`:hook`，包 `...hook.status`）**
 
 ```kotlin
 object HookStatusReporter {
-    fun markInstalled(key: String)                            // BaseLoad 安装成功后自动调用
-    fun flush(sourcePackage: String, sourceProcess: String)   // 由 XposedEntry 在全部 Load 完成后调用
+    fun markEvaluated(key: String)                            // BaseLoad 开始尝试安装前调用
+    fun markInstalled(key: String)                            // 安装成功后调用
+    fun markFailed(key: String)                               // 安装失败 / 跳过时调用
+    fun flush(sourcePackage: String, sourceProcess: String)   // XposedEntry 在全部 Load 完成后调用
 }
 ```
 
-- `BaseLoad` 在每条 hook **安装成功后** `markInstalled(hook.key)`；`XposedEntry` 在本包全部 Load 完成后统一 `flush(...)` 一次（每个进程一次广播，多 Load 不会互相顶掉）；无安装则自动跳过。
-- `flush` 通过 `ActivityThread.currentApplication()` 反射取目标进程 Application 作为发送上下文（不额外 hook `Application.attach`，减小失败面），把本进程已安装的键**合并为一次定向广播** `ACTION_HOOKS_ACTIVE` 发往 App。
+- `BaseLoad` 对每条启用 hook 先 `markEvaluated(hook.key)`，成功再 `markInstalled`，异常 `markFailed`；`XposedEntry` 在本包全部 Load 完成后统一 `flush(...)` 一次（每个进程一次广播，多 Load 不会互相顶掉）；无尝试则自动跳过。
+- `flush` 通过 `ActivityThread.currentApplication()` 反射取目标进程 Application 作为发送上下文；若此时 Application 尚未就绪，则挂起 `Application.attach` 并在就绪后补发一次，把本进程的 `applied` / `failed` / `evaluated` **合并为一次定向广播** `ACTION_HOOKS_ACTIVE` 发往 App。广播失败时保留待发队列，下次 `flush` 重试。
 - Android 16+ 开启 `BroadcastOptions.setShareIdentityEnabled(true)`，使 App 侧可校验发送者 UID；协议常量见 `HookStatusContract`。
 
 **App 侧（`:app`，包 `...xposed`）**
 
 ```kotlin
+enum class HookStatus { WAITING, APPLIED, NOT_APPLIED, UNAVAILABLE }
+
+data class HookStatusSnapshot(
+    val applied: Set<String> = emptySet(),
+    val pending: Set<String> = emptySet(),
+    val reportedPackages: Set<String> = emptySet(),
+)
+
 object HookStatusStore {
-    val state: StateFlow<Set<String>>   // 当前生效的配置键集合（Compose 可观察）
+    val snapshot: StateFlow<HookStatusSnapshot>   // Compose 只订阅这一个 Flow
     fun initialize(context: Context)
-    fun isApplied(key: String): Boolean
-    fun record(context: Context, keys: Collection<String>)
+    fun statusFor(key: String, targetPackages: Collection<String>): HookStatus
+    fun record(
+        context: Context,
+        applied: Collection<String>,
+        failed: Collection<String>,
+        evaluated: Collection<String>,
+        sourcePackage: String,
+    )
     fun removeKeys(context: Context, keys: Collection<String>)
     fun clear(context: Context)
 }
 
 @Composable
-fun rememberHookApplied(key: String): Boolean   // 见 5.3
+fun rememberHookStatus(spec: OptionSpec): HookStatus   // 见 5.3
 ```
 
-- `HookStatusReceiver` 校验：动作匹配 → 发送者身份可用（`sentFromUid`）→ `getPackagesForUid` 含来源包 → 模块 `versionCode` 一致（0 视为未知放行）→ 上报键为 App 已声明键子集。任一不满足即拒绝。
+- `HookStatusReceiver` 校验：动作匹配 → 发送者身份可用（`sentFromUid`）→ `getPackagesForUid` 含来源包 → 模块 `versionCode` 一致（0 视为未知放行）→ `evaluated` 非空且上报键均为 App 已声明键。任一不满足即拒绝。
+- `HookStatusStore.statusFor()` 只负责「等待 / 已生效 / 未生效」；「不可用」由 `rememberHookStatus()` 在 UI 层先判断作用域与 `deviceScope`，再决定是否查询存储。`record()` 中的 `failed` 键会从成功集合移除，后续按「未生效」展示。
 - `HookStatusStore` 使用 **device-protected** 偏好，按 `versionCode` + `Settings.Global.BOOT_COUNT` 作用域：旧版本 / 上一次开机的证据自动丢弃。
-- **优化点**：不依赖系统签名级 `INTERACT_ACROSS_USERS` 权限（普通模块即可用），改用发送者 UID → 包集合校验防伪造；上报为**键集合**而非定长位掩码，天然支持任意数量与多进程功能合并。
-- 开关变更时卡片会 `removeKeys` 清除旧证据，需**重启目标进程**才会再次回报并显示「已生效」（libxposed 无法热卸载已注册的 hook）。
-- 卡片只在功能可用且开关打开时显示生效状态；设备不支持（`deviceScope` 不匹配）或开关关闭时，不展示历史「已生效」证据，避免误导。
+- **优化点**：不依赖系统签名级 `INTERACT_ACROSS_USERS` 权限（普通模块即可用），改用发送者 UID → 包集合校验防伪造；上报为 `applied` / `failed` / `evaluated` 键集合而非定长位掩码，天然支持任意数量与多进程功能合并。
+- 开关变更时卡片会 `removeKeys` 清除旧证据并把该键放入 `pending`，因此立即回到「等待启动」，需**重启目标进程**才会再次回报（libxposed 无法热卸载已注册的 hook）；目标进程回报后 `pending` 自动清除。
+- 卡片显示规则：作用域未勾选或 `deviceScope` 不匹配时，无论开关状态都直接显示灰色「不可用」；前置条件满足时，开关打开才显示「等待 / 已生效 / 未生效」，开关关闭不展示历史证据。
+- **多目标限制**：一个选项声明多个 `targetPackages` 时，只要任一目标包回报，键又不在该包 `applied` / `failed` 中，就会显示「未生效」；四态协议目前按键而不是按「键 + 包」存储。
+- 徽标由 `HookSwitchCard` / `HookCheckboxCard` 渲染；滑块、下拉、跳转等值型选项没有独立的「安装成功」语义，不显示生效状态。
+- 全量核对 145 个 `OptionSpec`：没有非开关类型声明 `showStatus`；剩余未声明的开关中，只有具备独立 `BaseHook` / 上报键的功能才能安全接入，子选项若与父 Hook 共用安装点则不应单独声明，否则会永久「未生效」。
+
+**文案与颜色约定**：四种徽标文案固定为 `等待启动` / `已生效` / `未生效` / `不可用`，资源键为 `hook_status_waiting` / `hook_status_applied` / `hook_status_not_applied` / `hook_status_unavailable`；红 / 黄 / 绿 / 灰的亮色与暗色值集中定义在 `HookStatusBadge.kt`，组件使用 Miuix `Badge` 渲染，禁止在其它卡片内散落十六进制色值。
 
 ---
 
@@ -761,7 +792,7 @@ fun rememberHookApplied(key: String): Boolean   // 见 5.3
 @Composable fun rememberDeviceScopeEnabled(spec: OptionSpec): Boolean
 @Composable fun rememberDependencyEnabled(spec: OptionSpec): Boolean
 @Composable fun rememberOptionEnabled(spec: OptionSpec): Boolean
-@Composable fun rememberHookApplied(key: String): Boolean
+@Composable fun rememberHookStatus(spec: OptionSpec): HookStatus
 @Composable fun hookSectionTitle(section: HookSection): String
 fun ensureScopeFor(spec: OptionSpec)
 ```
@@ -770,6 +801,7 @@ fun ensureScopeFor(spec: OptionSpec)
 - `rememberDeviceScopeEnabled`：设备形态是否在 `spec.deviceScope` 白名单内；未声明白名单（null / 空）视为各设备通用。
 - `rememberDependencyEnabled`：根据 `spec.dependsOn` / `spec.dependsOnValue` 返回是否启用。
 - `rememberOptionEnabled`：**统一的组件可用性判定** = `rememberDependencyEnabled && rememberDeviceScopeEnabled`。所有 Hook 卡片以它作为 `enabled`，从而让设备独占功能在非白名单设备上**禁用灰显而不隐藏**。
+- `rememberHookStatus`：读取 `HookStatusStore.snapshot`，按 `spec.key` / `spec.targetPackages` 返回四态；目标进程重新回报后自动刷新。渲染约定见 [4.5](#45-hook-生效状态四态徽标)。
 - `hookSectionTitle`：渲染分区标题；默认仅 `titleRes`，`titleEn` 非空时拼成 `中文（English）`（仅示例 / API 展示用，实际功能页应省略 `titleEn`）。
 - `ensureScopeFor`：为 `spec.targetPackages` 中未授权的包申请作用域。
 

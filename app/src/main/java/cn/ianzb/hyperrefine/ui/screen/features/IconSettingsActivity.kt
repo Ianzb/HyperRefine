@@ -279,6 +279,7 @@ class IconSettingsActivity : BaseSubPageActivity() {
         titleRes = R.string.sb_icon_custom,
         summaryRes = R.string.sb_icon_custom_summary,
         targetPackages = listOf(StatusBarKeys.TARGET),
+        showStatus = true,
     )
 
     private fun layoutSpecs(id: String): List<OptionSpec> {

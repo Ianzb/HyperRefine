@@ -79,6 +79,7 @@
 | `statusbar_icon_clock_pattern_horizontal` | String | 系统时间 + 日期/星期（中间带空格） | 横屏时钟格式；可改为任意 `SimpleDateFormat` |
 | `statusbar_icon_clock_pattern_pad` | String | 系统日期格式 | 平板日期“月份 日期 星期”格式；仅平板入口 |
 | `statusbar_icon_clock_refresh` | Boolean | false | 强制 1s ticker；格式含秒时也会自动开启 |
+| `statusbar_icon_clock_am_pm` | Boolean | false | 把中文时段（上午/下午等）替换为 AM/PM；对系统与自定义格式都生效 |
 | `statusbar_icon_clock_lock_width` | Boolean | false | 是否固定状态栏时钟宽度 |
 | `statusbar_icon_clock_width` | Int | 60 | 固定宽度 dp，20..240；开关关闭时不写入布局 |
 | `statusbar_icon_<id>_speed_unit` | String | `native` | `native` / `mb`；旧 `hide_unit` 仍按隐藏单位读取 |
@@ -110,7 +111,7 @@
 2. 唯一显示入口：**“显示条件”** 下拉菜单；所有条件在同一互斥列表中，使用 `OverlayDropdownPreference`，不再创建独立 Window。
 3. **布局**：上下偏移、左右间距、大小缩放、不透明度；含文字组件有“修改字重”开关 + 100..900（步长 10）滑条；紧接着是“修改字号”开关 + 滑条，时间与网速位置一致；时间/网速有对齐。
 4. 组件专属：
-   - 时间：状态栏、通知中心大/小标题、控制中心、横屏五个格式；每个格式先显示“自定义格式”开关，开启后才启用下方格式卡片；卡片默认值就是当前系统格式，不再显示“留空跟随系统”的副标题；1s 刷新；锁定时钟宽度开关 + 20..240dp 滑条（默认 60dp）；右上角官方格式说明入口。格式输入使用 `WindowDialog` 弹窗。
+   - 时间：状态栏、通知中心大/小标题、控制中心、横屏五个格式；每个格式先显示“自定义格式”开关，开启后才启用下方格式卡片；卡片默认值就是当前系统格式，不再显示“留空跟随系统”的副标题；12 小时制的“上午/下午”等中文时段可单独开关替换为 AM/PM，对系统与自定义格式都生效；1s 刷新；锁定时钟宽度开关 + 20..240dp 滑条（默认 60dp）；右上角官方格式说明入口。格式输入使用 `WindowDialog` 弹窗。
    - 平板日期：作为独立左侧图标行；同样先开关后格式卡片，默认填入系统日期/星期格式。
    - 横屏默认格式由系统时间格式 + `getBestDateTimePattern("EMMMd")` 组成，并在日期与星期之间补一个空格；通知中心小标题、控制中心、平板日期的默认值读取同一日期/星期语法。
    - 闹钟：显示条件选“闹钟前显示”后，同页 0..72 小时滑条控制阈值。

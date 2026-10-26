@@ -621,6 +621,8 @@
     <string name="sb_clock_pattern_pad">Tablet date/weekday format</string>
     <string name="sb_clock_refresh">Refresh clock every second</string>
     <string name="sb_clock_refresh_summary">Runs a 1s ticker for registered clocks; turns on automatically when a pattern includes seconds, or force it on</string>
+    <string name="sb_clock_am_pm">Show Chinese periods as AM/PM</string>
+    <string name="sb_clock_am_pm_summary">Replaces “上午/下午” and other Chinese period words with AM/PM; 24-hour text has no period word</string>
     <string name="sb_clock_lock_width">Lock status bar clock width</string>
     <string name="sb_clock_lock_width_summary">Keep a fixed width so seconds do not shift right-side icons</string>
     <string name="sb_clock_width">Status bar clock width</string>

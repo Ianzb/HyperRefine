@@ -42,6 +42,9 @@ object StatusBarIconKeys {
     const val CLOCK_PATTERN_CONTROL_CENTER = "${PREFIX}clock_pattern_control_center"
     const val CLOCK_PATTERN_HORIZONTAL = "${PREFIX}clock_pattern_horizontal"
 
+    /** 把系统或自定义格式中的中文时段替换为 AM/PM；24 小时制文本不含时段词。 */
+    const val CLOCK_AM_PM = "${PREFIX}clock_am_pm"
+
     /** 平板时间右侧的月份/日期/星期，仅在平板显示入口。 */
     const val CLOCK_PATTERN_PAD = "${PREFIX}clock_pattern_pad"
 

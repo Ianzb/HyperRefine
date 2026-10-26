@@ -621,6 +621,8 @@
     <string name="sb_clock_pattern_pad">平板日期/星期格式</string>
     <string name="sb_clock_refresh">每秒刷新时钟</string>
     <string name="sb_clock_refresh_summary">用 1s ticker 驱动已注册时钟；格式含秒时自动开启，也可强制开启</string>
+    <string name="sb_clock_am_pm">中文时段显示为 AM/PM</string>
+    <string name="sb_clock_am_pm_summary">把系统或自定义格式中的“上午/下午”等时段替换为 AM/PM；24 小时制文本不含时段词</string>
     <string name="sb_clock_lock_width">锁定状态栏时钟宽度</string>
     <string name="sb_clock_lock_width_summary">固定宽度，避免秒数变化推动右侧图标</string>
     <string name="sb_clock_width">状态栏时钟宽度</string>

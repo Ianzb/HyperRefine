@@ -1040,9 +1040,25 @@ internal object StatusBarIconRuntime {
     fun clockText(context: Context, viewId: Int): CharSequence? {
         if (!HookPrefs.getBoolean(StatusBarIconKeys.ENABLED, false)) return null
         val pattern = clockPattern(context, viewId) ?: return null
-        return runCatching {
-            SimpleDateFormat(normalizeClockPattern(pattern), Locale.getDefault()).format(Date())
-        }.getOrNull()
+        return withClockAmPm(
+            runCatching {
+                SimpleDateFormat(normalizeClockPattern(pattern), Locale.getDefault()).format(Date())
+            }.getOrNull(),
+        )
+    }
+
+    /**
+     * 中文时段是宿主 DateFormat 的输出，无法只靠 SimpleDateFormat 格式控制。
+     * 自定义格式和原生格式最终都经过这里，保证两种路径行为一致。
+     */
+    fun withClockAmPm(text: CharSequence?): CharSequence? {
+        if (!HookPrefs.getBoolean(StatusBarIconKeys.CLOCK_AM_PM, false)) return text
+        return ClockAmPm.replace(text)
+    }
+
+    fun applyClockAmPm(view: TextView) {
+        val replaced = withClockAmPm(view.text) ?: return
+        if (!TextUtils.equals(view.text, replaced)) view.text = replaced
     }
 
     private fun clockPattern(context: Context, viewId: Int): String? {
@@ -2359,6 +2375,7 @@ internal object StatusBarIconRuntime {
                     if (!TextUtils.equals(clock.text, original)) clock.text = original
                 }
                 runCatching { Reflect.callMethod(clock, "updateTime") }
+                applyClockAmPm(clock)
             }
             applyClockLockWidth(clock)
         }

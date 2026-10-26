@@ -195,16 +195,18 @@ class IconSettingsActivity : BaseSubPageActivity() {
                         includePad = supportsPad,
                         includeHorizontal = supportsHorizontalClock,
                     )
+                    val amPm = clockAmPmSpec()
                     val align = alignSpec(id)
                     val refresh = clockRefreshSpec()
                     val width = clockWidthSpec()
                     HookSectionCard(
                         HookSection(
                             titleRes = R.string.sb_icon_clock,
-                            specs = patterns + align + refresh + width,
+                            specs = patterns + amPm + align + refresh + width,
                         ),
                     ) {
                         patterns.forEach { spec -> HookTextCard(spec) }
+                        HookSwitchCard(amPm)
                         HookOverlayDropdownCard(align)
                         HookSwitchCard(refresh)
                         HookSliderCard(width)
@@ -526,6 +528,15 @@ class IconSettingsActivity : BaseSubPageActivity() {
         dependsOn = StatusBarIconKeys.ENABLED,
         masterKey = StatusBarIconKeys.clockCustom(key),
         masterTitleRes = R.string.sb_clock_custom,
+    )
+
+    private fun clockAmPmSpec() = OptionSpec(
+        key = StatusBarIconKeys.CLOCK_AM_PM,
+        type = OptionType.SWITCH,
+        titleRes = R.string.sb_clock_am_pm,
+        summaryRes = R.string.sb_clock_am_pm_summary,
+        targetPackages = listOf(StatusBarKeys.TARGET),
+        dependsOn = StatusBarIconKeys.ENABLED,
     )
 
     private fun clockRefreshSpec() = OptionSpec(

@@ -314,6 +314,10 @@ class StatusBarIconHook : BaseHook() {
                         val text = StatusBarIconRuntime.clockText(view.context, view.id)
                         if (text != null) {
                             param.setResultValue(text)
+                        } else {
+                            param.setResultValue(
+                                StatusBarIconRuntime.withClockAmPm(param.result as? CharSequence),
+                            )
                         }
                         if (view is android.widget.TextView) {
                             StatusBarIconRuntime.registerClock(view)
@@ -333,6 +337,7 @@ class StatusBarIconHook : BaseHook() {
                         StatusBarIconRuntime.rememberClockText(view)
                         StatusBarIconRuntime.applyClockWeight(view)
                         StatusBarIconRuntime.clockText(view.context, view.id)?.let { view.text = it }
+                        StatusBarIconRuntime.applyClockAmPm(view)
                         StatusBarIconRuntime.applyClockLockWidth(view)
                     }
                 }

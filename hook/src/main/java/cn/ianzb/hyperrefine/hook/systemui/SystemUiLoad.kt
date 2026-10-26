@@ -9,6 +9,7 @@ import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcMaterialGateHook
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusHook
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
+import cn.ianzb.hyperrefine.hook.systemui.wallpaper.LockGlassDimHook
 import cn.ianzb.hyperrefine.hook.systemui.wallpaper.WallpaperDarkDimHook
 import cn.ianzb.hyperrefine.hook.systemui.wallpaper.WallpaperDimKeys
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.HideWifiActivityHook
@@ -62,6 +63,8 @@ class SystemUiLoad : BaseLoad() {
         initHook(SideGlassMirrorHook(), HookPrefs.getBoolean(CcGlassKeys.MASTER, false))
         initHook(CcMaterialGateHook(), HookPrefs.getBoolean(CcGlassKeys.THEME_MATERIAL, false))
         initHook(WallpaperDarkDimHook(), HookPrefs.getBoolean(WallpaperDimKeys.ENABLED, false))
+        // 常驻：锁屏玻璃的压暗跟随系统壁纸压暗开关/滑条实时变化，不要求重启 SystemUI。
+        initHook(LockGlassDimHook(), true)
         // 总开关开启，或任一组件的单项自定义开启，即挂载圆角 hook
         // （总开关关闭时单项自定义仍生效，未自定义的组件保持系统默认）。
         val radiusEnabled = HookPrefs.getBoolean(CcRadiusKeys.MASTER, false) ||

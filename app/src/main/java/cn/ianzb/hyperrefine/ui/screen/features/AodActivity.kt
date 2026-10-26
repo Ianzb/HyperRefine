@@ -33,6 +33,7 @@ class AodActivity : BaseSubPageActivity() {
         val aodSection = HookSection(
             titleRes = R.string.aod_section,
             specs = listOf(
+                featureSpec(KEY_WALLPAPER_DIM_GLASS),
                 featureSpec(KEY_AOD_FULL),
                 featureSpec(KEY_AOD_BATTERY),
                 featureSpec(KEY_AOD_BOTTOM_ICONS),

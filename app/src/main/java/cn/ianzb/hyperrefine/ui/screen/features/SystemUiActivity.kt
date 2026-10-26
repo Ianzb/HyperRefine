@@ -67,6 +67,11 @@ class SystemUiActivity : BaseSubPageActivity() {
             titleRes = R.string.section_lock_aod,
             specs = listOf(
                 featureSpec(KEY_AOD),
+            ),
+        )
+        val notificationSection = HookSection(
+            titleRes = R.string.notifications_title,
+            specs = listOf(
                 featureSpec(KEY_NOTIFICATIONS),
             ),
         )
@@ -79,7 +84,7 @@ class SystemUiActivity : BaseSubPageActivity() {
         val darkModeSection = HookSection(
             titleRes = R.string.section_dark_mode,
             specs = listOf(
-                featureSpec(KEY_DARK_MODE_SCHEDULE),
+                featureSpec(KEY_DARK_MODE),
             ),
         )
         // 分屏 / 多分屏等窗口能力单独成页；改动需重启系统界面生效。
@@ -117,6 +122,8 @@ class SystemUiActivity : BaseSubPageActivity() {
                     context.startActivity(Intent(context, NotificationsActivity::class.java))
                 KEY_WALLPAPER ->
                     context.startActivity(Intent(context, WallpaperActivity::class.java))
+                KEY_DARK_MODE ->
+                    context.startActivity(Intent(context, DarkModeActivity::class.java))
                 KEY_WINDOW_MANAGER ->
                     context.startActivity(Intent(context, WindowManagerActivity::class.java))
             }
@@ -142,6 +149,7 @@ class SystemUiActivity : BaseSubPageActivity() {
                 controlCenterSection,
                 volumeSection,
                 lockAodSection,
+                notificationSection,
                 wallpaperSection,
                 darkModeSection,
                 windowSection,

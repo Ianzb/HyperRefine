@@ -32,10 +32,7 @@ class WallpaperActivity : BaseSubPageActivity() {
         val scrollBehavior = LocalSubPageScrollBehavior.current
         val wallpaperSection = HookSection(
             titleRes = R.string.section_wallpaper,
-            specs = listOf(
-                featureSpec(KEY_WALLPAPER_DIM),
-                featureSpec(KEY_WALLPAPER_DIM_AMOUNT),
-            ),
+            specs = wallpaperSpecs(featureSpecs()),
         )
         LazyColumn(
             modifier = Modifier

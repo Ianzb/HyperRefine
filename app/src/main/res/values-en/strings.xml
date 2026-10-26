@@ -319,6 +319,8 @@
  <string name="wallpaper_dark_dim_summary">Dim the home and lock-screen wallpapers separately in dark mode and restore them in light mode</string>
  <string name="wallpaper_dark_dim_amount">Home dim amount</string>
  <string name="wallpaper_dark_dim_lock_amount">Lock-screen dim amount</string>
+ <string name="wallpaper_dark_dim_glass">Dim AOD glass too</string>
+ <string name="wallpaper_dark_dim_glass_summary">Dim the glass behind the AOD clock and notifications</string>
  <string name="dark_mode_schedule_immediate">Apply scheduled switch immediately</string>
  <string name="dark_mode_schedule_immediate_summary">Switch dark mode as soon as the schedule starts instead of waiting for the first screen-off; reboot to apply</string>
  <string name="sr_animation_radius">Match screen-recognition animation corners</string>

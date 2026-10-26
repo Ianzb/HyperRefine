@@ -90,7 +90,7 @@ fun FeaturesPageView(
                     specByKey(specs, KEY_AOD),
                     specByKey(specs, KEY_NOTIFICATIONS),
                     specByKey(specs, KEY_WALLPAPER),
-                    specByKey(specs, KEY_DARK_MODE_SCHEDULE),
+                    specByKey(specs, KEY_DARK_MODE),
                     specByKey(specs, KEY_WINDOW_MANAGER),
                 ),
                 onOpen = { context.startActivity(Intent(context, SystemUiActivity::class.java)) },
@@ -159,6 +159,11 @@ fun FeaturesPageView(
                         titleRes = R.string.section_wallpaper,
                         specs = wallpaperSpecs(specs),
                         onOpen = { context.startActivity(Intent(context, WallpaperActivity::class.java)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.section_dark_mode,
+                        specs = listOf(specByKey(specs, KEY_DARK_MODE_SCHEDULE)),
+                        onOpen = { context.startActivity(Intent(context, DarkModeActivity::class.java)) },
                     ),
                     HookSubPage(
                         titleRes = R.string.feature_window_manager,
@@ -319,6 +324,7 @@ const val KEY_BROWSER = "feature_browser"
 const val KEY_NETWORK = "feature_network"
 const val KEY_AOD = "feature_aod"
 const val KEY_WALLPAPER = "feature_wallpaper"
+const val KEY_DARK_MODE = "feature_dark_mode"
 const val KEY_DARK_MODE_SCHEDULE = DarkModeScheduleKeys.IMMEDIATE
 const val KEY_FIVE_G = FiveGSwitchHook.KEY
 const val KEY_AOD_BATTERY = AodBatteryStyleHook.KEY
@@ -327,6 +333,7 @@ const val KEY_AOD_BOTTOM_ICONS = AodBottomIconsHook.KEY
 const val KEY_WALLPAPER_DIM = WallpaperDimKeys.ENABLED
 const val KEY_WALLPAPER_DIM_AMOUNT = WallpaperDimKeys.AMOUNT
 const val KEY_WALLPAPER_DIM_LOCK_AMOUNT = WallpaperDimKeys.LOCK_AMOUNT
+const val KEY_WALLPAPER_DIM_GLASS = WallpaperDimKeys.GLASS_ENABLED
 const val KEY_CLIPBOARD_SYNC_BOOST = ConnectKeys.CLIPBOARD_SYNC_BOOST
 const val KEY_SR_ANIMATION_RADIUS = ScreenRecognitionRadiusHook.KEY
 const val KEY_LONG_PRESS_HOME_INTENT_BALL = VoiceAssistKeys.LONG_PRESS_HOME_INTENT_BALL
@@ -437,16 +444,18 @@ private fun networkSpecs(specs: List<OptionSpec>): List<OptionSpec> =
 /** 「息屏」二级页内的配置项，用于功能页搜索直达。 */
 private fun aodSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
+        specByKey(specs, KEY_WALLPAPER_DIM_GLASS),
         specByKey(specs, KEY_AOD_BATTERY),
         specByKey(specs, KEY_AOD_FULL),
         specByKey(specs, KEY_AOD_BOTTOM_ICONS),
     )
 
 /** 「壁纸」二级页内的配置项，用于功能页搜索直达。 */
-private fun wallpaperSpecs(specs: List<OptionSpec>): List<OptionSpec> =
+internal fun wallpaperSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
         specByKey(specs, KEY_WALLPAPER_DIM),
         specByKey(specs, KEY_WALLPAPER_DIM_AMOUNT),
+        specByKey(specs, KEY_WALLPAPER_DIM_LOCK_AMOUNT),
     )
 
 /** 多应用音量二级页内的配置项，用于功能页搜索直达。 */
@@ -873,6 +882,21 @@ internal fun featureSpecs(): List<OptionSpec> {
             sliderDecimals = 0,
             targetPackages = systemUi,
             dependsOn = KEY_WALLPAPER_DIM,
+        ),
+        OptionSpec(
+            key = KEY_WALLPAPER_DIM_GLASS,
+            type = OptionType.SWITCH,
+            titleRes = R.string.wallpaper_dark_dim_glass,
+            summaryRes = R.string.wallpaper_dark_dim_glass_summary,
+            defaultBoolean = true,
+            targetPackages = systemUi,
+            dependsOn = KEY_WALLPAPER_DIM,
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_DARK_MODE,
+            type = OptionType.ARROW,
+            titleRes = R.string.section_dark_mode,
         ),
         OptionSpec(
             key = KEY_DARK_MODE_SCHEDULE,

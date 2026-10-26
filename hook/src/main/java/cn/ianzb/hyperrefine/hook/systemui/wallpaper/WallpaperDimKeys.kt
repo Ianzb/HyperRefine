@@ -10,6 +10,9 @@ object WallpaperDimKeys {
     /** 总开关。 */
     const val ENABLED = "wallpaper_dark_dim"
 
+    /** 锁屏 / AOD 玻璃是否跟随压暗。 */
+    const val GLASS_ENABLED = "wallpaper_dark_dim_glass"
+
     /** 桌面压暗程度（0–100，滑条以 Float 存储）。 */
     const val AMOUNT = "wallpaper_dark_dim_amount"
 

@@ -319,6 +319,8 @@
  <string name="wallpaper_dark_dim_summary">深色模式下分别压暗桌面与锁屏壁纸，切回浅色模式时自动恢复</string>
  <string name="wallpaper_dark_dim_amount">桌面压暗程度</string>
  <string name="wallpaper_dark_dim_lock_amount">锁屏压暗程度</string>
+ <string name="wallpaper_dark_dim_glass">息屏玻璃跟随压暗</string>
+ <string name="wallpaper_dark_dim_glass_summary">同步压暗息屏时钟与通知的玻璃背景</string>
  <string name="dark_mode_schedule_immediate">定时切换立即生效</string>
  <string name="dark_mode_schedule_immediate_summary">定时深色模式到点后直接切换，不再等待第一次息屏；重启设备生效</string>
  <string name="sr_animation_radius">识屏动画圆角适配</string>

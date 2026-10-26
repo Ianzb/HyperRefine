@@ -9,6 +9,7 @@ const val KEY_NOTIFICATIONS = "feature_notifications"
 
 internal fun notificationFeatureSpecs(): List<OptionSpec> {
     val labels = listOf(
+        Triple(NotificationKeys.GROUP_SWIPE_CLIP, R.string.notification_group_swipe_clip, R.string.notification_group_swipe_clip_summary),
         Triple(NotificationKeys.KEEP_ON_LOCKSCREEN, R.string.notification_keep, R.string.notification_keep_summary),
         Triple(NotificationKeys.ALLOW_LOCKSCREEN, R.string.notification_lockscreen, R.string.notification_lockscreen_summary),
         Triple(NotificationKeys.ALLOW_FLOAT, R.string.notification_float, R.string.notification_float_summary),

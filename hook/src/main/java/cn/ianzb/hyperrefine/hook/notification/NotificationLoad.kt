@@ -12,6 +12,10 @@ class NotificationLoad : BaseLoad() {
         when {
             target.isSystemServer -> initHook(NotificationBlockabilityHook(), enabled(NotificationKeys.ALLOW_EDIT))
             target.processName == NotificationKeys.SYSTEM_UI -> {
+                initHook(
+                    NotificationGroupSwipeClipHook(),
+                    HookPrefs.getBoolean(NotificationKeys.GROUP_SWIPE_CLIP, false),
+                )
                 initHook(KeepLockscreenNotificationsHook(), enabled(NotificationKeys.KEEP_ON_LOCKSCREEN))
                 initHook(AllowLockscreenNotificationsHook(), enabled(NotificationKeys.ALLOW_LOCKSCREEN))
                 initHook(AllowFloatingNotificationsHook(), enabled(NotificationKeys.ALLOW_FLOAT))

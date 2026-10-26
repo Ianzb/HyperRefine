@@ -1,6 +1,8 @@
 <resources>
     <string name="notifications_title">Notifications</string>
     <string name="notification_section">Notification controls</string>
+    <string name="notification_group_swipe_clip">Notification group swipe clipping</string>
+    <string name="notification_group_swipe_clip_summary">Keep a group child visible while swiping it past the group edge</string>
     <string name="notification_keep">Keep notifications on the lock screen</string>
     <string name="notification_keep_summary">Show notifications that have not been dismissed when locking again after unlocking</string>
     <string name="notification_lockscreen">Remove lock screen notification restrictions</string>

@@ -9,13 +9,14 @@ object NotificationKeys {
     const val IMPORTANCE = "notification_importance"
     const val DISABLE_FOLD = "notification_disable_fold"
     const val REMOVE_LIMIT = "notification_remove_limit"
+    const val GROUP_SWIPE_CLIP = "notification_group_swipe_clip"
 
     const val SYSTEM_UI = "com.android.systemui"
     const val SETTINGS = "com.android.settings"
     const val SYSTEM = "system"
 
     val ALL = listOf(KEEP_ON_LOCKSCREEN, ALLOW_LOCKSCREEN, ALLOW_FLOAT, ALLOW_EDIT,
-        IMPORTANCE, DISABLE_FOLD, REMOVE_LIMIT)
+        IMPORTANCE, DISABLE_FOLD, REMOVE_LIMIT, GROUP_SWIPE_CLIP)
 
     fun targets(key: String): List<String> = when (key) {
         ALLOW_EDIT -> listOf(SYSTEM_UI, SETTINGS, SYSTEM)

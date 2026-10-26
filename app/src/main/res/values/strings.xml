@@ -1,6 +1,8 @@
 <resources>
     <string name="notifications_title">通知</string>
     <string name="notification_section">通知控制</string>
+    <string name="notification_group_swipe_clip">通知组侧滑裁切</string>
+    <string name="notification_group_swipe_clip_summary">通知组内子通知侧滑时，不再被通知组边缘裁切</string>
     <string name="notification_keep">通知留在锁屏</string>
     <string name="notification_keep_summary">解锁后再次锁屏时，仍显示尚未清除的通知</string>
     <string name="notification_lockscreen">强制允许锁屏通知</string>

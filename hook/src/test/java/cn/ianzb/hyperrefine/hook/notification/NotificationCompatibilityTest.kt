@@ -97,6 +97,6 @@ class NotificationCompatibilityTest {
             NotificationKeys.targets(NotificationKeys.ALLOW_EDIT).toSet())
         assertEquals(listOf(NotificationKeys.SYSTEM_UI, NotificationKeys.SETTINGS),
             NotificationKeys.targets(NotificationKeys.IMPORTANCE))
-        assertEquals(7, NotificationKeys.ALL.distinct().size)
+        assertEquals(8, NotificationKeys.ALL.distinct().size)
     }
 }

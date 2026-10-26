@@ -177,7 +177,7 @@ class LockGlassDimHook : BaseHook() {
             return 0
         }
         if (!HookPrefs.getBoolean(WallpaperDimKeys.ENABLED, false)) return 0
-        if (!HookPrefs.getBoolean(WallpaperDimKeys.GLASS_ENABLED, true)) return 0
+        if (!HookPrefs.getBoolean(WallpaperDimKeys.GLASS_ENABLED, false)) return 0
         if (!isNight()) return 0
         val amount = if (HookPrefs.contains(WallpaperDimKeys.LOCK_AMOUNT)) {
             amount(WallpaperDimKeys.LOCK_AMOUNT)

@@ -888,7 +888,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             type = OptionType.SWITCH,
             titleRes = R.string.wallpaper_dark_dim_glass,
             summaryRes = R.string.wallpaper_dark_dim_glass_summary,
-            defaultBoolean = true,
+            defaultBoolean = false,
             targetPackages = systemUi,
             dependsOn = KEY_WALLPAPER_DIM,
             showStatus = true,

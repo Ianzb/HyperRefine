@@ -1,6 +1,7 @@
 package cn.ianzb.hyperrefine.hook.systemui.wallpaper
 
 import android.app.Application
+import android.app.KeyguardManager
 import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.res.Configuration
@@ -79,6 +80,7 @@ class WallpaperDarkDimHook : BaseHook() {
     private fun attach(app: Application) {
         if (!attached.add(app)) return
         hookConfigChanged(app)
+        hookKeyguardState(app)
         runCatching {
             app.registerComponentCallbacks(object : ComponentCallbacks {
                 override fun onConfigurationChanged(newConfig: Configuration) = applyDim(app, force = true)
@@ -120,17 +122,58 @@ class WallpaperDarkDimHook : BaseHook() {
     }
 
     /**
+     * 锁屏 / 解锁时重新下发当前应使用的压暗值。
+     *
+     * system_server 侧按 `DisplayConnector` 拆分是最准确的方案，但 system_server 的 hook 需要
+     * 重启后才注入；这里同时按锁屏状态切换公开接口的写入值，保证未重启时锁屏滑条也不会失效。
+     */
+    private fun hookKeyguardState(app: Application) {
+        val cls = Reflect.findClassIfExists(KEYGUARD_STATE_CONTROLLER, app.classLoader) ?: run {
+            HookHelper.log("$tag: $KEYGUARD_STATE_CONTROLLER not found")
+            return
+        }
+        val method = cls.declaredMethods.firstOrNull {
+            it.name == "notifyKeyguardState" &&
+                it.parameterTypes.contentEquals(arrayOf(Boolean::class.javaPrimitiveType, Boolean::class.javaPrimitiveType))
+        } ?: run {
+            HookHelper.log("$tag: notifyKeyguardState not found")
+            return
+        }
+        method.isAccessible = true
+        runCatching {
+            HookHelper.hookAfter(method) { param ->
+                applyDim(
+                    app,
+                    force = true,
+                    keyguardOverride = param.args.getOrNull(0) as? Boolean,
+                )
+            }
+        }.onFailure { HookHelper.log("$tag: hook keyguard state failed", it) }
+    }
+
+    private fun isKeyguardLocked(context: Context): Boolean = runCatching {
+        context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
+    }.getOrDefault(false)
+
+    /**
      * 按当前深浅色状态与配置计算并写入压暗值。
      *
      * @param force 为 true 时忽略「值未变化」的短路，强制重写一次（配置变化 / 首次挂载时
      * 需要，避免系统其它逻辑把壁纸压暗值改掉后不再恢复）。
+     * @param keyguardOverride 来自 `notifyKeyguardState` 的最新状态；为空时回退到
+     * `KeyguardManager.isKeyguardLocked`。
      */
-    private fun applyDim(context: Context, force: Boolean = false) {
+    private fun applyDim(context: Context, force: Boolean = false, keyguardOverride: Boolean? = null) {
         runCatching {
             val enabled = HookPrefs.getBoolean(WallpaperDimKeys.ENABLED, false)
             val amount = if (enabled) {
-                HookPrefs.getFloat(WallpaperDimKeys.AMOUNT, WallpaperDimKeys.DEFAULT_AMOUNT)
-                    .coerceIn(0f, 100f) / 100f
+                val locked = keyguardOverride ?: isKeyguardLocked(context)
+                val value = if (locked && HookPrefs.contains(WallpaperDimKeys.LOCK_AMOUNT)) {
+                    HookPrefs.getFloat(WallpaperDimKeys.LOCK_AMOUNT, WallpaperDimKeys.DEFAULT_AMOUNT)
+                } else {
+                    HookPrefs.getFloat(WallpaperDimKeys.AMOUNT, WallpaperDimKeys.DEFAULT_AMOUNT)
+                }
+                value.coerceIn(0f, 100f) / 100f
             } else {
                 0f
             }
@@ -172,5 +215,7 @@ class WallpaperDarkDimHook : BaseHook() {
 
     companion object {
         private const val WALLPAPER_MANAGER = "android.app.WallpaperManager"
+        private const val KEYGUARD_STATE_CONTROLLER =
+            "com.android.systemui.statusbar.policy.KeyguardStateControllerImpl"
     }
 }

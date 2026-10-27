@@ -57,6 +57,7 @@ class AppVolumeEntryHook : BaseHook() {
 
     // 插件资源 / 类（loadPlugin 时解析）
     private var idDnd = 0
+    private var idRinger = 0
     private var idBlur = 0
     private var idIcon = 0
     private var layoutRingerButton = 0
@@ -72,7 +73,17 @@ class AppVolumeEntryHook : BaseHook() {
 
     override fun init() {
         // 本 hook 同时实现「入口常显」，据实上报其生效状态。
-        HookStatusReporter.markInstalled(AppVolumeKeys.ALWAYS_SHOW)
+        HookStatusReporter.markInstalled(AppVolumeKeys.ENTRY_VISIBILITY)
+        HookPrefs.registerListener {
+            entries.keys.toList().forEach { parent ->
+                parent.post {
+                    applyOfficialVisibility(parent, findDndRoot(parent))
+                    lastController?.let { controller ->
+                        findEntry(parent)?.let { updateVisibility(controller, it) }
+                    }
+                }
+            }
+        }
         val systemCl = target.classLoader ?: return
         PluginLoader.register(key, systemCl) { pluginCl ->
             loadPlugin(pluginCl)
@@ -96,10 +107,11 @@ class AppVolumeEntryHook : BaseHook() {
     private fun resolveResources(context: Context) {
         if (idDnd != 0) return
         idDnd = resolveId(context, "dnd_layout")
+        idRinger = resolveId(context, "ringer_layout")
         idBlur = resolveId(context, "bg_blur")
         idIcon = resolveId(context, "icon")
         layoutRingerButton = resolveRes(context, "miui_ringer_mode_layout", "layout")
-        HookHelper.log("$tag: ids dnd=$idDnd blur=$idBlur icon=$idIcon layout=$layoutRingerButton")
+        HookHelper.log("$tag: ids dnd=$idDnd ringer=$idRinger blur=$idBlur icon=$idIcon layout=$layoutRingerButton")
     }
 
     private fun resolveId(context: Context, name: String): Int {
@@ -177,6 +189,7 @@ class AppVolumeEntryHook : BaseHook() {
             inflated
         }
         joinAnimator(animator, entry)
+        applyOfficialVisibility(parent, dnd)
         lastController?.let { updateVisibility(it, entry) }
     }
 
@@ -406,7 +419,10 @@ class AppVolumeEntryHook : BaseHook() {
         runCatching {
             val ringer = findRinger(controller) ?: return
             val entry = findEntry(ringer) ?: return
-            (entry.parent as? ViewGroup)?.let { parent -> parent.post { syncDivider(parent) } }
+            (entry.parent as? ViewGroup)?.let { parent ->
+                applyOfficialVisibility(parent, findDndRoot(parent))
+                parent.post { syncDivider(parent) }
+            }
             if (!HookPrefs.getBoolean(key, false)) {
                 applyEntryState(entry, false)
                 shiftPanel(entry, false)
@@ -464,6 +480,9 @@ class AppVolumeEntryHook : BaseHook() {
      * 注入时拷贝到的还是初始值，故需在布局后及状态回调里再次同步尺寸。
      */
     private val dividerSyncAttached = WeakHashMap<ViewGroup, Boolean>()
+
+    /** 两个官方按钮都隐藏时临时收紧外层上边距；记住原值以便恢复。 */
+    private val originalOuterTopMargins = WeakHashMap<View, Int>()
 
     /** 每帧同步分隔尺寸，直到入口销毁；保证与官方分隔（其高度随状态变化）始终一致。 */
     private fun attachDividerSync(parent: ViewGroup) {
@@ -542,6 +561,84 @@ class AppVolumeEntryHook : BaseHook() {
         return lastParent
     }
 
+    /** 侧边条里的官方静音 / 铃声按钮根（模块入口复用同一个布局，必须排除）。 */
+    private fun findRingerSibling(parent: ViewGroup): View? {
+        if (idRinger != 0) {
+            val byId = parent.findViewById<View>(idRinger)
+            if (byId != null && byId.tag != TAG_ENTRY) return byId
+        }
+        for (i in 0 until parent.childCount) {
+            val child = parent.getChildAt(i)
+            if (child.tag == TAG_ENTRY) continue
+            if (child.javaClass.name.contains("MiuiRingerModeLayout")) return child
+        }
+        return null
+    }
+
+    /**
+     * 隐藏官方静音 / 勿扰按钮，并移除两个按钮之间的分隔占位。
+     *
+     * 用 `GONE` 而不是 `INVISIBLE`：用户要求隐藏后上方图标整体下移、
+     * 不留下空槽位；同时隐藏分隔 View，避免剩余按钮之间多出一段间距。
+     */
+    private fun applyOfficialVisibility(parent: ViewGroup, dnd: View?) {
+        val hideRinger = HookPrefs.getBoolean(AppVolumeKeys.HIDE_RINGER, false)
+        val hideDnd = HookPrefs.getBoolean(AppVolumeKeys.HIDE_DND, false)
+        val ringer = findRingerSibling(parent)
+        ringer?.visibility = if (hideRinger) View.GONE else View.VISIBLE
+        dnd?.visibility = if (hideDnd) View.GONE else View.VISIBLE
+        val dividerAnchor = dnd ?: ringer
+        if (dividerAnchor != null) {
+            siblingDivider(parent, dividerAnchor)
+                ?.visibility = if (hideRinger || hideDnd) View.GONE else View.VISIBLE
+        }
+        applyBothHiddenSpacing(parent, hideRinger && hideDnd)
+    }
+
+    /**
+     * 隐藏按钮时分隔线与外层间距的同步。
+     *
+     * 这里**不再**把外层 `topMargin` 收紧到 0：侧边音量条保持展开时，官方 motion 不会重跑，
+     * 只改 margin 会让入口与音量条之间立即贴死；重新打开面板时官方重新布局才恢复间距，
+     * 表现为「隐藏静音和勿扰后间距消失，重开才有效果」。保留官方上边距，让实时切换与重开一致。
+     *
+     * 仍恢复旧版本可能留下的 0 margin，避免升级后已有面板继续贴死。
+     */
+    private fun applyBothHiddenSpacing(parent: ViewGroup, bothHidden: Boolean) {
+        runCatching {
+            val entryVisible = findEntry(parent)?.visibility == View.VISIBLE
+            findTaggedChild(parent, TAG_DIVIDER)?.visibility =
+                if (entryVisible && !bothHidden) View.VISIBLE else View.GONE
+
+            val state = parent.parent as? View
+            val outer = state?.parent as? View
+            outer?.let { view ->
+                val original = originalOuterTopMargins.remove(view) ?: return@let
+                val lp = view.layoutParams as? ViewGroup.MarginLayoutParams ?: return@let
+                if (lp.topMargin != original) {
+                    lp.topMargin = original
+                    view.layoutParams = lp
+                }
+            }
+            // 入口可见时，让展开态容器按实际子项高度自适应；隐藏任意数量都成立。
+            if (findEntry(parent)?.visibility == View.VISIBLE) {
+                ensureExpandedRingerHeight(parent)
+            }
+        }.onFailure { HookHelper.log("$tag: applyBothHiddenSpacing failed", it) }
+    }
+
+    /**
+     * 展开态下入口可能和 0~2 个官方按钮同时存在，固定 36dp 装不下。
+     * 只把高度改成 `WRAP_CONTENT`，不记录/恢复旧值：收起态由官方 motion 重新设置。
+     */
+    private fun ensureExpandedRingerHeight(parent: ViewGroup) {
+        val state = parent.parent as? View ?: return
+        val lp = state.layoutParams ?: return
+        if (lp.height == ViewGroup.LayoutParams.WRAP_CONTENT) return
+        lp.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        state.layoutParams = lp
+    }
+
     private fun ancestorOfType(view: View, cls: Class<*>?): Any? {
         val type = cls ?: return null
         var parent: ViewParent? = view.parent
@@ -563,16 +660,66 @@ class AppVolumeEntryHook : BaseHook() {
     private fun shiftPanel(entry: View, visible: Boolean) {
         val parent = entry.parent as? ViewGroup ?: return
         val panel = findVolumeDialog(entry) ?: return
-        val extra = runCatching {
-            val entryHeight = if (entry.height > 0) {
-                entry.height
+        val ringer = findRingerSibling(parent)
+        val dnd = findDndRoot(parent)
+        val ringerVisible = ringer?.visibility != View.GONE
+        val dndVisible = dnd?.visibility != View.GONE
+        val anyOfficialVisible = ringerVisible || dndVisible
+        val clone = findTaggedChild(parent, TAG_DIVIDER)
+        // 入口消失或官方按钮全部隐藏时，入口前的分隔线没有下文，必须一并收起；
+        // 否则「隐藏入口」会留下一条悬空分隔线，也会污染高度差。
+        clone?.visibility = if (visible && anyOfficialVisible) View.VISIBLE else View.GONE
+
+        // 以原生「两个官方按钮 + 一条分隔线 + 上边距」为基准，计算当前可见内容的净高度差。
+        // 不能只加「入口高度」：隐藏一个官方按钮会正好抵消入口增高，隐藏两个则会缩短面板；
+        // 只有净差才能同时覆盖隐藏 0/1/2 个官方按钮、以及入口自身显示/隐藏的组合。
+        val delta = runCatching {
+            val rowHeight = sequenceOf(ringer, dnd)
+                .mapNotNull { view -> view?.takeIf { it.height > 0 }?.height }
+                .firstOrNull()
+                ?: resolveDimen(
+                    entry.resources,
+                    entry.context.packageName,
+                    "o3_miui_ringer_btn_height",
+                    entry.context.dp(48),
+                )
+            // 入口可能比官方按钮高（含描边/内边距），必须用自身高度，不能用官方行高替代。
+            val entryHeight = if (visible) {
+                entry.takeIf { it.height > 0 }?.height ?: rowHeight
             } else {
-                resolveDimen(entry.resources, entry.context.packageName, "o3_miui_ringer_btn_height", entry.context.dp(48))
+                0
             }
-            val dividerHeight = findTaggedChild(parent, TAG_DIVIDER)?.height ?: 0
-            entryHeight + dividerHeight
+            val cloneDividerHeight = clone
+                ?.takeIf { it.visibility != View.GONE }
+                ?.height ?: 0
+            val officialDivider = (dnd ?: ringer)?.let { siblingDivider(parent, it) }
+                ?.takeIf { it !== clone && it.visibility != View.GONE }
+            val dividerHeight = sequenceOf(cloneDividerHeight, officialDivider?.height ?: 0)
+                .firstOrNull { it > 0 }
+                ?: resolveDimen(
+                    entry.resources,
+                    entry.context.packageName,
+                    "miui_volume_ringer_divider_height",
+                    entry.context.dp(14),
+                )
+            val outer = (parent.parent as? View)?.parent as? View
+            val currentMargin = (outer?.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin ?: 0
+            val baselineMargin = originalOuterTopMargins[outer]
+                ?: currentMargin.takeIf { it > 0 }
+                ?: resolveDimen(
+                    entry.resources,
+                    entry.context.packageName,
+                    "miui_volume_footer_margin_top",
+                    entry.context.dp(10),
+                )
+            val officialRows = (if (ringerVisible) 1 else 0) + (if (dndVisible) 1 else 0)
+            val dividers = (if (ringerVisible && dndVisible) dividerHeight else 0) +
+                (if (visible && anyOfficialVisible) dividerHeight else 0)
+            val currentHeight = officialRows * rowHeight + entryHeight + dividers + currentMargin
+            // 原生基准含两个官方按钮、官方分隔线和上边距。
+            val nativeHeight = 2 * rowHeight + dividerHeight + baselineMargin
+            currentHeight - nativeHeight
         }.getOrDefault(0)
-        if (extra <= 0) return
         val landscape = entry.resources.configuration.orientation ==
             android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val balanceKey = if (landscape) {
@@ -580,12 +727,19 @@ class AppVolumeEntryHook : BaseHook() {
         } else {
             VolumeBarKeys.AUTO_BALANCE_PORTRAIT
         }
-        // 自动平衡：显示入口时上移「多出高度的一半」，保持整条音量条平均高度不变；
-        // 关闭后不平移，高度 / 位置保持原样。
+        // 自动平衡：按净高度差的一半平移，保持整条音量条平均高度不变；
+        // 隐藏按钮使面板变矮时向下补，显示入口使面板变高时向上让。
         val autoBalance = HookPrefs.getBoolean(balanceKey, true)
         // 平移落点取整到物理像素：整条内容做非整数像素平移时会被 GPU 重采样，
         // 观感即「整条渲染分辨率下降 / 发虚」，因此半高度为奇数时向上取整。
-        val target = if (visible && autoBalance) -((extra + 1) / 2).toFloat() else 0f
+        // 三个按钮全隐藏时没有任何可平衡的内容，保持音量条原位，避免整条下坠。
+        val hasVisibleButton = visible || anyOfficialVisible
+        val half = if (hasVisibleButton) {
+            if (delta >= 0) (delta + 1) / 2 else -((-delta + 1) / 2)
+        } else {
+            0
+        }
+        val target = if (autoBalance && half != 0) -half.toFloat() else 0f
         // 平移**整个窗口内容**（`mVolumePanelView`：对话框 `MiuiVolumeDialogView` 的父容器）：
         // 它与音量条对话框、悬浮百分比（`miui_super_volume_*`）并列包含在同一父容器下，
         // 只有平移该父容器才能让二者一起移动，避免只移动对话框导致悬浮百分比错位。
@@ -678,6 +832,7 @@ class AppVolumeEntryHook : BaseHook() {
         if (lastVisible[entry] != true) return
         // 清掉上一次淡出挂的结束动作，避免复用时在本次动画结束时误收起入口。
         entry.animate().alpha(1f).withEndAction(null).setDuration(FADE_DURATION_MS).start()
+        (entry.parent as? ViewGroup)?.let { ensureExpandedRingerHeight(it) }
         shiftPanel(entry, true)
         if (!autoRefreshing) lastController?.let { maybeAutoShow(it, entry) }
     }
@@ -685,17 +840,26 @@ class AppVolumeEntryHook : BaseHook() {
     private fun updateVisibility(controller: Any, entry: View) {
         val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") }.getOrNull() as? Boolean ?: false
         // 读后台探测快照：官方判定内部会同步调用音频服务，通话等场景单次可阻塞数秒，主线程不能直接调。
+        val visibility = entryVisibility()
         val visible = !expanded &&
-            (HookPrefs.getBoolean(AppVolumeKeys.ALWAYS_SHOW, false) ||
+            visibility != AppVolumeKeys.VISIBILITY_NEVER &&
+            (visibility == AppVolumeKeys.VISIBILITY_ALWAYS ||
                 AppVolumePlayback.snapshot().hasActive)
         applyEntryState(entry, visible, dodge = expanded)
         // 快照过期时请一次后台刷新；结果回来（播放状态可能已变化）再重算一次入口状态。
         AppVolumePlayback.refresh(entry.context) { lastController?.let { updateVisibility(it, entry) } }
     }
 
+    private fun entryVisibility(): String = when (HookPrefs.getString(AppVolumeKeys.ENTRY_VISIBILITY, AppVolumeKeys.VISIBILITY_AUTO)) {
+        AppVolumeKeys.VISIBILITY_ALWAYS -> AppVolumeKeys.VISIBILITY_ALWAYS
+        AppVolumeKeys.VISIBILITY_NEVER -> AppVolumeKeys.VISIBILITY_NEVER
+        else -> AppVolumeKeys.VISIBILITY_AUTO
+    }
+
     /**
-     * 「自动显示」：侧边音量条显示时，若开关开启且入口可见（有媒体 / 常显），自动展开面板。
-     * 入口按钮的点击开关逻辑不变；已展开时、或用户本轮手动操作过入口后，不再自动展开。
+     * 「自动显示」：侧边音量条显示时，若开关开启，自动展开面板。
+     * 入口是否可见由「入口显示方式」单独控制；即使入口始终隐藏，自动展开仍可生效。
+     * 已展开时、或用户本轮手动操作过入口后，不再自动展开。
      */
     private fun maybeAutoShow(controller: Any, entry: View) {
         if (!canAutoShow(entry)) return
@@ -711,7 +875,8 @@ class AppVolumeEntryHook : BaseHook() {
     private fun tryAutoShow(controller: Any, entry: View, root: ViewGroup, dialog: View) {
         if (!canAutoShow(entry)) return
         if (AppVolumePanel.isShowing()) return
-        if (lastVisible[entry] != true) {
+        // 入口自己会按「入口显示方式」隐藏；自动展开是独立开关，不能因入口隐藏而失效。
+        if (lastVisible[entry] != true && entryVisibility() != AppVolumeKeys.VISIBILITY_NEVER) {
             // 入口还没出现：按最新的「正在播放的应用」重算一次入口状态
             // （应用可能刚刚才开始播放 / 官方列表刚刷新出来）。
             autoRefreshing = true
@@ -720,8 +885,8 @@ class AppVolumeEntryHook : BaseHook() {
             } finally {
                 autoRefreshing = false
             }
+            if (lastVisible[entry] != true) return
         }
-        if (lastVisible[entry] != true) return
         // 两次延迟重试之间侧边条可能已经收回，避免在隐藏的 dialog 上创建面板。
         if (!dialog.isAttachedToWindow || !dialog.isShown) return
         runCatching { AppVolumePanel.show(root, dialog, entry.context, pluginClassLoader, entry) }
@@ -730,7 +895,8 @@ class AppVolumeEntryHook : BaseHook() {
 
     /** 是否允许自动展开面板：开关开启，且用户本轮显示期间没有手动操作过入口。 */
     private fun canAutoShow(entry: View): Boolean =
-        HookPrefs.getBoolean(AppVolumeKeys.AUTO_SHOW, false) && userToggled[entry] != true
+        HookPrefs.getBoolean(AppVolumeKeys.AUTO_SHOW, false) &&
+            userToggled[entry] != true
 
     private fun onEntryClick(entry: View) {
         HookHelper.log("$tag: entry clicked")

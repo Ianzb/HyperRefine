@@ -109,7 +109,8 @@ object StatusBarIconConfigReader {
         val recommendedWeight = StatusBarIconRegistry.recommendedFontWeight(id)
         val storedWeight = HookPrefs.getIntFlexible(StatusBarIconKeys.fontWeight(id), recommendedWeight)
         val rawDisplay = (HookPrefs.getString(StatusBarIconKeys.display(id), "") ?: "").trim()
-        // 隐私指示在控制中心由不同 View 承载，不保留仅控制中心显示/隐藏条件。
+        // 左侧图标没有独立的控制中心宿主；旧的 CC_ONLY 值要归一化掉。
+        // 权限指示现在也有独立的 CC 宿主，由运行时按 View 所在宿主判断。
         val display = if (!StatusBarIconRegistry.supportsControlCenterDisplay(id) &&
             rawDisplay in CC_ONLY_DISPLAYS
         ) {

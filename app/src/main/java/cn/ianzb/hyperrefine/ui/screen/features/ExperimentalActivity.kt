@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.experimental.packageinstaller.InstallerExperiment
+import cn.ianzb.hyperrefine.hook.sogou.SogouImeKeys
 import cn.ianzb.hyperrefine.hook.weather.WeatherKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
@@ -28,7 +29,14 @@ class ExperimentalActivity : BaseSubPageActivity() {
     override val titleRes: Int = R.string.section_experimental
 
     override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf(WeatherKeys.TARGET_PACKAGE)) }
+        {
+            QuickActionsAction(
+                listOf(
+                    WeatherKeys.TARGET_PACKAGE,
+                    SogouImeKeys.PKG_SOGOU_IME,
+                ),
+            )
+        }
 
     @Composable
     override fun SubPageContent(
@@ -37,10 +45,20 @@ class ExperimentalActivity : BaseSubPageActivity() {
     ) {
         val context = LocalContext.current
         val scrollBehavior = LocalSubPageScrollBehavior.current
-        val section = HookSection(
-            titleRes = R.string.section_weather,
-            specs = listOf(
-                featureSpec(KEY_WEATHER),
+        val sections = listOf(
+            HookSection(
+                titleRes = R.string.section_weather,
+                specs = listOf(
+                    featureSpec(KEY_WEATHER),
+                ),
+            ),
+            HookSection(
+                titleRes = R.string.sogou_ime_title,
+                specs = listOf(
+                    featureSpec(KEY_SOGOU_IME_GLASS),
+                    featureSpec(KEY_SOGOU_IME_BLUR_RADIUS),
+                    featureSpec(KEY_SOGOU_IME_CORNER_RADIUS),
+                ),
             ),
         )
         LazyColumn(
@@ -58,17 +76,19 @@ class ExperimentalActivity : BaseSubPageActivity() {
                 ),
             contentPadding = contentPadding,
         ) {
-            item {
-                HookSectionCard(section) {
-                    section.specs.forEach { spec ->
-                        HookOptionView(
-                            spec = spec,
-                            onArrowClick = {
-                                if (spec.key == KEY_WEATHER) {
-                                    context.startActivity(Intent(context, WeatherActivity::class.java))
-                                }
-                            },
-                        )
+            sections.forEach { section ->
+                item {
+                    HookSectionCard(section) {
+                        section.specs.forEach { spec ->
+                            HookOptionView(
+                                spec = spec,
+                                onArrowClick = {
+                                    if (spec.key == KEY_WEATHER) {
+                                        context.startActivity(Intent(context, WeatherActivity::class.java))
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }

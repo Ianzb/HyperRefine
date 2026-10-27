@@ -1,5 +1,6 @@
 package cn.ianzb.hyperrefine.prefs
 
+import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconKeys
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconRegistry
 import cn.ianzb.hyperrefine.hook.systemui.wallpaper.WallpaperDimKeys
@@ -24,6 +25,7 @@ object PrefsMigrations {
     private const val MARKER_SPEED_STYLE = "migration_speed_style_v2"
     private const val MARKER_SPEED_OPTIONS_V3 = "migration_speed_options_v3"
     private const val MARKER_WALLPAPER_DIM_LOCK = "migration_wallpaper_dim_lock_amount"
+    private const val MARKER_VOLUME_ENTRY_VISIBILITY = "migration_volume_entry_visibility"
 
     /** 执行所有迁移。 */
     fun run() {
@@ -33,6 +35,7 @@ object PrefsMigrations {
         migrateSpeedStyle()
         migrateSpeedOptionsV3()
         migrateWallpaperDimLockAmount()
+        migrateVolumeEntryVisibility()
     }
 
     /**
@@ -154,5 +157,22 @@ object PrefsMigrations {
             PrefsStore.put(WallpaperDimKeys.LOCK_AMOUNT, home)
         }
         PrefsStore.put(MARKER_WALLPAPER_DIM_LOCK, true)
+    }
+
+    /**
+     * 多应用音量入口由「常显 / 始终隐藏」两个开关合并为「自动 / 常显 / 始终隐藏」三选一。
+     * 只迁移一次；已有新值时以新值为准。
+     */
+    private fun migrateVolumeEntryVisibility() {
+        if (PrefsStore.getBoolean(MARKER_VOLUME_ENTRY_VISIBILITY, false)) return
+        if (PrefsStore.getString(AppVolumeKeys.ENTRY_VISIBILITY, null).isNullOrEmpty()) {
+            val value = when {
+                PrefsStore.getBoolean(AppVolumeKeys.ALWAYS_HIDE, false) -> AppVolumeKeys.VISIBILITY_NEVER
+                PrefsStore.getBoolean(AppVolumeKeys.ALWAYS_SHOW, false) -> AppVolumeKeys.VISIBILITY_ALWAYS
+                else -> AppVolumeKeys.VISIBILITY_AUTO
+            }
+            PrefsStore.put(AppVolumeKeys.ENTRY_VISIBILITY, value)
+        }
+        PrefsStore.put(MARKER_VOLUME_ENTRY_VISIBILITY, true)
     }
 }

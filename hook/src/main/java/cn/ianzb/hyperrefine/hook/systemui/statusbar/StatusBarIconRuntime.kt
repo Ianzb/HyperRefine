@@ -28,6 +28,7 @@ import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
 import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
+import java.util.Collections
 import java.util.Date
 import java.util.IdentityHashMap
 import java.util.Locale
@@ -98,6 +99,11 @@ internal object StatusBarIconRuntime {
     private val gapBaseWidths = WeakHashMap<View, Int>()
     private val gapDeferred = WeakHashMap<View, Boolean>()
     private val notificationDotStates = WeakHashMap<View, DotDrawState>()
+    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var notificationDotParentClass: Class<*>? = null
+    @Volatile private var dotMasterEnabled = false
+    @Volatile private var dotMultiEnabled = false
+    @Volatile private var dotFlagsReady = false
     private val notificationMaxBases = WeakHashMap<View, Int>()
     private val clockWidths = WeakHashMap<TextView, Int>()
     private val idCache = HashMap<String, Int>()
@@ -105,6 +111,20 @@ internal object StatusBarIconRuntime {
     private var notificationMaxCache = -1
     private var slotRankCacheKey = ""
     private var slotRankCache: Map<String, Int> = emptyMap()
+
+    init {
+        refreshNotificationDotFlags()
+        HookPrefs.registerListener { refreshNotificationDotFlags() }
+    }
+
+    private fun refreshNotificationDotFlags() {
+        dotMasterEnabled = HookPrefs.getBoolean(StatusBarIconKeys.ENABLED, false)
+        dotMultiEnabled = HookPrefs.getBoolean(
+            StatusBarIconKeys.notificationMultiDot(StatusBarIconRegistry.NOTIFICATIONS),
+            false,
+        )
+        dotFlagsReady = true
+    }
 
     /** 最近一次 Controller；用于配置变化后不重启 SystemUI 直接重排视图。 */
     private var controllerRef: WeakReference<Any>? = null
@@ -271,7 +291,12 @@ internal object StatusBarIconRuntime {
 
     fun refreshSoon(root: ViewGroup? = null) {
         if (root == null) {
-            refreshAll()
+            // 通知图标在展开面板时会连续增删，立即 refreshAll 会把每次增删都放大成
+            // 一轮全量重排。合并到下一帧统一刷新，避免动画期间反复 requestLayout。
+            if (!refreshPending) {
+                refreshPending = true
+                orderHandler.post(refreshRunnable)
+            }
         } else {
             root.post { hosts[root]?.refresh() }
         }
@@ -928,14 +953,8 @@ internal object StatusBarIconRuntime {
      * 不新增 View / 悬浮窗，仍使用原生溢出点的位置、颜色与动画进度。
      */
     fun beforeNotificationDotDraw(view: View) {
-        if (!HookPrefs.getBoolean(StatusBarIconKeys.ENABLED, false)) return
-        if (!HookPrefs.getBoolean(
-                StatusBarIconKeys.notificationMultiDot(StatusBarIconRegistry.NOTIFICATIONS),
-                false,
-            )
-        ) {
-            return
-        }
+        if (!dotFlagsReady) refreshNotificationDotFlags()
+        if (!dotMasterEnabled || !dotMultiEnabled) return
         val state = notificationDotState(view) ?: return
         notificationDotStates[view] = state
         runCatching { Reflect.setObjectField(view, "mDotAppearAmount", 0f) }
@@ -955,10 +974,8 @@ internal object StatusBarIconRuntime {
                 state.radius + (view.width / 4f - state.radius) * (state.progress - 1f)
             }
             if (radius <= 0.1f) return@runCatching
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = state.color
-                this.alpha = (alpha * 255f).roundToInt().coerceIn(0, 255)
-            }
+            dotPaint.color = state.color
+            dotPaint.alpha = (alpha * 255f).roundToInt().coerceIn(0, 255)
             val centerX = view.width / 2f
             val centerY = view.height / 2f
             val step = radius * 2f + state.padding
@@ -968,7 +985,7 @@ internal object StatusBarIconRuntime {
                     centerX + (firstOffset + i) * step,
                     centerY,
                     radius,
-                    paint,
+                    dotPaint,
                 )
             }
         }
@@ -995,8 +1012,20 @@ internal object StatusBarIconRuntime {
     }
 
     private fun notificationDotState(view: View): DotDrawState? {
+        // 绝大多数图标没有圆点，先看出现进度，避免每帧继续走父容器/反射。
+        val progress = runCatching {
+            Reflect.getObjectField(view, "mDotAppearAmount") as? Float
+        }.getOrNull() ?: return null
+        if (progress <= 0f) return null
         val parent = view.parent as? ViewGroup ?: return null
-        if (parent.javaClass.simpleName != "NotificationIconContainer") return null
+        val parentClass = parent.javaClass
+        val cachedClass = notificationDotParentClass
+        if (cachedClass == null) {
+            if (parentClass.simpleName != "NotificationIconContainer") return null
+            notificationDotParentClass = parentClass
+        } else if (parentClass !== cachedClass) {
+            return null
+        }
         val first = runCatching {
             Reflect.getObjectField(parent, "mFirstOverflowIndex") as? Int
         }.getOrNull() ?: return null
@@ -1005,10 +1034,6 @@ internal object StatusBarIconRuntime {
             Reflect.getObjectField(view, "mVisibleState") as? Int
         }.getOrNull() ?: return null
         if (visibleState != 1) return null
-        val progress = runCatching {
-            Reflect.getObjectField(view, "mDotAppearAmount") as? Float
-        }.getOrNull() ?: return null
-        if (progress <= 0f) return null
         val radius = runCatching {
             Reflect.getObjectField(view, "mDotRadius") as? Float
         }.getOrNull() ?: return null
@@ -1702,6 +1727,33 @@ internal object StatusBarIconRuntime {
             return false
         }
 
+        /**
+         * 权限指示在状态栏和 CC 各有一份宿主。前者是 `privacy_area`；后者是
+         * `MiuiPrivacyContainerView` / `MiuiFakePrivacyContainerView`，不在状态栏 root 下，
+         * 只能从各个 iconGroup 所在窗口的 rootView 去找。CC 展开后容器会重建，所以每次 refresh 重扫。
+         */
+        private fun privacyContainers(root: View): List<View> {
+            val result = ArrayList<View>()
+            val seen = Collections.newSetFromMap(IdentityHashMap<View, Boolean>())
+
+            fun scan(view: View?) {
+                view ?: return
+                if (!seen.add(view)) return
+                if (view.javaClass.simpleName == "MiuiPrivacyContainerView" ||
+                    view.javaClass.simpleName == "MiuiFakePrivacyContainerView"
+                ) {
+                    result += view
+                }
+                if (view is ViewGroup) {
+                    for (index in 0 until view.childCount) scan(view.getChildAt(index))
+                }
+            }
+
+            scan(root)
+            iconGroups.mapNotNull { it.get() }.forEach { group -> scan(group.rootView) }
+            return result
+        }
+
 
 
         private fun restoreGlobalHidden() {
@@ -1820,21 +1872,24 @@ internal object StatusBarIconRuntime {
                 val isCondition = display.startsWith("condition:")
                 val conditionHidden = isCondition && hidden(component, config, cc, evaluator)
                 // applySystemIcons 只处理真实状态栏组；CC 组由 applyGroupVisibility
-                // 按宿主分别处理。cc 展开时真实状态栏必须让位，避免和 CC 头重复。
+                // 按宿主分别处理。条件图标不能在 CC 展开时收掉真实状态栏这一份：
+                // CC 过渡使用临时容器，那一份不一定已经就绪，收掉就会整段消失。
                 val hide = when {
                     display == StatusBarIconMode.HIDDEN.value || conditionHidden -> true
                     display == StatusBarIconMode.CC_ONLY_SHOW.value -> true
                     display == StatusBarIconMode.CC_ONLY_HIDE.value -> false
-                    display == StatusBarIconMode.ALWAYS.value -> cc
-                    isCondition -> cc
+                    // 始终显示：状态栏和 CC 头部都要保留。CC 过渡使用临时容器，
+                    // 这里不能按 cc 把真实状态栏的图标收掉，否则下拉瞬间会淡出。
+                    display == StatusBarIconMode.ALWAYS.value -> false
+                    isCondition -> false
                     else -> false
                 } || (component.id == StatusBarIconRegistry.NETWORK_SPEED && isSlowSpeed(child, config))
                 lastHidden[child] = hide
                 val iconVisible = isIconVisible(child)
                 val forceVisible = !hide && iconVisible && when {
                     display == StatusBarIconMode.CC_ONLY_HIDE.value -> true
-                    display == StatusBarIconMode.ALWAYS.value -> !cc
-                    isCondition -> !cc
+                    display == StatusBarIconMode.ALWAYS.value -> true
+                    isCondition -> true
                     else -> false
                 }
                 val wasForced = forcedVisible[child] == true
@@ -1938,6 +1993,17 @@ internal object StatusBarIconRuntime {
                 )
             }
             applySpecialView(privacy, StatusBarIconRegistry.PRIVACY, snapshot, cc, evaluator)
+            privacyContainers(root).forEach { container ->
+                if (container !== privacy) {
+                    applySpecialView(
+                        container,
+                        StatusBarIconRegistry.PRIVACY,
+                        snapshot,
+                        cc,
+                        evaluator,
+                    )
+                }
+            }
             applySpecialView(operator, StatusBarIconRegistry.OPERATOR, snapshot, cc, evaluator)
 
             listOfNotNull(clock, padClock).forEach { clockView ->
@@ -1982,31 +2048,39 @@ internal object StatusBarIconRuntime {
             val baseView = capture(view)
             val display = displayOf(config)
             val isCondition = display.startsWith("condition:")
-            // 电池在状态栏和 CC 头各有一套宿主；特殊宿主显隐必须按所在宿主判断。
-            val centerHost = id == StatusBarIconRegistry.BATTERY && isInsideControlCenter(view)
+            // 电池 / 权限指示在状态栏和 CC 各有一套宿主；特殊宿主显隐必须按所在宿主判断。
+            val centerHost =
+                (id == StatusBarIconRegistry.BATTERY || id == StatusBarIconRegistry.PRIVACY) &&
+                    isInsideControlCenter(view)
             val conditionHidden = isCondition && hidden(
                 StatusBarIconRegistry.byId(id)!!,
                 config,
                 if (centerHost) false else cc,
                 evaluator,
             )
-            // 这些是真实状态栏里的独立宿主；CC 展开时同样要让位给 CC 自己的
-            // 时间/通知/隐私区域，避免同一个宿主在两层都亮。
+            // 这些是真实状态栏里的独立宿主；只有明确的“仅控制中心显示/隐藏”
+            // 才按控制中心切换。条件图标不能在过渡期间收掉，否则整段消失。
             val hide = when {
                 display == StatusBarIconMode.HIDDEN.value || conditionHidden -> true
                 display == StatusBarIconMode.CC_ONLY_SHOW.value -> !centerHost
                 display == StatusBarIconMode.CC_ONLY_HIDE.value -> centerHost
-                display == StatusBarIconMode.ALWAYS.value -> if (centerHost) false else cc
-                isCondition -> if (centerHost) false else cc
+                // 始终显示同样不能被 CC 展开状态收掉；临时 CC 容器会单独绘制一份。
+                display == StatusBarIconMode.ALWAYS.value -> false
+                isCondition -> false
                 else -> false
             }
             val wasHidden = lastHidden[view] == true
             lastHidden[view] = hide
-            val forceVisible = !hide && hasVisibleContent(view, id) && when {
+            // 控制中心内的权限指示由原生 HeaderController 用 alpha / visibility 编排：
+            // 展开时显示真容器，过渡动画时显示 fake 容器，两者不会同时出现。
+            // 模块若在这里强行 VISIBLE，会把原生已淡出的真容器重新点亮，导致过渡期间
+            // 控制中心圆点与动画圆点重叠。CC 宿主只允许模块“隐藏”，其余交给原生。
+            val nativePrivacyHost = id == StatusBarIconRegistry.PRIVACY && centerHost
+            val forceVisible = !hide && !nativePrivacyHost && hasVisibleContent(view, id) && when {
                 display == StatusBarIconMode.CC_ONLY_SHOW.value -> centerHost
                 display == StatusBarIconMode.CC_ONLY_HIDE.value -> !centerHost
-                display == StatusBarIconMode.ALWAYS.value -> centerHost || !cc
-                isCondition -> centerHost || !cc
+                display == StatusBarIconMode.ALWAYS.value -> true
+                isCondition -> true
                 else -> false
             }
             val wasForced = forcedVisible[view] == true
@@ -2015,6 +2089,8 @@ internal object StatusBarIconRuntime {
                 hide -> {
                     if (view.visibility != View.GONE) view.visibility = View.GONE
                 }
+                nativePrivacyHost ->
+                    if (wasHidden || wasForced) view.visibility = baseView.visibility
                 forceVisible -> {
                     if (view.visibility != View.VISIBLE) view.visibility = View.VISIBLE
                 }
@@ -2464,6 +2540,15 @@ internal object StatusBarIconRuntime {
         /** 特殊宿主没有 isIconVisible；空 TextView/空容器强制显示只会留下空位。 */
         private fun hasVisibleContent(view: View, id: String): Boolean = when {
             id == StatusBarIconRegistry.BATTERY -> true
+            // 权限指示的子 View 才是真实内容；原生可能先收起容器再更新子 View，
+            // 因此不能要求容器自身当前可见，否则“始终显示”会被原生 GONE 挡住。
+            id == StatusBarIconRegistry.PRIVACY -> when (view) {
+                is TextView -> !view.text.isNullOrEmpty()
+                is ViewGroup -> (0 until view.childCount).any {
+                    view.getChildAt(it).visibility == View.VISIBLE
+                }
+                else -> true
+            }
             view is TextView -> !view.text.isNullOrEmpty()
             view is ViewGroup -> view.childCount > 0
             else -> view.visibility == View.VISIBLE
@@ -2490,7 +2575,9 @@ internal object StatusBarIconRuntime {
         }
 
         private fun find(root: View, name: String): View? {
-            val id = root.resources.getIdentifier(name, "id", StatusBarIconKeys.TARGET)
+            val id = idCache.getOrPut(name) {
+                root.resources.getIdentifier(name, "id", StatusBarIconKeys.TARGET)
+            }
             return if (id == 0) null else root.findViewById(id)
         }
 

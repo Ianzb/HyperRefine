@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
@@ -46,7 +47,11 @@ class PercentStyleActivity : BaseSubPageActivity() {
         val interactionSection = if (location == PercentLocation.SIDE_VOLUME) {
             HookSection(
                 titleRes = R.string.side_volume_interaction_section,
-                specs = listOf(featureSpec(SIDE_LONGPRESS_KEY)),
+                specs = listOf(
+                    featureSpec(SIDE_LONGPRESS_KEY),
+                    featureSpec(AppVolumeKeys.HIDE_RINGER),
+                    featureSpec(AppVolumeKeys.HIDE_DND),
+                ),
             )
         } else {
             null

@@ -29,6 +29,7 @@ import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
 import cn.ianzb.hyperrefine.hook.systemui.SplitScreenKeys
 import cn.ianzb.hyperrefine.hook.systemui.wallpaper.WallpaperDimKeys
+import cn.ianzb.hyperrefine.hook.sogou.SogouImeKeys
 import cn.ianzb.hyperrefine.hook.voiceassist.ScreenRecognitionRadiusHook
 import cn.ianzb.hyperrefine.hook.voiceassist.VoiceAssistImeKeys
 import cn.ianzb.hyperrefine.hook.voiceassist.VoiceAssistKeys
@@ -59,7 +60,7 @@ fun FeaturesPageView(
                 specs = listOf(
                     specByKey(specs, KEY_SYSTEM_UI),
                     specByKey(specs, KEY_APP_BEAUTIFY),
-                    specByKey(specs, KEY_VOICE_ASSIST_IME),
+                    specByKey(specs, KEY_IME),
                     specByKey(specs, KEY_DEVICE_CONNECT),
                     specByKey(specs, KEY_SECURITY_CENTER),
                     specByKey(specs, KEY_VOICE_ASSIST),
@@ -196,9 +197,11 @@ fun FeaturesPageView(
                 ),
             ),
             HookSubPage(
-                titleRes = R.string.voice_assist_ime_title,
-                specs = listOf(specByKey(specs, KEY_VOICE_ASSIST_IME_GLOBAL_MATERIAL)),
-                onOpen = { context.startActivity(Intent(context, VoiceAssistImeActivity::class.java)) },
+                titleRes = R.string.ime_title,
+                specs = listOf(
+                    specByKey(specs, KEY_VOICE_ASSIST_IME_GLOBAL_MATERIAL),
+                ),
+                onOpen = { context.startActivity(Intent(context, ImeActivity::class.java)) },
             ),
             HookSubPage(
                 titleRes = R.string.device_connect,
@@ -232,7 +235,13 @@ fun FeaturesPageView(
             ),
             HookSubPage(
                 titleRes = R.string.section_experimental,
-                specs = listOf(specByKey(specs, KEY_WEATHER), InstallerExperiment.entrySpec()),
+                specs = listOf(
+                    specByKey(specs, KEY_WEATHER),
+                    specByKey(specs, KEY_SOGOU_IME_GLASS),
+                    specByKey(specs, KEY_SOGOU_IME_BLUR_RADIUS),
+                    specByKey(specs, KEY_SOGOU_IME_CORNER_RADIUS),
+                    InstallerExperiment.entrySpec(),
+                ),
                 onOpen = { context.startActivity(Intent(context, ExperimentalActivity::class.java)) },
                 subPages = listOf(
                     HookSubPage(
@@ -258,8 +267,8 @@ fun FeaturesPageView(
                     context.startActivity(Intent(context, SystemUiActivity::class.java))
                 KEY_APP_BEAUTIFY ->
                     context.startActivity(Intent(context, AppBeautifyActivity::class.java))
-                KEY_VOICE_ASSIST_IME ->
-                    context.startActivity(Intent(context, VoiceAssistImeActivity::class.java))
+                KEY_IME ->
+                    context.startActivity(Intent(context, ImeActivity::class.java))
                 KEY_SECURITY_CENTER ->
                     context.startActivity(Intent(context, SecurityCenterActivity::class.java))
                 KEY_DEVICE_CONNECT ->
@@ -304,7 +313,7 @@ fun FeaturesPageView(
 const val KEY_SYSTEM_UI = "feature_system_ui"
 const val KEY_APP_BEAUTIFY = "feature_app_beautify"
 const val KEY_TOP_BAR_BLUR = "feature_top_bar_blur"
-const val KEY_VOICE_ASSIST_IME = "feature_voice_assist_ime"
+const val KEY_IME = "feature_ime"
 const val KEY_WINDOW_MANAGER = "feature_window_manager"
 const val KEY_GLASS = "feature_glass"
 const val KEY_EXPERIMENTAL = "feature_experimental"
@@ -339,6 +348,10 @@ const val KEY_SR_ANIMATION_RADIUS = ScreenRecognitionRadiusHook.KEY
 const val KEY_LONG_PRESS_HOME_INTENT_BALL = VoiceAssistKeys.LONG_PRESS_HOME_INTENT_BALL
 const val KEY_DOUBLE_CLICK_CHAT_FULL_EFFECT = VoiceAssistKeys.DOUBLE_CLICK_CHAT_FULL_EFFECT
 const val KEY_VOICE_ASSIST_IME_GLOBAL_MATERIAL = VoiceAssistImeKeys.GLOBAL_MATERIAL
+const val KEY_VOICE_ASSIST_IME_MATERIAL_OPACITY = VoiceAssistImeKeys.MATERIAL_OPACITY
+const val KEY_SOGOU_IME_GLASS = SogouImeKeys.GLASS
+const val KEY_SOGOU_IME_BLUR_RADIUS = SogouImeKeys.BLUR_RADIUS
+const val KEY_SOGOU_IME_CORNER_RADIUS = SogouImeKeys.CORNER_RADIUS
 const val KEY_VOICE_ASSIST = "feature_voice_assist"
 const val KEY_ASSISTANT = "feature_assistant"
 const val KEY_CC_RADIUS = "feature_cc_radius"
@@ -381,13 +394,15 @@ private fun locationSpecs(specs: List<OptionSpec>, location: String): List<Optio
     if (location == PercentLocation.SIDE_VOLUME) {
         keys += SIDE_INSIDE_KEY
         keys += SIDE_LONGPRESS_KEY
-    keys += AppVolumeKeys.ENTRY
-    keys += AppVolumeKeys.HIDE_FLOAT
-    keys += AppVolumeKeys.ALWAYS_SHOW
-    keys += AppVolumeKeys.AUTO_SHOW
-    keys += AppVolumeKeys.HEIGHT_AUTO
-    keys += AppVolumeKeys.HEIGHT_PERCENT
-    keys += AppVolumeKeys.HIDE_PANEL_BG
+        keys += AppVolumeKeys.ENTRY
+        keys += AppVolumeKeys.ENTRY_VISIBILITY
+        keys += AppVolumeKeys.HIDE_RINGER
+        keys += AppVolumeKeys.HIDE_DND
+        keys += AppVolumeKeys.HIDE_FLOAT
+        keys += AppVolumeKeys.AUTO_SHOW
+        keys += AppVolumeKeys.HEIGHT_AUTO
+        keys += AppVolumeKeys.HEIGHT_PERCENT
+        keys += AppVolumeKeys.HIDE_PANEL_BG
     }
     return keys.map { specByKey(specs, it) }
 }
@@ -462,8 +477,8 @@ internal fun wallpaperSpecs(specs: List<OptionSpec>): List<OptionSpec> =
 private fun appVolumeSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
         specByKey(specs, AppVolumeKeys.ENTRY),
+        specByKey(specs, AppVolumeKeys.ENTRY_VISIBILITY),
         specByKey(specs, AppVolumeKeys.HIDE_FLOAT),
-        specByKey(specs, AppVolumeKeys.ALWAYS_SHOW),
         specByKey(specs, AppVolumeKeys.AUTO_SHOW),
         specByKey(specs, AppVolumeKeys.HEIGHT_AUTO),
         specByKey(specs, AppVolumeKeys.HEIGHT_PERCENT),
@@ -634,9 +649,9 @@ internal fun featureSpecs(): List<OptionSpec> {
             titleRes = R.string.feature_top_bar_blur,
         ),
         OptionSpec(
-            key = KEY_VOICE_ASSIST_IME,
+            key = KEY_IME,
             type = OptionType.ARROW,
-            titleRes = R.string.voice_assist_ime_title,
+            titleRes = R.string.ime_title,
         ),
         OptionSpec(
             key = KEY_WINDOW_MANAGER,
@@ -987,6 +1002,57 @@ internal fun featureSpecs(): List<OptionSpec> {
             defaultBoolean = false,
             targetPackages = listOf(VoiceAssistImeKeys.PKG_VOICE_ASSIST_IME),
             showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_VOICE_ASSIST_IME_MATERIAL_OPACITY,
+            type = OptionType.SLIDER,
+            titleRes = R.string.voice_assist_ime_material_opacity,
+            summaryRes = R.string.voice_assist_ime_material_opacity_summary,
+            sliderValueLabelRes = R.string.voice_assist_ime_material_opacity,
+            defaultFloat = VoiceAssistImeKeys.DEFAULT_MATERIAL_OPACITY,
+            sliderMin = 0f,
+            sliderMax = 100f,
+            sliderStep = 5f,
+            sliderDecimals = 0,
+            targetPackages = listOf(VoiceAssistImeKeys.PKG_VOICE_ASSIST_IME),
+            dependsOn = KEY_VOICE_ASSIST_IME_GLOBAL_MATERIAL,
+        ),
+        OptionSpec(
+            key = KEY_SOGOU_IME_GLASS,
+            type = OptionType.SWITCH,
+            titleRes = R.string.sogou_ime_glass,
+            summaryRes = R.string.sogou_ime_glass_summary,
+            defaultBoolean = false,
+            targetPackages = listOf(SogouImeKeys.PKG_SOGOU_IME),
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = KEY_SOGOU_IME_BLUR_RADIUS,
+            type = OptionType.SLIDER,
+            titleRes = R.string.sogou_ime_blur_radius,
+            summaryRes = R.string.sogou_ime_blur_radius_summary,
+            sliderValueLabelRes = R.string.sogou_ime_blur_radius,
+            defaultFloat = SogouImeKeys.DEFAULT_BLUR_RADIUS,
+            sliderMin = 0f,
+            sliderMax = 60f,
+            sliderStep = 1f,
+            sliderDecimals = 0,
+            targetPackages = listOf(SogouImeKeys.PKG_SOGOU_IME),
+            dependsOn = KEY_SOGOU_IME_GLASS,
+        ),
+        OptionSpec(
+            key = KEY_SOGOU_IME_CORNER_RADIUS,
+            type = OptionType.SLIDER,
+            titleRes = R.string.sogou_ime_corner_radius,
+            summaryRes = R.string.sogou_ime_corner_radius_summary,
+            sliderValueLabelRes = R.string.sogou_ime_corner_radius,
+            defaultFloat = SogouImeKeys.DEFAULT_CORNER_RADIUS,
+            sliderMin = 0f,
+            sliderMax = 48f,
+            sliderStep = 1f,
+            sliderDecimals = 0,
+            targetPackages = listOf(SogouImeKeys.PKG_SOGOU_IME),
+            dependsOn = KEY_SOGOU_IME_GLASS,
         ),
         OptionSpec(
             key = KEY_VOICE_ASSIST,
@@ -1583,22 +1649,47 @@ private fun buildAppVolumeSpecs(systemUi: List<String>): List<OptionSpec> = list
         showStatus = true,
     ),
     OptionSpec(
+        key = AppVolumeKeys.HIDE_RINGER,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_hide_ringer,
+        summaryRes = R.string.app_volume_hide_ringer_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+    ),
+    OptionSpec(
+        key = AppVolumeKeys.HIDE_DND,
+        type = OptionType.SWITCH,
+        titleRes = R.string.app_volume_hide_dnd,
+        summaryRes = R.string.app_volume_hide_dnd_summary,
+        defaultBoolean = false,
+        targetPackages = systemUi,
+    ),
+    OptionSpec(
+        key = AppVolumeKeys.ENTRY_VISIBILITY,
+        type = OptionType.DROPDOWN,
+        titleRes = R.string.app_volume_entry_visibility,
+        summaryRes = R.string.app_volume_entry_visibility_summary,
+        defaultString = AppVolumeKeys.VISIBILITY_AUTO,
+        entryResIds = listOf(
+            R.string.app_volume_entry_visibility_auto,
+            R.string.app_volume_entry_visibility_always,
+            R.string.app_volume_entry_visibility_never,
+        ),
+        entryValues = listOf(
+            AppVolumeKeys.VISIBILITY_AUTO,
+            AppVolumeKeys.VISIBILITY_ALWAYS,
+            AppVolumeKeys.VISIBILITY_NEVER,
+        ),
+        targetPackages = systemUi,
+        dependsOn = AppVolumeKeys.ENTRY,
+    ),
+    OptionSpec(
         key = AppVolumeKeys.HIDE_FLOAT,
         type = OptionType.SWITCH,
         titleRes = R.string.app_volume_hide_float,
         summaryRes = R.string.app_volume_hide_float_summary,
         defaultBoolean = true,
         targetPackages = listOf(AppVolumeKeys.TARGET_PACKAGE),
-        dependsOn = AppVolumeKeys.ENTRY,
-        showStatus = true,
-    ),
-    OptionSpec(
-        key = AppVolumeKeys.ALWAYS_SHOW,
-        type = OptionType.SWITCH,
-        titleRes = R.string.app_volume_always_show,
-        summaryRes = R.string.app_volume_always_show_summary,
-        defaultBoolean = false,
-        targetPackages = systemUi,
         dependsOn = AppVolumeKeys.ENTRY,
         showStatus = true,
     ),

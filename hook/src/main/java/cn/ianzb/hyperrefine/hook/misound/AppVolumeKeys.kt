@@ -13,11 +13,26 @@ object AppVolumeKeys {
     /** 隐藏系统左侧的蓝色多应用音量悬浮球。 */
     const val HIDE_FLOAT = "app_volume_hide_float"
 
-    /** 入口常显；关闭时仅在检测到媒体播放时显示。 */
+    /** 入口显示策略：auto / always / never。 */
+    const val ENTRY_VISIBILITY = "app_volume_entry_visibility"
+    const val VISIBILITY_AUTO = "auto"
+    const val VISIBILITY_ALWAYS = "always"
+    const val VISIBILITY_NEVER = "never"
+
+    /** 已废弃：仅用于旧配置迁移。 */
     const val ALWAYS_SHOW = "app_volume_always_show"
 
     /** 自动显示：打开侧边音量条时自动展开多应用音量面板（入口按钮仍可点击开关）。 */
     const val AUTO_SHOW = "app_volume_auto_show"
+
+    /** 已废弃：仅用于旧配置迁移。 */
+    const val ALWAYS_HIDE = "app_volume_always_hide"
+
+    /** 隐藏侧边音量条里的静音 / 铃声按钮内容，保留按钮框与间距。 */
+    const val HIDE_RINGER = "volume_bar_hide_ringer"
+
+    /** 隐藏侧边音量条里的勿扰按钮内容，保留按钮框与间距。 */
+    const val HIDE_DND = "volume_bar_hide_dnd"
 
     /** 面板垂直位置百分比（0=顶部，50=居中，100=底部）。 */
     const val HEIGHT_PERCENT = "app_volume_height_percent"

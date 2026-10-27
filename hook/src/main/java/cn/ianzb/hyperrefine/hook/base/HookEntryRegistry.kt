@@ -11,6 +11,7 @@ import cn.ianzb.hyperrefine.hook.notification.NotificationLoad
 import cn.ianzb.hyperrefine.hook.passkey.PasskeyLoad
 import cn.ianzb.hyperrefine.hook.packageinstaller.PackageInstallerLoad
 import cn.ianzb.hyperrefine.hook.securitycenter.SecurityCenterLoad
+import cn.ianzb.hyperrefine.hook.sogou.SogouImeLoad
 import cn.ianzb.hyperrefine.hook.systemserver.SystemServerLoad
 import cn.ianzb.hyperrefine.hook.systemui.SystemUiLoad
 import cn.ianzb.hyperrefine.hook.voiceassist.VoiceAssistImeLoad
@@ -44,6 +45,7 @@ object HookEntryRegistry {
         BrowserLoad(),
         VoiceAssistLoad(),
         VoiceAssistImeLoad(),
+        SogouImeLoad(),
     )
 
     fun loadsFor(packageName: String): List<BaseLoad> =

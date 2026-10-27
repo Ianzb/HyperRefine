@@ -240,10 +240,16 @@ object StatusBarIconRegistry {
 
     fun byId(id: String): StatusBarIconComponent? = components.firstOrNull { it.id == id }
 
-    /** 只有右侧 slot 图标有控制中心宿主；左侧时钟/运营商/通知不提供该条件。 */
+    /**
+     * 只有右侧宿主（含特殊宿主）参与「仅控制中心」显示条件；
+     * 左侧时钟/运营商/通知不提供该条件。
+     *
+     * 权限指示在控制中心是独立的 `MiuiPrivacyContainerView`，由运行时单独发现并按宿主判断，
+     * 因此这里不再排除 [PRIVACY]。
+     */
     fun supportsControlCenterDisplay(id: String): Boolean {
         val component = byId(id) ?: return false
-        return component.side == StatusBarIconSide.RIGHT && id != PRIVACY
+        return component.side == StatusBarIconSide.RIGHT
     }
 
     /** 字重滑块的推荐值：尽量贴近系统宿主默认字重，而不是用 0 表示“系统”。 */

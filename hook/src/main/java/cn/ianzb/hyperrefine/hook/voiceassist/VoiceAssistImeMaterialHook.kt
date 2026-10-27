@@ -61,6 +61,7 @@ class VoiceAssistImeMaterialHook : BaseHook() {
 
         installPreferenceHook()
         installReapplyHooks(members.reapply, refs)
+        installOpacityHook()
 
         HookHelper.log(
             "$tag: installed @ ${target.packageName} " +
@@ -111,6 +112,53 @@ class VoiceAssistImeMaterialHook : BaseHook() {
                 param.setResultValue(true)
             }
         }
+    }
+
+    /**
+     * 高级材质的不透明度由 MIUI 混色列表里每个颜色的 alpha 决定。
+     * `mf.j.m(View, ArrayList<Point>)` 只服务输入法材质层，按比例缩放 alpha 即可，
+     * 不改模糊半径、材质类型或输入法内容。
+     */
+    private fun installOpacityHook() {
+        val clazz = Reflect.findClassIfExists(BLEND_CLASS, target.classLoader)
+        if (clazz == null) {
+            HookHelper.log("$tag: $BLEND_CLASS not found; opacity unavailable")
+            return
+        }
+        val method = clazz.declaredMethods.firstOrNull {
+            it.name == BLEND_METHOD &&
+                it.parameterCount == 2 &&
+                it.parameterTypes[0] == View::class.java &&
+                it.parameterTypes[1] == ArrayList::class.java
+        }?.apply { isAccessible = true }
+        if (method == null) {
+            HookHelper.log("$tag: $BLEND_CLASS.$BLEND_METHOD not found; opacity unavailable")
+            return
+        }
+        HookHelper.hookBefore(method) { param ->
+            if (!isEnabled()) return@hookBefore
+            val percent = HookPrefs.getFloat(
+                VoiceAssistImeKeys.MATERIAL_OPACITY,
+                VoiceAssistImeKeys.DEFAULT_MATERIAL_OPACITY,
+            ).coerceIn(0f, 100f)
+            if (percent >= 100f) return@hookBefore
+            val colors = param.args.getOrNull(1) as? ArrayList<*> ?: return@hookBefore
+            val ratio = percent / 100f
+            val scaled = ArrayList<Any?>(colors.size)
+            colors.forEach { item ->
+                val point = item as? android.graphics.Point
+                if (point == null) {
+                    scaled.add(item)
+                } else {
+                    val alpha = ((point.x ushr 24) and 0xFF) * ratio
+                    val color = (point.x and 0x00FFFFFF) or
+                        (alpha.toInt().coerceIn(0, 255) shl 24)
+                    scaled.add(android.graphics.Point(color, point.y))
+                }
+            }
+            param.setArg(1, scaled)
+        }
+        HookHelper.log("$tag: material opacity installed")
     }
 
     private fun installReapplyHooks(method: Method, refs: HelperRefs) {
@@ -227,6 +275,9 @@ class VoiceAssistImeMaterialHook : BaseHook() {
         const val PREF_CLASS = "o9.e"
         const val PREF_GETTER = "a"
         const val MATERIAL_PREF_KEY = "hyper_material_enabled"
+
+        const val BLEND_CLASS = "mf.j"
+        const val BLEND_METHOD = "m"
 
         fun method(clazz: Class<*>, name: String, returnType: Class<*>? = null): Method? =
             clazz.declaredMethods.firstOrNull {

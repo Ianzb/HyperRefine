@@ -37,8 +37,8 @@ class AppVolumeActivity : BaseSubPageActivity() {
             titleRes = R.string.app_volume_section,
             specs = listOf(
                 featureSpec(AppVolumeKeys.ENTRY),
+                featureSpec(AppVolumeKeys.ENTRY_VISIBILITY),
                 featureSpec(AppVolumeKeys.HIDE_FLOAT),
-                featureSpec(AppVolumeKeys.ALWAYS_SHOW),
                 featureSpec(AppVolumeKeys.AUTO_SHOW),
                 featureSpec(AppVolumeKeys.HEIGHT_AUTO),
                 featureSpec(AppVolumeKeys.HEIGHT_PERCENT),

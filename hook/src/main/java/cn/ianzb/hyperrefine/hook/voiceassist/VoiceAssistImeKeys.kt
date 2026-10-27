@@ -8,4 +8,9 @@ object VoiceAssistImeKeys {
 
     /** 所有应用启用输入法顶部圆角 + 高级材质（背景模糊）。 */
     const val GLOBAL_MATERIAL = "voice_assist_ime_global_material"
+
+    /** 高级材质背景的不透明度（百分比，100 = 官方默认）。 */
+    const val MATERIAL_OPACITY = "voice_assist_ime_material_opacity"
+
+    const val DEFAULT_MATERIAL_OPACITY = 100f
 }

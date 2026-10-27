@@ -109,6 +109,16 @@ class StatusBarIconHook : BaseHook() {
                 }
             }.getOrDefault(emptyList())
         }.orEmpty()
+        val statusIconOnDarkChanged = statusIconViewClass?.let {
+            runCatching {
+                StatusBarMembers.methods(it, "onDarkChanged") { method ->
+                    method.parameterCount == 3 &&
+                        method.parameterTypes[0] == java.util.ArrayList::class.java &&
+                        method.parameterTypes[1] == Float::class.javaPrimitiveType &&
+                        method.parameterTypes[2] == Int::class.javaPrimitiveType
+                }
+            }.getOrDefault(emptyList())
+        }.orEmpty()
         val iconContainerClass = Reflect.findClassIfExists(
             "com.android.systemui.statusbar.views.MiuiStatusIconContainer",
             loader,
@@ -363,6 +373,19 @@ class StatusBarIconHook : BaseHook() {
                 }
             }
         }
+        statusIconOnDarkChanged.forEach { method ->
+            installs += {
+                StatusBarMembers.after(method) { param ->
+                    guard.run {
+                        val view = param.thisObject as? android.widget.ImageView ?: return@run
+                        val slot = Reflect.getObjectField(view, "mSlot") as? String
+                        if (slot.isNullOrEmpty()) return@run
+                        val tint = param.args.getOrNull(2) as? Int ?: return@run
+                        view.setImageTintList(android.content.res.ColorStateList.valueOf(tint))
+                    }
+                }
+            }
+        }
         batteryAttached.forEach { method ->
             installs += {
                 StatusBarMembers.after(method) { param ->
@@ -474,6 +497,35 @@ class StatusBarIconHook : BaseHook() {
             }.onFailure {
                 // 框架 Handler 在部分 ROM 上不可 hook；保留其余状态栏能力，间隔回退原生 4s。
                 android.util.Log.w("HyperRefineStatusBar", "speed interval hook unavailable", it)
+            }
+        }
+        // 控制中心的隐私指示由独立 View 承载；原生 onPromptInfoChanged 会重设子 View 显隐，
+        // 在其后重新套用显示模式，避免用户切换隐私状态后“仅控制中心显示/隐藏”失效。
+        listOf(
+            "com.android.systemui.controlcenter.shade.MiuiPrivacyContainerView",
+            "com.android.systemui.controlcenter.shade.MiuiFakePrivacyContainerView",
+        ).forEach { className ->
+            val privacyClass = Reflect.findClassIfExists(className, loader)
+            if (privacyClass != null) {
+                privacyClass.declaredMethods
+                    .filter {
+                        it.name == "onPromptInfoChanged" ||
+                            it.name == "setPrivacyIcons" ||
+                            it.name == "onAttachedToWindow"
+                    }
+                    .forEach { method ->
+                        runCatching {
+                            StatusBarMembers.after(method) {
+                                guard.run { StatusBarIconRuntime.refreshSoon() }
+                            }
+                        }.onFailure {
+                            android.util.Log.w(
+                                "HyperRefineStatusBar",
+                                "privacy container hook unavailable: $className",
+                                it,
+                            )
+                        }
+                    }
             }
         }
         HookPrefs.registerListener { StatusBarIconRuntime.onPreferencesChanged() }

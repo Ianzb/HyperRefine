@@ -72,7 +72,12 @@ class SystemUiLoad : BaseLoad() {
                 HookPrefs.getBoolean(CcRadiusKeys.customKey(it), CcRadiusKeys.itemCustomDefault(it))
             }
         initHook(CcRadiusHook(), radiusEnabled)
-        initHook(AppVolumeEntryHook(), HookPrefs.getBoolean(AppVolumeKeys.ENTRY, false))
+        initHook(
+            AppVolumeEntryHook(),
+            HookPrefs.getBoolean(AppVolumeKeys.ENTRY, false) ||
+                HookPrefs.getBoolean(AppVolumeKeys.HIDE_RINGER, false) ||
+                HookPrefs.getBoolean(AppVolumeKeys.HIDE_DND, false),
+        )
         initHook(VolumeBarSizeHook(), HookPrefs.getBoolean(VolumeBarKeys.BAR_SIZE, false))
         initHook(SideVolumePositionHook(), HookPrefs.getBoolean(VolumeBarKeys.SIDE_POS, false))
         initHook(SidePanelPositionHook(), HookPrefs.getBoolean(VolumeBarKeys.L2_POS, false))

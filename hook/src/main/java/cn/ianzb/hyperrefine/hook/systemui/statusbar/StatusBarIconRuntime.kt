@@ -166,15 +166,20 @@ internal object StatusBarIconRuntime {
     }
 
     /**
-     * 原生 onLayout 会读取子 View 的 translationX 来同步动画起始位置。
-     * 布局前先还原，布局后再叠加自定义间距，避免间距被动画当成原生位置。
+     * 原生 onLayout 会按自己的 layoutStates 重写 translationX。
+     * 自定义间距只改子 View 的绘制原点（scrollX），布局前先还原，
+     * 布局后再叠加，避免和原生位移互相覆盖。
      */
     fun prepareIconLayout(group: ViewGroup?) {
         group ?: return
         if (gapStates.isEmpty()) return
         for (i in 0 until group.childCount) {
             val child = group.getChildAt(i) ?: continue
-            gapStates[child]?.let { child.translationX = it.baseTranslationX }
+            gapStates[child]?.let { state ->
+                if (child.scrollX != state.baseScrollX) {
+                    child.scrollTo(state.baseScrollX, child.scrollY)
+                }
+            }
         }
     }
 
@@ -183,8 +188,12 @@ internal object StatusBarIconRuntime {
         if (gapStates.isEmpty()) return
         for (i in 0 until group.childCount) {
             val child = group.getChildAt(i) ?: continue
-            gapStates[child]?.let {
-                child.translationX = it.baseTranslationX + it.offset
+            gapStates[child]?.let { state ->
+                val contentOffset = state.offset.roundToInt()
+                val target = state.baseScrollX - contentOffset
+                if (child.scrollX != target) {
+                    child.scrollTo(target, child.scrollY)
+                }
             }
         }
     }
@@ -2119,7 +2128,7 @@ internal object StatusBarIconRuntime {
                 if (wasSpaced) {
                     view.minimumWidth = baseView.minimumWidth
                     (view as? LinearLayout)?.gravity = baseView.layoutGravity
-                    view.translationX = baseView.translationX
+                    view.scrollTo(baseView.scrollX, view.scrollY)
                     view.requestLayout()
                 }
                 spaced[view] = false
@@ -2129,11 +2138,12 @@ internal object StatusBarIconRuntime {
                 return
             }
             // 不能用 padding 做左右间距：MiuiStatusIconContainer.onLayout 会把
-            // padding 再加一次到子 View 宽度上，导致左边距同时撑大右侧、右边距
-            // 只撑大右侧。改为“最小宽度占位 + 内容位移”：
+            // padding 再加一次到子 View 宽度上，导致左右间距被重复计算。
+            // 也不能用 translationX：原生 onLayout 会用 layoutStates 重写它。
+            // 改为“最小宽度占位 + scrollX 绘制位移”：
             //   占位宽 = 图标原始宽 + gapStart + gapEnd
             //   内容左移/右移 = (gapStart - gapEnd) / 2
-            // 这样左右间距才真正独立，且不需要新增任何子 View。
+            // scrollX 只移动绘制内容，不参与原生 layoutStates 计算。
             val baseWidth = gapBaseWidths[view] ?: run {
                 val measured = view.measuredWidth.takeIf { it > 0 } ?: view.width
                 if (measured <= 0) {
@@ -2162,8 +2172,12 @@ internal object StatusBarIconRuntime {
                 if (view.gravity != centered) view.gravity = centered
             }
             val offset = (gapStart - gapEnd) / 2f
-            gapStates[view] = GapState(baseView.translationX, offset)
-            view.translationX = baseView.translationX + offset
+            val state = gapStates[view] ?: GapState(baseView.scrollX, offset)
+            gapStates[view] = state.copy(offset = offset)
+            val targetScroll = state.baseScrollX - offset.roundToInt()
+            if (view.scrollX != targetScroll) {
+                view.scrollTo(targetScroll, view.scrollY)
+            }
             spaced[view] = true
         }
 
@@ -2190,6 +2204,7 @@ internal object StatusBarIconRuntime {
                 visibility = view.visibility,
                 translationX = view.translationX,
                 translationY = view.translationY,
+                scrollX = view.scrollX,
                 scaleX = view.scaleX,
                 scaleY = view.scaleY,
                 alpha = view.alpha,
@@ -2380,11 +2395,10 @@ internal object StatusBarIconRuntime {
                 }
                 return
             }
-            val gap = gapStates[view]?.offset ?: 0f
             if (config.align == "system") {
                 val baseView = base[view]
-                if (baseView != null && view.translationX != baseView.translationX + gap) {
-                    view.translationX = baseView.translationX + gap
+                if (baseView != null && view.translationX != baseView.translationX) {
+                    view.translationX = baseView.translationX
                 }
                 return
             }
@@ -2395,13 +2409,13 @@ internal object StatusBarIconRuntime {
                 else -> 0f
             }
             if (sign == 0f) {
-                view.translationX = baseView.translationX + gap
+                view.translationX = baseView.translationX
                 return
             }
             if (id == StatusBarIconRegistry.CLOCK || id == StatusBarIconRegistry.PAD_CLOCK) {
                 val text = view as? TextView ?: return
                 val spare = (view.width - text.paint.measureText(text.text.toString())).coerceAtLeast(0f)
-                view.translationX = baseView.translationX + gap + sign * spare / 2f
+                view.translationX = baseView.translationX + sign * spare / 2f
                 return
             }
         }
@@ -2654,6 +2668,7 @@ internal object StatusBarIconRuntime {
         val visibility: Int,
         val translationX: Float,
         val translationY: Float,
+        val scrollX: Int,
         val scaleX: Float,
         val scaleY: Float,
         val alpha: Float,
@@ -2668,7 +2683,7 @@ internal object StatusBarIconRuntime {
     )
 
     private data class GapState(
-        val baseTranslationX: Float,
+        val baseScrollX: Int,
         val offset: Float,
     )
 }

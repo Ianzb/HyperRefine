@@ -109,16 +109,6 @@ class StatusBarIconHook : BaseHook() {
                 }
             }.getOrDefault(emptyList())
         }.orEmpty()
-        val statusIconOnDarkChanged = statusIconViewClass?.let {
-            runCatching {
-                StatusBarMembers.methods(it, "onDarkChanged") { method ->
-                    method.parameterCount == 3 &&
-                        method.parameterTypes[0] == java.util.ArrayList::class.java &&
-                        method.parameterTypes[1] == Float::class.javaPrimitiveType &&
-                        method.parameterTypes[2] == Int::class.javaPrimitiveType
-                }
-            }.getOrDefault(emptyList())
-        }.orEmpty()
         val iconContainerClass = Reflect.findClassIfExists(
             "com.android.systemui.statusbar.views.MiuiStatusIconContainer",
             loader,
@@ -369,19 +359,6 @@ class StatusBarIconHook : BaseHook() {
                             view,
                             param.args.getOrNull(0) as? android.graphics.Canvas,
                         )
-                    }
-                }
-            }
-        }
-        statusIconOnDarkChanged.forEach { method ->
-            installs += {
-                StatusBarMembers.after(method) { param ->
-                    guard.run {
-                        val view = param.thisObject as? android.widget.ImageView ?: return@run
-                        val slot = Reflect.getObjectField(view, "mSlot") as? String
-                        if (slot.isNullOrEmpty()) return@run
-                        val tint = param.args.getOrNull(2) as? Int ?: return@run
-                        view.setImageTintList(android.content.res.ColorStateList.valueOf(tint))
                     }
                 }
             }

@@ -88,6 +88,7 @@ class AppVolumeEntryHook : BaseHook() {
         PluginLoader.register(key, systemCl) { pluginCl ->
             loadPlugin(pluginCl)
             hookAnimator(pluginCl)
+            hookDialogControlCenter(pluginCl)
             hookRingerLayout(pluginCl)
             hookController(pluginCl)
             hookSeekBarAnim(pluginCl)
@@ -151,7 +152,44 @@ class AppVolumeEntryHook : BaseHook() {
         }
     }
 
+    /**
+     * 控制中心二级音量面板的标记由 `VolumePanelViewController.setControlCenterPanel(true)`
+     * 提前写入对话框；仅靠 initView 时的静态判断会受复用/初始化顺序影响。
+     * 标记切到 true 的瞬间直接把入口移除，侧边面板仍走正常注入。
+     */
+    private fun hookDialogControlCenter(pluginCl: ClassLoader) {
+        val cls = Reflect.findClassIfExists(DIALOG_CLASS, pluginCl) ?: return
+        cls.declaredMethods
+            .filter { it.name == "setControlCenterPanel" && it.parameterCount == 1 }
+            .forEach { method ->
+                method.isAccessible = true
+                runCatching {
+                    HookHelper.hookAfter(method) { param ->
+                        if (param.args.getOrNull(0) as? Boolean != true) return@hookAfter
+                        val dialog = param.thisObject as? View ?: return@hookAfter
+                        removeEntry(dialog)
+                    }
+                }.onFailure { HookHelper.log("$tag: hook setControlCenterPanel failed", it) }
+            }
+    }
+
+    private fun removeEntry(root: View) {
+        val entry = findEntry(root) ?: return
+        val parent = entry.parent as? ViewGroup ?: return
+        parent.removeView(entry)
+        entries.remove(parent)
+        val divider = findTaggedChild(parent, TAG_DIVIDER)
+        if (divider != null && findEntry(parent) == null) {
+            parent.removeView(divider)
+        }
+    }
+
     private fun injectEntry(volumeView: View, animator: Any) {
+        // 控制中心二级音量面板复用同一套 MiuiVolumeDialogView；它不应出现多应用入口。
+        val dialog = findVolumeDialog(volumeView)
+        if (dialog != null && isControlCenterDialog(dialog)) {
+            return
+        }
         resolveResources(volumeView.context)
         if (layoutRingerButton == 0) {
             HookHelper.log("$tag: ringer button layout not resolved")
@@ -755,12 +793,23 @@ class AppVolumeEntryHook : BaseHook() {
 
     /** 找到整条侧边音量条容器（`MiuiVolumeDialogView`）。 */
     private fun findVolumeDialog(view: View): View? {
-        var parent: ViewParent? = view.parent
-        while (parent != null) {
-            if (parent is View && parent.javaClass.name.contains("MiuiVolumeDialogView")) return parent
-            parent = (parent as? View)?.parent
+        var current: View? = view
+        while (current != null) {
+            if (current.javaClass.name.contains("MiuiVolumeDialogView")) return current
+            current = current.parent as? View
         }
         return null
+    }
+
+    /** 兼容字段名被混淆/改名的 ROM：优先读字段，再退回同名访问器。 */
+    private fun isControlCenterDialog(dialog: View): Boolean {
+        val field = runCatching {
+            Reflect.getObjectField(dialog, "isControlCenterPanel") as? Boolean
+        }.getOrNull()
+        if (field != null) return field
+        return runCatching {
+            Reflect.callMethod(dialog, "isControlCenterPanel") as? Boolean
+        }.getOrNull() ?: false
     }
 
     private fun applyEntryState(entry: View, visible: Boolean, dodge: Boolean = false, deferCount: Int = 0) {
@@ -943,6 +992,8 @@ class AppVolumeEntryHook : BaseHook() {
             "com.android.systemui.miui.volume.VolumePanelViewController"
         private const val ANIMATOR_CLASS =
             "com.android.systemui.miui.volume.VolumeShowHideAnimator"
+        private const val DIALOG_CLASS =
+            "com.android.systemui.miui.volume.MiuiVolumeDialogView"
         private const val OUTER_CLASS =
             "com.android.systemui.miui.volume.MiuiRingerModeLayout"
         private const val SEEK_BAR_CLASS =

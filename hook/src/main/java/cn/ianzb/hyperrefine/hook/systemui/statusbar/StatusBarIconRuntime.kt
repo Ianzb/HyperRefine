@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.net.TrafficStats
@@ -20,6 +21,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import cn.ianzb.hyperrefine.hook.device.DeviceContext
@@ -28,6 +30,7 @@ import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
 import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
+import java.util.ArrayList
 import java.util.Collections
 import java.util.Date
 import java.util.IdentityHashMap
@@ -236,38 +239,90 @@ internal object StatusBarIconRuntime {
     }
 
     /**
-     * 新补进临时 IconManager 的图标不会自动收到之前的 onDarkChanged，
-     * 会保留 drawable 默认白色。这里让控制中心头部重新下发当前明暗色。
+     * 新补进任意 IconManager 的图标不会自动收到之前的 onDarkChanged，
+     * 会保留 drawable 默认白色（锁屏暗色状态栏尤其明显）。直接对每个
+     * StatusBarIconView 重放原生回调，由它自己的 mExParams.useTint 决定
+     * 是补原生 tint 还是保留主题 drawable。
      */
     fun refreshIconTint(manager: Any) {
         val group = runCatching {
             Reflect.getObjectField(manager, "mGroup") as? ViewGroup
         }.getOrNull() ?: return
-        var parent: View? = group.parent as? View
-        var delegate: Any? = null
-        while (parent != null) {
-            if (parent.javaClass.simpleName == "ControlCenterFakeStatusIcons" ||
-                parent.javaClass.simpleName == "ControlCenterStatusBarIcon"
-            ) {
-                delegate = runCatching { Reflect.getObjectField(parent, "delegate") }.getOrNull()
-                break
-            }
-            parent = parent.parent as? View
-        }
-        delegate ?: return
-        // MiuiLightDarkIconManager.setLight 在 mLight/mColor 未变化时会直接 return，
-        // 新增的 child 永远收不到 onDarkChanged。先把 mColor 改成临时值，强制它
-        // 重新遍历整组 child，再恢复为当前颜色。
         val color = runCatching { Reflect.getObjectField(manager, "mColor") as? Int }
             .getOrNull() ?: return
+        if (color == 0) return
         val light = runCatching { Reflect.getObjectField(manager, "mLight") as? Boolean }
             .getOrNull() ?: return
-        val useTint = runCatching { Reflect.getObjectField(delegate, "mUseTint") as? Boolean }
-            .getOrNull() ?: true
-        runCatching {
-            Reflect.setObjectField(manager, "mColor", color xor 1)
-            Reflect.callMethod(manager, "setLight", color, light, useTint)
+        val darkIntensity = if (light) 0f else 1f
+        val areas = ArrayList<Rect>()
+        // 钥匙屏新补进来的图标调用 onDarkChanged 时，管理器的 mColor 有时仍是
+        // 上一轮颜色；同组时钟的 tint 才是刚刚分发过的实际颜色，优先跟它同步。
+        val referenceColor = runCatching {
+            var tint: Int? = null
+            for (index in 0 until group.childCount) {
+                val view = group.getChildAt(index) as? ImageView ?: continue
+                val slot = Reflect.getObjectField(view, "mSlot") as? String
+                if (slot == "clock" || slot == "time") {
+                    tint = view.imageTintList?.defaultColor
+                    if (tint != null) break
+                }
+            }
+            tint
+        }.getOrNull()
+        val effectiveColor = referenceColor
+            ?.takeIf { Color.alpha(it) != 0 }
+            ?: color
+        for (index in 0 until group.childCount) {
+            val child = group.getChildAt(index) ?: continue
+            runCatching {
+                Reflect.callMethod(child, "onDarkChanged", areas, darkIntensity, effectiveColor)
+            }
+            // 蓝牙电量图标在原生 useTint 判定里可能被当成非 SystemUI 图标而跳过
+            // tint；它是单色图标，显式补一次颜色，不替换 drawable。
+            val slot = runCatching {
+                Reflect.getObjectField(child, "mSlot") as? String
+            }.getOrNull()
+            if (slot == "bluetooth_handsfree_battery" || slot == "bluetooth") {
+                runCatching {
+                    val image = child as? ImageView ?: return@runCatching
+                    if (image.imageTintList?.defaultColor != effectiveColor) {
+                        image.setImageTintList(
+                            android.content.res.ColorStateList.valueOf(effectiveColor),
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * 原生 onDarkChanged 已跑完时补一次兜底：普通系统图标按 useTint 跟随，
+     * 蓝牙电量等单色图标即使被原生判成非 SystemUI 也强制跟随。
+     * 只写 tint，不碰 drawable，避免覆盖主题图像。
+     */
+    fun enforceIconTint(view: ImageView, tint: Int) {
+        if (tint == 0) return
+        val slot = runCatching {
+            Reflect.getObjectField(view, "mSlot") as? String
+        }.getOrNull()
+        val useTint = runCatching {
+            val ex = Reflect.getObjectField(view, "mExParams")
+            ex?.let { Reflect.getObjectField(it, "useTint") as? Boolean }
+        }.getOrNull() == true
+        if (!useTint && slot != "bluetooth_handsfree_battery" && slot != "bluetooth") return
+        if (view.imageTintList?.defaultColor == tint) return
+        view.setImageTintList(android.content.res.ColorStateList.valueOf(tint))
+    }
+
+
+    /** 新图标挂上后延迟补一次 tint，避免 setBlockList 时 child 尚不存在。 */
+    fun refreshIconTintLater(manager: Any) {
+        val group = runCatching {
+            Reflect.getObjectField(manager, "mGroup") as? ViewGroup
+        }.getOrNull() ?: return
+        group.postDelayed({
+            if (group.isAttachedToWindow) refreshIconTint(manager)
+        }, 80L)
     }
 
     fun onPreferencesChanged() {

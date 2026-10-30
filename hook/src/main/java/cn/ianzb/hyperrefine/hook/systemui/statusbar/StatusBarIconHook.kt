@@ -109,6 +109,16 @@ class StatusBarIconHook : BaseHook() {
                 }
             }.getOrDefault(emptyList())
         }.orEmpty()
+        val statusIconOnDarkChanged = statusIconViewClass?.let {
+            runCatching {
+                StatusBarMembers.methods(it, "onDarkChanged") { method ->
+                    method.parameterCount == 3 &&
+                        method.parameterTypes[0] == java.util.ArrayList::class.java &&
+                        method.parameterTypes[1] == Float::class.javaPrimitiveType &&
+                        method.parameterTypes[2] == Int::class.javaPrimitiveType
+                }
+            }.getOrDefault(emptyList())
+        }.orEmpty()
         val iconContainerClass = Reflect.findClassIfExists(
             "com.android.systemui.statusbar.views.MiuiStatusIconContainer",
             loader,
@@ -266,8 +276,11 @@ class StatusBarIconHook : BaseHook() {
         }
         onSetIcon.forEach { method ->
             installs += {
-                StatusBarMembers.after(method) { _ ->
-                    guard.run { StatusBarIconRuntime.refreshSoon() }
+                StatusBarMembers.after(method) { param ->
+                    guard.run {
+                        StatusBarIconRuntime.refreshSoon()
+                        param.thisObject?.let(StatusBarIconRuntime::refreshIconTintLater)
+                    }
                 }
             }
         }
@@ -280,8 +293,11 @@ class StatusBarIconHook : BaseHook() {
         }
         onIconAdded.forEach { method ->
             installs += {
-                StatusBarMembers.after(method) { _ ->
-                    guard.run { StatusBarIconRuntime.refreshSoon() }
+                StatusBarMembers.after(method) { param ->
+                    guard.run {
+                        StatusBarIconRuntime.refreshSoon()
+                        param.thisObject?.let(StatusBarIconRuntime::refreshIconTintLater)
+                    }
                 }
             }
         }
@@ -359,6 +375,17 @@ class StatusBarIconHook : BaseHook() {
                             view,
                             param.args.getOrNull(0) as? android.graphics.Canvas,
                         )
+                    }
+                }
+            }
+        }
+        statusIconOnDarkChanged.forEach { method ->
+            installs += {
+                StatusBarMembers.after(method) { param ->
+                    guard.run {
+                        val view = param.thisObject as? android.widget.ImageView ?: return@run
+                        val tint = param.args.getOrNull(2) as? Int ?: return@run
+                        StatusBarIconRuntime.enforceIconTint(view, tint)
                     }
                 }
             }

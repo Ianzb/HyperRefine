@@ -13,8 +13,8 @@ android {
         applicationId = "cn.ianzb.hyperrefine"
         minSdk = 35
         targetSdk = 37
-        versionCode = 23
-        versionName = "1.14.0"
+        versionCode = 24
+        versionName = "1.15.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -95,6 +95,7 @@ dependencies {
     implementation(libs.haze)
     implementation(libs.haze.blur)
 }
+
 
 
 

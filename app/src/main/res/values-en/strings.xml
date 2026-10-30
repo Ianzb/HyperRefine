@@ -672,7 +672,6 @@
 
     <string name="sb_speed_style">Indicator style</string>
     <string name="sb_speed_style_system">Follow system (value above, unit below)</string>
-    <string name="sb_speed_style_number_only">Value only</string>
     <string name="sb_speed_style_single">Single row (value and unit together)</string>
     <string name="sb_speed_style_dual">Two rows: upload / download</string>
     <string name="sb_speed_arrow_style">Direction marker</string>
@@ -683,18 +682,17 @@
     <string name="sb_speed_arrow_left">Arrow on left</string>
     <string name="sb_speed_arrow_right">Arrow on right</string>
     <string name="sb_speed_unit_style">Unit style</string>
-    <string name="sb_speed_unit_style_kb_s">KB/s (auto K/M/G)</string>
-    <string name="sb_speed_unit_style_k">K (auto K/M/G)</string>
-    <string name="sb_speed_unit_style_kb">KB (auto KB/MB/GB)</string>
-    <string name="sb_speed_unit_style_kbit">Kb (auto Kb/Mb/Gb)</string>
-    <string name="sb_speed_unit_style_kbit_s">Kb/s (auto Kb/Mb/Gb per second)</string>
+    <string name="sb_speed_unit_style_kb_s">KB/s</string>
+    <string name="sb_speed_unit_style_k">K</string>
+    <string name="sb_speed_unit_style_kb">KB</string>
+    <string name="sb_speed_unit_style_kbit">Kb</string>
+    <string name="sb_speed_unit_style_kbit_s">Kb/s</string>
+    <string name="sb_speed_unit_style_none">No unit</string>
     <string name="sb_speed_dual_upload_first">Show upload above</string>
     <string name="sb_speed_dual_upload_first_summary">Upload is above by default; disable to put download above.</string>
     <string name="sb_speed_row_gap">Two-row spacing</string>
     <string name="sb_speed_row_gap_summary">0 keeps the native line spacing; negative tightens, positive widens.</string>
     <string name="sb_speed_font_size">Font size</string>
-    <string name="sb_speed_show_unit">Show unit</string>
-    <string name="sb_speed_show_unit_summary">When off, only values remain; both rows hide units in two-row mode.</string>
     <string name="sb_speed_slow_hide">Hide slow speeds</string>
     <string name="sb_speed_slow_hide_summary">Hide the indicator while speed is below the threshold.</string>
     <string name="sb_speed_slow_threshold">Slow threshold</string>

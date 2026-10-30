@@ -23,10 +23,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
 import cn.ianzb.hyperrefine.prefs.ConfigState
+import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -142,19 +144,26 @@ fun BlurredBar(
                         }
                         alpha = fade * opacity / 100f
                     }
-                    .hazeEffect(state = state) {
-                        // 线性递减的模糊半径（官方是线性）。
-                        blurRadius = strength.dp
-                        // 关键：模糊层必须不透明。Haze 会先原样绘制一遍来源内容、再叠加模糊副本；
-                        // 若模糊层透明，卡片等硬边缘会从模糊层中透出，看起来像「组件盖在模糊之上」。
-                        backgroundColor = surfaceColor
-                        noiseFactor = 0f
-                        // surface 着色叠加在模糊之上，控制顶栏实度。
-                        tints = listOf(
-                            HazeTint(surfaceColor.copy(alpha = TopBarBlurConfig.SurfaceAlpha))
-                        )
-                        progressive = TopBarBlurConfig.progressive
-                    },
+                    .hazeBlur(
+                        input = HazeInput.Sources(state),
+                        style = HazeBlurStyle {
+                            // 线性递减的模糊半径（官方是线性）。
+                            blurRadius(strength.dp)
+                            // 关键：模糊层必须不透明。Haze 会先原样绘制一遍来源内容、再叠加模糊副本；
+                            // 若模糊层透明，卡片等硬边缘会从模糊层中透出，看起来像「组件盖在模糊之上」。
+                            backgroundColor(surfaceColor)
+                            noiseFactor(0f)
+                            // surface 着色叠加在模糊之上，控制顶栏实度。
+                            colorEffects(
+                                listOf(
+                                    HazeColorEffect.tint(
+                                        surfaceColor.copy(alpha = TopBarBlurConfig.SurfaceAlpha)
+                                    )
+                                )
+                            )
+                            progressive(TopBarBlurConfig.progressive)
+                        },
+                    ),
             )
         }
         content()

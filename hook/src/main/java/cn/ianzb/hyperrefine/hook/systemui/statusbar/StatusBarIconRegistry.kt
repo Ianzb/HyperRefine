@@ -141,8 +141,6 @@ object StatusBarIconRegistry {
         // 用户只移动一个图标时其余图标会被强制重排，看起来就像“顺序对不上”。
         StatusBarIconComponent(
             NETWORK_SPEED, "network_speed", StatusBarIconSide.RIGHT,
-            conditions = listOf(StatusBarIconCondition.TRAFFIC, StatusBarIconCondition.NO_TRAFFIC),
-            supportsLogic = true,
             reorderable = true,
             textual = true,
         ),

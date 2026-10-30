@@ -62,6 +62,7 @@ object StatusBarIconKeys {
     const val CLOCK_WIDTH = "${PREFIX}clock_width"
 
     fun speedInterval(id: String) = "${PREFIX}${id}_speed_interval"
+    /** 已移除的「显示单位」开关键；仅保留给配置迁移与旧值兜底读取。 */
     fun speedShowUnit(id: String) = "${PREFIX}${id}_speed_show_unit"
     fun speedStyle(id: String) = "${PREFIX}${id}_speed_style"
     fun speedFontSize(id: String) = "${PREFIX}${id}_speed_font_size"

@@ -688,7 +688,7 @@ internal object StatusBarIconRuntime {
                 ?: return
             val number = Reflect.getObjectField(view, "mNetworkSpeedNumber")?.toString().orEmpty().trim()
             val unit = Reflect.getObjectField(view, "mNetworkSpeedUnit")?.toString().orEmpty().trim()
-            val showUnit = config.speedShowUnit
+            val showUnit = config.speedUnitStyle != "none"
             when (config.speedStyle) {
                 "single_line" -> {
                     val (down, _) = sampleTraffic(view)
@@ -773,12 +773,13 @@ internal object StatusBarIconRuntime {
         val container = state.container ?: return
         val numberText = state.numberText
         val unitText = state.unitText
-        val showUnit = config.speedShowUnit
+        val showUnit = config.speedUnitStyle != "none"
+        val noUnit = !showUnit
         val single = config.speedStyle == "single_line"
+        val dual = config.speedStyle == "dual_line"
         val numberOnly = config.speedStyle == "number_only" ||
             single ||
-            (!showUnit && config.speedStyle == "system")
-        val dual = config.speedStyle == "dual_line"
+            (noUnit && !dual)
 
         numberText.visibility = View.VISIBLE
         unitText.visibility = if (numberOnly) View.GONE else View.VISIBLE
@@ -859,11 +860,13 @@ internal object StatusBarIconRuntime {
             value < 100f -> String.format(Locale.getDefault(), "%.1f", value)
             else -> String.format(Locale.getDefault(), "%.0f", value)
         }
-        return if (showUnit) "$number ${speedUnitLabel(unitStyle, scale)}" else number
+        val label = if (showUnit) speedUnitLabel(unitStyle, scale) else ""
+        return if (label.isEmpty()) number else "$number $label"
     }
 
     /** 单位标签随数值自动换 K/M/G；只改标签写法，不改变 1024 进制换算。 */
     private fun speedUnitLabel(style: String, scale: Int): String = when (style) {
+        "none" -> ""
         "k" -> when (scale) {
             0 -> "B"
             1 -> "K"

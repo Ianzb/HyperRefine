@@ -20,7 +20,6 @@ data class StatusBarIconComponentConfig(
     val align: String = "system",
     val fontWeight: Int = 0,
     val fontSize: Float = 0f,
-    val speedShowUnit: Boolean = true,
     val speedStyle: String = "system",
     val speedFontSize: Float = 0f,
     val speedRowGap: Float = 0f,
@@ -175,10 +174,6 @@ object StatusBarIconConfigReader {
                 StatusBarIconKeys.fontSize(id),
                 StatusBarIconRegistry.recommendedFontSize(id).toFloat(),
             ),
-            speedShowUnit = HookPrefs.getBoolean(
-                StatusBarIconKeys.speedShowUnit(id),
-                fallback.speedShowUnit,
-            ),
             speedStyle = (HookPrefs.getString(
                 StatusBarIconKeys.speedStyle(id),
                 fallback.speedStyle,
@@ -212,11 +207,18 @@ object StatusBarIconConfigReader {
                 StatusBarIconKeys.speedDualUploadFirst(id),
                 fallback.speedDualUploadFirst,
             ),
-            speedUnitStyle = (HookPrefs.getString(
-                StatusBarIconKeys.speedUnitStyle(id),
-                fallback.speedUnitStyle,
-            ) ?: fallback.speedUnitStyle).takeIf { it in SPEED_UNIT_STYLES }
-                ?: fallback.speedUnitStyle,
+            speedUnitStyle = run {
+                val stored = HookPrefs.getString(
+                    StatusBarIconKeys.speedUnitStyle(id),
+                    "",
+                ).orEmpty()
+                when {
+                    stored in SPEED_UNIT_STYLES -> stored
+                    // 旧版「显示单位」开关已移除；未迁移前仍按旧值隐藏单位。
+                    !HookPrefs.getBoolean(StatusBarIconKeys.speedShowUnit(id), true) -> "none"
+                    else -> fallback.speedUnitStyle
+                }
+            },
             speedSlowHide = HookPrefs.getBoolean(
                 StatusBarIconKeys.speedSlowHide(id),
                 fallback.speedSlowHide,
@@ -252,7 +254,7 @@ object StatusBarIconConfigReader {
     )
     private val SPEED_ARROW_STYLES = setOf("arrow", "triangle", "none")
     private val SPEED_ARROW_POSITIONS = setOf("left", "right")
-    private val SPEED_UNIT_STYLES = setOf("k", "kb", "kbit", "kbit_s", "kb_s")
+    private val SPEED_UNIT_STYLES = setOf("k", "kb", "kbit", "kbit_s", "kb_s", "none")
 }
 
 /** 顺序配置只对 slot 型系统图标生效；独立 View 组件由 SystemUI 固定位置。 */

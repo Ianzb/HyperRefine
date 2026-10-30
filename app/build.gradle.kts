@@ -93,6 +93,7 @@ dependencies {
     implementation(libs.miuix.navigation)
     implementation(libs.material.icons)
     implementation(libs.haze)
+    implementation(libs.haze.blur)
 }
 
 

@@ -672,7 +672,6 @@
 
     <string name="sb_speed_style">指示器样式</string>
     <string name="sb_speed_style_system">跟随系统（数字在上、单位在下）</string>
-    <string name="sb_speed_style_number_only">仅显示数字</string>
     <string name="sb_speed_style_single">单行显示（数字与单位同一行）</string>
     <string name="sb_speed_style_dual">双排显示上行 / 下行</string>
     <string name="sb_speed_arrow_style">上下行箭头样式</string>
@@ -683,18 +682,17 @@
     <string name="sb_speed_arrow_left">箭头在左</string>
     <string name="sb_speed_arrow_right">箭头在右</string>
     <string name="sb_speed_unit_style">单位样式</string>
-    <string name="sb_speed_unit_style_kb_s">KB/s（自动 K/M/G）</string>
-    <string name="sb_speed_unit_style_k">K（自动 K/M/G）</string>
-    <string name="sb_speed_unit_style_kb">KB（自动 KB/MB/GB）</string>
-    <string name="sb_speed_unit_style_kbit">Kb（自动 Kb/Mb/Gb）</string>
-    <string name="sb_speed_unit_style_kbit_s">Kb/s（自动 Kb/Mb/Gb 每秒）</string>
+    <string name="sb_speed_unit_style_kb_s">KB/s</string>
+    <string name="sb_speed_unit_style_k">K</string>
+    <string name="sb_speed_unit_style_kb">KB</string>
+    <string name="sb_speed_unit_style_kbit">Kb</string>
+    <string name="sb_speed_unit_style_kbit_s">Kb/s</string>
+    <string name="sb_speed_unit_style_none">不显示单位</string>
     <string name="sb_speed_dual_upload_first">上行显示在上一排</string>
     <string name="sb_speed_dual_upload_first_summary">默认上行在上、下行在下；关闭后改为下行在上</string>
     <string name="sb_speed_row_gap">双排行间距</string>
     <string name="sb_speed_row_gap_summary">0 保持系统原生行距；负值收紧、正值拉开</string>
     <string name="sb_speed_font_size">字号</string>
-    <string name="sb_speed_show_unit">显示单位</string>
-    <string name="sb_speed_show_unit_summary">关闭后只保留数值；双排模式下上下行都不显示单位</string>
     <string name="sb_speed_slow_hide">隐藏慢速</string>
     <string name="sb_speed_slow_hide_summary">低于设定阈值时隐藏网速指示器</string>
     <string name="sb_speed_slow_threshold">慢速阈值</string>

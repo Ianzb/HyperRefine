@@ -579,19 +579,9 @@ class IconSettingsActivity : BaseSubPageActivity() {
                 title = R.string.sb_speed_style,
                 entries = listOf(
                     R.string.sb_speed_style_system to "system",
-                    R.string.sb_speed_style_number_only to "number_only",
                     R.string.sb_speed_style_single to "single_line",
                     R.string.sb_speed_style_dual to "dual_line",
                 ),
-            ),
-            OptionSpec(
-                key = StatusBarIconKeys.speedShowUnit(id),
-                type = OptionType.SWITCH,
-                titleRes = R.string.sb_speed_show_unit,
-                summaryRes = R.string.sb_speed_show_unit_summary,
-                defaultBoolean = true,
-                targetPackages = target,
-                dependsOn = StatusBarIconKeys.ENABLED,
             ),
             dropdown(
                 key = StatusBarIconKeys.speedUnitStyle(id),
@@ -602,12 +592,9 @@ class IconSettingsActivity : BaseSubPageActivity() {
                     R.string.sb_speed_unit_style_kb to "kb",
                     R.string.sb_speed_unit_style_kbit to "kbit",
                     R.string.sb_speed_unit_style_kbit_s to "kbit_s",
+                    R.string.sb_speed_unit_style_none to "none",
                 ),
-            ).copy(
-                defaultString = "kb_s",
-                dependsOn = StatusBarIconKeys.speedShowUnit(id),
-                dependsOnValue = true,
-            ),
+            ).copy(defaultString = "kb_s"),
             dropdown(
                 key = StatusBarIconKeys.speedDualArrowStyle(id),
                 title = R.string.sb_speed_arrow_style,

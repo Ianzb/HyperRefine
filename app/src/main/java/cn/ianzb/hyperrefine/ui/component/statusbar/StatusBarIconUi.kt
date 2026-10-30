@@ -234,7 +234,6 @@ fun currentComponentConfig(id: String): StatusBarIconComponentConfig {
             StatusBarIconKeys.fontSize(id),
             StatusBarIconRegistry.recommendedFontSize(id).toFloat(),
         ),
-        speedShowUnit = ConfigState.bool(StatusBarIconKeys.speedShowUnit(id), true),
         speedStyle = ConfigState.string(StatusBarIconKeys.speedStyle(id), "system"),
         speedFontSize = rawSpeedFontSize,
         speedRowGap = ConfigState.float(StatusBarIconKeys.speedRowGap(id), 0f),

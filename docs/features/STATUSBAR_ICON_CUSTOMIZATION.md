@@ -82,9 +82,8 @@
 | `statusbar_icon_clock_am_pm` | Boolean | false | 把中文时段（上午/下午等）替换为 AM/PM；对系统与自定义格式都生效 |
 | `statusbar_icon_clock_lock_width` | Boolean | false | 是否固定状态栏时钟宽度 |
 | `statusbar_icon_clock_width` | Int | 60 | 固定宽度 dp，20..240；开关关闭时不写入布局 |
-| `statusbar_icon_<id>_speed_unit` | String | `native` | `native` / `mb`；旧 `hide_unit` 仍按隐藏单位读取 |
-| `statusbar_icon_<id>_speed_show_unit` | Boolean | true | 是否显示单位；与样式中的“仅数值/仅单位”共同决定 |
-| `statusbar_icon_<id>_speed_style` | String | `system` | `system` / `number_only` / `single_line` / `dual_line` |
+| `statusbar_icon_<id>_speed_unit_style` | String | `kb_s` | `kb_s` / `k` / `kb` / `kbit` / `kbit_s` / `none`；`none` 即不显示单位 |
+| `statusbar_icon_<id>_speed_style` | String | `system` | `system` / `single_line` / `dual_line`；旧值 `number_only` 仍按仅数值兼容读取 |
 | `statusbar_icon_<id>_speed_font_size` | Float | 0 | 0 = 自动；6..24sp，受 `_font_size_enabled` 开关控制；单行样式未手动设字号时使用普通数值字号约两倍 |
 | `statusbar_icon_<id>_speed_slow_hide` | Boolean | false | 是否隐藏低于阈值的网速 |
 | `statusbar_icon_<id>_speed_slow_threshold` | Int | 10 | 0..1024 KB/s；0 表示不隐藏 |
@@ -115,7 +114,7 @@
    - 平板日期：作为独立左侧图标行；同样先开关后格式卡片，默认填入系统日期/星期格式。
    - 横屏默认格式由系统时间格式 + `getBestDateTimePattern("EMMMd")` 组成，并在日期与星期之间补一个空格；通知中心小标题、控制中心、平板日期的默认值读取同一日期/星期语法。
    - 闹钟：显示条件选“闹钟前显示”后，同页 0..72 小时滑条控制阈值。
-   - 网速：指示器样式（系统双行 / 仅数字 / 单行 / 上下行双排）、显示单位、单位换算、慢速隐藏与 0..1024KB/s 阈值、1..10s 更新间隔、对齐；字号开关与滑条在“布局”区，与时间字号同位置；单行样式默认使用普通数值字号的约两倍，显式设置字号时以手动值为准。
+   - 网速：指示器样式（系统双行 / 单行 / 上下行双排）、单位样式（含“不显示单位”）、慢速隐藏与 0..1024KB/s 阈值、1..10s 更新间隔、对齐；字号开关与滑条在“布局”区，与时间字号同位置；单行样式默认使用普通数值字号的约两倍，显式设置字号时以手动值为准。
    - 通知：最多图标数；“按隐藏图标数量显示圆点”开关。
    - 隐私指示：状态栏 `privacy_area` 与控制中心 `MiuiPrivacyContainerView` / `MiuiFakePrivacyContainerView` 都支持跟随系统/始终显示/始终隐藏/仅控制中心显示/仅控制中心隐藏；两套宿主分别判断，不再只保留前三项。
    - Wi‑Fi：Wi‑Fi 活动隐藏。

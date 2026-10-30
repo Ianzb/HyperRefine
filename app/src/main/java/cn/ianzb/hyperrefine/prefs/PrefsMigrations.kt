@@ -24,6 +24,7 @@ object PrefsMigrations {
     private const val MARKER_CLOCK_CUSTOM = "migration_clock_custom_switches"
     private const val MARKER_SPEED_STYLE = "migration_speed_style_v2"
     private const val MARKER_SPEED_OPTIONS_V3 = "migration_speed_options_v3"
+    private const val MARKER_SPEED_UNIT_VISIBILITY_V4 = "migration_speed_unit_visibility_v4"
     private const val MARKER_WALLPAPER_DIM_LOCK = "migration_wallpaper_dim_lock_amount"
     private const val MARKER_VOLUME_ENTRY_VISIBILITY = "migration_volume_entry_visibility"
 
@@ -34,6 +35,7 @@ object PrefsMigrations {
         migrateClockCustomSwitches()
         migrateSpeedStyle()
         migrateSpeedOptionsV3()
+        migrateSpeedUnitVisibilityV4()
         migrateWallpaperDimLockAmount()
         migrateVolumeEntryVisibility()
     }
@@ -143,6 +145,21 @@ object PrefsMigrations {
         }
         PrefsStore.remove(StatusBarIconKeys.speedDualArrows(id))
         PrefsStore.put(MARKER_SPEED_OPTIONS_V3, true)
+    }
+
+    /**
+     * 「显示单位」开关与单位样式里的「不显示单位」重复，移除开关。
+     * 旧安装关闭过开关的，把单位样式改为 `none`，保持升级前后一致；随后删除旧键。
+     */
+    private fun migrateSpeedUnitVisibilityV4() {
+        if (PrefsStore.getBoolean(MARKER_SPEED_UNIT_VISIBILITY_V4, false)) return
+        val id = StatusBarIconRegistry.NETWORK_SPEED
+        val showUnitKey = StatusBarIconKeys.speedShowUnit(id)
+        if (!PrefsStore.getBoolean(showUnitKey, true)) {
+            PrefsStore.put(StatusBarIconKeys.speedUnitStyle(id), "none")
+        }
+        PrefsStore.remove(showUnitKey)
+        PrefsStore.put(MARKER_SPEED_UNIT_VISIBILITY_V4, true)
     }
 
     /**

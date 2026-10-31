@@ -20,6 +20,7 @@ import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.passkey.PasskeyKeys
 import cn.ianzb.hyperrefine.hook.systemserver.DarkModeScheduleKeys
+import cn.ianzb.hyperrefine.hook.systemserver.FreeformDensityKeys
 import cn.ianzb.hyperrefine.hook.systemui.AodBatteryStyleHook
 import cn.ianzb.hyperrefine.hook.systemui.AodBottomIconsHook
 import cn.ianzb.hyperrefine.hook.systemui.AodFullScreenKeepHook
@@ -800,6 +801,15 @@ internal fun featureSpecs(): List<OptionSpec> {
             defaultBoolean = false,
             targetPackages = systemUi,
             deviceScope = setOf(DeviceType.PAD, DeviceType.FOLD),
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = FreeformDensityKeys.DENSITY,
+            type = OptionType.SWITCH,
+            titleRes = R.string.freeform_density_scale,
+            summaryRes = R.string.freeform_density_scale_summary,
+            defaultBoolean = true,
+            targetPackages = listOf(FreeformDensityKeys.TARGET),
             showStatus = true,
         ),
         OptionSpec(

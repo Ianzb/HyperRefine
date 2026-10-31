@@ -182,6 +182,8 @@
     <string name="sosc_disable_corner_freeform_summary">Dragging from a full-screen app’s bottom-left or bottom-right corner no longer opens a freeform window; resizing a freeform window from its corners still works</string>
     <string name="freeform_free_ratio">Freeform aspect-ratio free resize</string>
     <string name="freeform_free_ratio_summary">Tablet / foldable only: drag a freeform window’s corners to adjust width and height independently instead of only scaling proportionally; the ratio used while dragging is kept on release</string>
+    <string name="freeform_density_scale">Scale freeform UI with window</string>
+    <string name="freeform_density_scale_summary">When an infinite freeform window is resized, text and UI scale with its area; fixed-ratio windows keep the official behavior. Restart the device after changing this switch</string>
     <string name="feature_glass">Soft glass</string>
 
     <string name="section_security_center">Security tools</string>

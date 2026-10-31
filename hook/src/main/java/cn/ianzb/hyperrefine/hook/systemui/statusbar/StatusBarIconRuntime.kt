@@ -153,6 +153,20 @@ internal object StatusBarIconRuntime {
         }
     }
 
+    /**
+     * 锁屏状态栏是独立于 [MiuiPhoneStatusBarView] 的 root，不能套用完整状态栏定制；
+     * 这里只注册隐私指示宿主，让锁屏也能响应“仅控制中心显示/隐藏”。
+     */
+    fun attachPrivacy(root: ViewGroup) {
+        synchronized(hosts) {
+            hosts[root]?.postRefresh()
+                ?: runCatching { Host(root, privacyOnly = true).also { hosts[root] = it } }
+                    .onFailure {
+                        android.util.Log.w("HyperRefineStatusBar", "attach keyguard privacy failed", it)
+                    }
+        }
+    }
+
     /** 注册控制器创建的每个图标组；控制中心 fake 组也必须能按自定义条件直接隐藏。 */
     fun registerIconGroup(group: ViewGroup?) {
         group ?: return
@@ -278,26 +292,20 @@ internal object StatusBarIconRuntime {
                 Reflect.callMethod(child, "onDarkChanged", areas, darkIntensity, effectiveColor)
             }
             // 蓝牙电量图标在原生 useTint 判定里可能被当成非 SystemUI 图标而跳过
-            // tint；它是单色图标，显式补一次颜色，不替换 drawable。
-            val slot = runCatching {
-                Reflect.getObjectField(child, "mSlot") as? String
-            }.getOrNull()
-            if (slot == "bluetooth_handsfree_battery" || slot == "bluetooth") {
-                runCatching {
-                    val image = child as? ImageView ?: return@runCatching
-                    if (image.imageTintList?.defaultColor != effectiveColor) {
-                        image.setImageTintList(
-                            android.content.res.ColorStateList.valueOf(effectiveColor),
-                        )
-                    }
-                }
+            // tint；它没有主题图像，只有 useTint=false 时才显式补一次颜色。
+            // useTint=true 的图标必须保留原生 getTint 的结果，否则会用原始
+            // onDarkChanged 颜色覆盖锁屏上已经压暗的颜色，看起来“不够黑”。
+            val image = child as? ImageView
+            if (image != null) {
+                enforceIconTint(image, effectiveColor)
             }
         }
     }
 
     /**
-     * 原生 onDarkChanged 已跑完时补一次兜底：普通系统图标按 useTint 跟随，
-     * 蓝牙电量等单色图标即使被原生判成非 SystemUI 也强制跟随。
+     * 原生 onDarkChanged 已跑完时补一次兜底。只处理 useTint=false 的蓝牙单色
+     * 图标；useTint=true 的图标已经拿到原生按区域/强度算好的 tint，不能再拿
+     * 原始 onDarkChanged 颜色覆盖，否则锁屏上会出现“比别的图标浅一点”的颜色。
      * 只写 tint，不碰 drawable，避免覆盖主题图像。
      */
     fun enforceIconTint(view: ImageView, tint: Int) {
@@ -309,9 +317,11 @@ internal object StatusBarIconRuntime {
             val ex = Reflect.getObjectField(view, "mExParams")
             ex?.let { Reflect.getObjectField(it, "useTint") as? Boolean }
         }.getOrNull() == true
-        if (!useTint && slot != "bluetooth_handsfree_battery" && slot != "bluetooth") return
-        if (view.imageTintList?.defaultColor == tint) return
-        view.setImageTintList(android.content.res.ColorStateList.valueOf(tint))
+        if (useTint) return
+        if (slot != "bluetooth_handsfree_battery" && slot != "bluetooth") return
+        val opaque = Color.rgb(Color.red(tint), Color.green(tint), Color.blue(tint))
+        if (view.imageTintList?.defaultColor == opaque) return
+        view.setImageTintList(android.content.res.ColorStateList.valueOf(opaque))
     }
 
 
@@ -1442,7 +1452,7 @@ internal object StatusBarIconRuntime {
         }
     }
 
-    private class Host(root: ViewGroup) {
+    private class Host(root: ViewGroup, private val privacyOnly: Boolean = false) {
         private val rootRef = WeakReference(root)
         private val context: Context = root.context
         private val density = context.resources.displayMetrics.density
@@ -1502,7 +1512,7 @@ internal object StatusBarIconRuntime {
             preDraw = ViewTreeObserver.OnPreDrawListener {
                 val cc = controlCenterExpanded()
                 if (cc != lastCc) refresh()
-                reconcileSpecialVisibility()
+                if (!privacyOnly) reconcileSpecialVisibility()
                 true
             }.also { root.viewTreeObserver.addOnPreDrawListener(it) }
             refresh()
@@ -1529,6 +1539,10 @@ internal object StatusBarIconRuntime {
             val cc = controlCenterExpanded()
             lastCc = cc
             currentSnapshot = snapshot
+            if (privacyOnly) {
+                applyPrivacyOnly(root, snapshot, controlCenterExpanded())
+                return
+            }
             val statusIcons = find(root, "statusIcons") as? ViewGroup
             val notificationContainer = notificationArea(root)?.let {
                 find(it, "notificationIcons") ?: firstChildOfType(it, "NotificationIconContainer")
@@ -1807,7 +1821,8 @@ internal object StatusBarIconRuntime {
                 view ?: return
                 if (!seen.add(view)) return
                 if (view.javaClass.simpleName == "MiuiPrivacyContainerView" ||
-                    view.javaClass.simpleName == "MiuiFakePrivacyContainerView"
+                    view.javaClass.simpleName == "MiuiFakePrivacyContainerView" ||
+                    view.javaClass.simpleName == "MiuiHomePrivacyView"
                 ) {
                     result += view
                 }
@@ -2023,6 +2038,55 @@ internal object StatusBarIconRuntime {
             }
         }
 
+        /** 锁屏宿主只处理隐私指示，绝不触碰时钟、电池、通知或图标顺序。 */
+        private fun applyPrivacyOnly(
+            root: ViewGroup,
+            snapshot: StatusBarIconSnapshot,
+            cc: Boolean,
+        ) {
+            val evaluator = StatusBarIconConditionEvaluator(
+                context = context,
+                notificationCount = { 0 },
+                speedText = { "" },
+            )
+            applyPrivacyHosts(root, snapshot, cc, evaluator)
+        }
+
+        /**
+         * 锁屏与普通状态栏共用同一套隐私宿主判定，避免锁屏出现“只有隐藏生效”
+         * 或“仅控制中心”行为不一致。是否属于控制中心仍由每个宿主自身的位置决定。
+         */
+        private fun applyPrivacyHosts(
+            root: ViewGroup,
+            snapshot: StatusBarIconSnapshot,
+            cc: Boolean,
+            evaluator: StatusBarIconConditionEvaluator,
+        ) {
+            val privacy = find(root, "privacy_area")
+            val homePrivacy = find(root, "home_privacy_container")
+            applySpecialView(privacy, StatusBarIconRegistry.PRIVACY, snapshot, cc, evaluator)
+            if (homePrivacy !== privacy) {
+                applySpecialView(
+                    homePrivacy,
+                    StatusBarIconRegistry.PRIVACY,
+                    snapshot,
+                    cc,
+                    evaluator,
+                )
+            }
+            privacyContainers(root).forEach { container ->
+                if (container !== privacy && container !== homePrivacy) {
+                    applySpecialView(
+                        container,
+                        StatusBarIconRegistry.PRIVACY,
+                        snapshot,
+                        cc,
+                        evaluator,
+                    )
+                }
+            }
+        }
+
         private fun applySpecial(
             root: ViewGroup,
             snapshot: StatusBarIconSnapshot,
@@ -2035,7 +2099,6 @@ internal object StatusBarIconRuntime {
             val batteryIndicator = find(root, "battery_indicator")
             val notifications = find(root, "notification_icon_area")
             val fullscreenNotifications = find(root, "fullscreen_notification_icon_area")
-            val privacy = find(root, "privacy_area")
             val operator = find(root, "operator_name")
 
             applySpecialView(clock, StatusBarIconRegistry.CLOCK, snapshot, cc, evaluator)
@@ -2059,18 +2122,7 @@ internal object StatusBarIconRuntime {
                     evaluator,
                 )
             }
-            applySpecialView(privacy, StatusBarIconRegistry.PRIVACY, snapshot, cc, evaluator)
-            privacyContainers(root).forEach { container ->
-                if (container !== privacy) {
-                    applySpecialView(
-                        container,
-                        StatusBarIconRegistry.PRIVACY,
-                        snapshot,
-                        cc,
-                        evaluator,
-                    )
-                }
-            }
+            applyPrivacyHosts(root, snapshot, cc, evaluator)
             applySpecialView(operator, StatusBarIconRegistry.OPERATOR, snapshot, cc, evaluator)
 
             listOfNotNull(clock, padClock).forEach { clockView ->

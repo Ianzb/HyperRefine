@@ -508,6 +508,7 @@ class StatusBarIconHook : BaseHook() {
         listOf(
             "com.android.systemui.controlcenter.shade.MiuiPrivacyContainerView",
             "com.android.systemui.controlcenter.shade.MiuiFakePrivacyContainerView",
+            "com.android.systemui.statusbar.phone.MiuiHomePrivacyView",
         ).forEach { className ->
             val privacyClass = Reflect.findClassIfExists(className, loader)
             if (privacyClass != null) {
@@ -530,6 +531,36 @@ class StatusBarIconHook : BaseHook() {
                             )
                         }
                     }
+            }
+        }
+        // 锁屏状态栏使用独立的 MiuiKeyguardStatusBarView，不在 MiuiPhoneStatusBarView
+        // 的 root 里，因此主 Host 永远扫不到它的隐私宿主。这里只注册隐私指示，
+        // 绝不把完整状态栏定制套到锁屏上。
+        val keyguardClass = listOf(
+            "com.android.systemui.statusbar.phone.MiuiKeyguardStatusBarView",
+            "com.android.systemui.statusbar.phone.KeyguardStatusBarView",
+        ).firstNotNullOfOrNull { Reflect.findClassIfExists(it, loader) }
+        if (keyguardClass != null) {
+            listOf("onFinishInflate", "onAttachedToWindow").forEach { methodName ->
+                runCatching {
+                    StatusBarMembers.methods(keyguardClass, methodName) { it.parameterCount == 0 }
+                        .forEach { method ->
+                            StatusBarMembers.after(method) { param ->
+                                guard.run {
+                                    (param.thisObject as? ViewGroup)?.let { root ->
+                                        StatusBarIconRuntime.attachPrivacy(root)
+                                        StatusBarIconRuntime.refreshSoon(root)
+                                    }
+                                }
+                            }
+                        }
+                }.onFailure {
+                    android.util.Log.w(
+                        "HyperRefineStatusBar",
+                        "keyguard privacy hook unavailable: $methodName",
+                        it,
+                    )
+                }
             }
         }
         HookPrefs.registerListener { StatusBarIconRuntime.onPreferencesChanged() }

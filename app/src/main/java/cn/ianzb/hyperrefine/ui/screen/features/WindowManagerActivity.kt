@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.hook.systemserver.FreeformDensityKeys
 import cn.ianzb.hyperrefine.hook.systemui.SplitScreenKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
@@ -19,7 +20,7 @@ import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
  * 「窗口管理」二级页（系统界面 → 分屏与窗口）。
  *
  * - 分屏：方向限制、多分屏数量、无级比例、比例记忆、1:9 拖拽过渡、把手菜单双向分屏
- * - 小窗：禁用全屏应用底部角落拖出无极小窗的手势
+ * - 小窗：禁用全屏应用底部角落拖出无极小窗的手势、无极小窗字号随窗口缩放
  */
 class WindowManagerActivity : BaseSubPageActivity() {
 
@@ -53,6 +54,7 @@ class WindowManagerActivity : BaseSubPageActivity() {
             specs = listOf(
                 featureSpec(SplitScreenKeys.DISABLE_CORNER_FREEFORM),
                 featureSpec(SplitScreenKeys.FREEFORM_FREE_RATIO),
+                featureSpec(FreeformDensityKeys.DENSITY),
             ),
         )
         LazyColumn(

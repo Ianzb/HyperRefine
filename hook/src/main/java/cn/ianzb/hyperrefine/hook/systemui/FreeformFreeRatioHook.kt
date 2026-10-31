@@ -3,10 +3,15 @@ package cn.ianzb.hyperrefine.hook.systemui
 import android.graphics.Rect
 import cn.ianzb.hyperrefine.hook.base.BaseHook
 import cn.ianzb.hyperrefine.hook.device.DeviceType
+import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.rule.HookSkippedException
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.HookParam
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
+import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * 无极小窗四角拖动时保留自由宽高比（仅平板 / 折叠屏）。
@@ -62,11 +67,46 @@ class FreeformFreeRatioHook : BaseHook() {
             ?: return
         if (bounds.isEmpty) return
         val wrapper = Reflect.getObjectField(positioner, "mTaskWrapper") ?: return
+        val current = Reflect.getObjectField(positioner, "current") ?: return
         val guess = Reflect.getObjectField(positioner, "guess") ?: return
         if ((Reflect.getObjectField(guess, "mode") as? Int) != 1) return
-        lastBounds = Rect(bounds)
+        val finalBounds = if (HookPrefs.getBoolean(SplitScreenKeys.FREEFORM_FREE_RATIO_SNAP, true)) {
+            snapToOfficialRatio(positioner, bounds, current, guess)
+        } else {
+            Rect(bounds)
+        }
+        lastBounds = finalBounds
         lastWrapper = wrapper
-        applyFreeBounds(wrapper, bounds)
+        applyFreeBounds(wrapper, finalBounds)
+    }
+
+    /** 自由比例离官方档位足够近时，按官方比例重算宽高并保持窗口中心不动。 */
+    private fun snapToOfficialRatio(
+        positioner: Any,
+        bounds: Rect,
+        current: Any,
+        guess: Any,
+    ): Rect {
+        val currentRatio = Reflect.getObjectField(current, "aspectRatio") as? Float ?: return Rect(bounds)
+        val officialRatio = Reflect.getObjectField(guess, "aspectRatio") as? Float ?: return Rect(bounds)
+        if (currentRatio <= 0f || officialRatio <= 0f) return Rect(bounds)
+        val delta = abs(currentRatio - officialRatio) / officialRatio
+        if (delta > SNAP_THRESHOLD) return Rect(bounds)
+        val factor = sqrt(officialRatio / currentRatio)
+        if (!factor.isFinite() || factor <= 0f) return Rect(bounds)
+        val screenWidth = Reflect.getObjectField(positioner, "mScreenWidth") as? Int ?: 0
+        val screenHeight = Reflect.getObjectField(positioner, "mScreenHeight") as? Int ?: 0
+        val width = (bounds.width() * factor).roundToInt()
+            .coerceAtLeast(1)
+            .let { if (screenWidth > 0) min(it, screenWidth) else it }
+        val height = (bounds.height() / factor).roundToInt()
+            .coerceAtLeast(1)
+            .let { if (screenHeight > 0) min(it, screenHeight) else it }
+        val maxLeft = if (screenWidth > 0) (screenWidth - width).coerceAtLeast(0) else Int.MAX_VALUE
+        val maxTop = if (screenHeight > 0) (screenHeight - height).coerceAtLeast(0) else Int.MAX_VALUE
+        val left = (bounds.centerX() - width / 2).coerceIn(0, maxLeft)
+        val top = (bounds.centerY() - height / 2).coerceIn(0, maxTop)
+        return Rect(left, top, left + width, top + height)
     }
 
     private fun overrideDestination(param: HookParam) {
@@ -95,6 +135,7 @@ class FreeformFreeRatioHook : BaseHook() {
             ?: Reflect.findClassIfExists(name, loader.parent)
 
     companion object {
+        private const val SNAP_THRESHOLD = 0.06f
         private const val INFINITY_POSITIONER =
             "com.android.wm.shell.multitasking.miuiinfinitymode.positiner.MiuiInfinityModeRatioPositioner"
         private const val INFINITY_WRAPPER =

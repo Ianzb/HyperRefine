@@ -181,7 +181,9 @@
     <string name="sosc_disable_corner_freeform">禁用角落拖拽无极小窗</string>
     <string name="sosc_disable_corner_freeform_summary">从全屏应用左下 / 右下角拖动不再拉起无极小窗；小窗自身的四角缩放不受影响</string>
     <string name="freeform_free_ratio">小窗比例无级调节</string>
-    <string name="freeform_free_ratio_summary">平板 / 折叠屏专用：拖动小窗四角时可分别调整宽度和高度，不再只做等比缩放；松手后保持拖动时的比例</string>
+    <string name="freeform_free_ratio_summary">平板 / 折叠屏专用：拖动小窗四角时可分别调整宽度和高度，不再只做等比缩放；开启后可使用下方字号缩放和比例吸附</string>
+    <string name="freeform_free_ratio_snap">比例接近官方档位时吸附</string>
+    <string name="freeform_free_ratio_snap_summary">自由拖动接近系统固定比例时自动吸附到该比例，方便对齐；关闭后可在任意比例停留</string>
     <string name="freeform_density_scale">小窗字号随窗口缩放</string>
     <string name="freeform_density_scale_summary">无极小窗拖动改变大小时，文字与界面按窗口面积同步缩放；系统固定比例小窗保持官方行为。开关变更需重启设备生效</string>
     <string name="feature_glass">柔光玻璃</string>

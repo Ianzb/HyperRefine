@@ -35,6 +35,9 @@ object SplitScreenKeys {
     /** 普通小窗四角拖动时自由调整宽高比（不再等比缩放）。 */
     const val FREEFORM_FREE_RATIO = "freeform_free_ratio"
 
+    /** 自由比例接近官方档位时吸附到官方比例。 */
+    const val FREEFORM_FREE_RATIO_SNAP = "freeform_free_ratio_snap"
+
     /** 全屏应用「···」把手菜单同时显示左右与上下两对分屏按钮。 */
     const val CAPTION_BOTH_DIRECTIONS = "mulwin_caption_both_split_directions"
 

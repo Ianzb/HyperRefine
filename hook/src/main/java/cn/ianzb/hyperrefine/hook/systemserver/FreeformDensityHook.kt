@@ -3,6 +3,8 @@ package cn.ianzb.hyperrefine.hook.systemserver
 import android.content.res.Configuration
 import android.graphics.Rect
 import cn.ianzb.hyperrefine.hook.base.BaseHook
+import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
+import cn.ianzb.hyperrefine.hook.systemui.SplitScreenKeys
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
 import java.util.Collections
@@ -70,6 +72,11 @@ class FreeformDensityHook : BaseHook() {
     }
 
     private fun scaleDensity(record: Any, global: Configuration, override: Configuration) {
+        // 字号缩放是“无极小窗”的子选项，主开关关闭时不参与任何配置。
+        if (!HookPrefs.getBoolean(SplitScreenKeys.FREEFORM_FREE_RATIO, false)) {
+            clearInjectedDensity(record, override)
+            return
+        }
         // `getMergedOverrideConfiguration()` 返回的是 ActivityRecord 持有的同一个对象，
         // 本模块写入的密度会保留到下一次下发；只有“非本模块”的非零密度才是系统固定档位。
         val previous = injectedDensity[record]

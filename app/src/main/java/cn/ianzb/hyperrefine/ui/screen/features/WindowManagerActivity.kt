@@ -54,6 +54,7 @@ class WindowManagerActivity : BaseSubPageActivity() {
             specs = listOf(
                 featureSpec(SplitScreenKeys.DISABLE_CORNER_FREEFORM),
                 featureSpec(SplitScreenKeys.FREEFORM_FREE_RATIO),
+                featureSpec(SplitScreenKeys.FREEFORM_FREE_RATIO_SNAP),
                 featureSpec(FreeformDensityKeys.DENSITY),
             ),
         )

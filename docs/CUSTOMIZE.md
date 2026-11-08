@@ -1,6 +1,11 @@
 # 二次开发指南
 
-本文档说明以本模板为基础开发自己的 LSPosed 模块时，**需要修改的全部内容**：应用标识、图标、链接、模块元数据、Hook 代码、配置项与页面等。
+> **文档定位**
+> - 负责：把本项目改成另一个模块时必须同步的标识、图标、链接、模块元数据、签名与发布配置。
+> - 不负责：Hook 写法与配置组件接口（见 [`API.md`](API.md)）、仓库结构（见 [`STRUCTURE.md`](STRUCTURE.md)）、adb / 逆向 / 许可证合规（见 [`WORKFLOW.md`](WORKFLOW.md)）。
+> - 前置：先完成 [`STRUCTURE.md`](STRUCTURE.md) §1–4 的仓库导览；需要改 Hook 行为时再按 [`API.md`](API.md) §7 接线。
+
+本文档说明以本模板为基础开发自己的 LSPosed 模块时，**需要同步修改哪些标识、资源和元数据**：应用标识、图标、链接、模块元数据、签名与发布项。Hook 代码和配置组件只标注需要改的位置，具体写法回到 [`API.md`](API.md) §7。
 
 > 约定：本文中的路径均相对于项目根目录。改完建议全局搜索 `cn.ianzb.miuixguitemplate`、`MiuixGuiTemplate`、`miuix_template` 确保没有遗漏。
 
@@ -194,23 +199,11 @@ private val loads: List<BaseLoad> = listOf(
 
 ### 6.2 编写 Load 与 Hook
 
-```kotlin
-class MyLoad : BaseLoad() {
-    override val targetPackages = listOf("com.yourname.targetapp")
-    override fun onPackageLoaded(target: PackageTarget) {
-        initHook(MyHook(), HookPrefs.getBoolean(MyHook.KEY, false))
-    }
-}
+代码骨架、`BaseHook` / `BaseLoad` 的注册顺序和 `initHook(...)` 写法统一见 [`API.md`](API.md) §7.1，本文不重复贴示例。改名时只需确认：
 
-class MyHook : BaseHook() {
-    override val key = KEY
-    override fun init() {
-        val clazz = Reflect.findClass("com.yourname.targetapp.Foo", target.classLoader)
-        HookHelper.findAndHookMethodAfter(clazz, "bar") { /* ... */ }
-    }
-    companion object { const val KEY = "targetapp_bar" }
-}
-```
+- `BaseLoad.targetPackages` 与 `scope.list` 指向同一个新包名；
+- `HookEntryRegistry` 已登记该 Load；
+- Hook 的 `key` 与 App 侧 `OptionSpec.key` 完全一致。
 
 ### 6.3 移除示例 Hook
 
@@ -218,14 +211,16 @@ class MyHook : BaseHook() {
 
 ### 6.4 配置分组名（保持两端一致）
 
-- `hook/.../prefs/HookPrefs.kt` → `GROUP = "miuix_template_remote"`
-- `app/.../prefs/PrefsStore.kt` → `REMOTE_GROUP = "miuix_template_remote"`
+- `hook/.../prefs/HookPrefs.kt` → `GROUP`
+- `app/.../prefs/PrefsStore.kt` → `REMOTE_GROUP`
+
+本项目当前值都是 `hyperrefine_remote`；改成自己的命名时，两处必须同步。
 
 > 两个常量**必须一致**，否则 Hook 进程读不到 App 写入的配置。
 
 ### 6.5 DexKit 缓存目录（可选）
 
-`hook/.../dexkit/DexKitCacheManager.kt` → `CACHE_DIR = "miuix_template"`。
+`hook/.../dexkit/DexKitCacheManager.kt` → `CACHE_DIR`，本项目当前值为 `hyperrefine`。
 
 > 该目录用于清空缓存时的路径拼接，改名后 App 端 `RootHelper.deleteDexKitCache(scope, DexKitCacheManager.CACHE_DIR)` 会自动使用新值。
 > 清空缓存需要 Root，但**无需在文案中说明**——主页「模块状态」卡片已标注是否具备 Root。
@@ -250,61 +245,23 @@ class MyHook : BaseHook() {
 
 ### 7.1 声明配置项
 
-在 `OptionRegistry` 注册（示例见 `ui/screen/features/FeaturesPage.kt` 的 `featureSpecs()`）：
+`OptionSpec` 的字段、`dependsOn` 语义和注册位置见 [`API.md`](API.md) §3、§5、§7.2。二次开发只确认：
 
-```kotlin
-OptionSpec(
-    key = "targetapp_bar",
-    type = OptionType.SWITCH,
-    titleRes = R.string.targetapp_bar,
-    summaryRes = R.string.targetapp_bar_summary,
-    defaultBoolean = false,
-    targetPackages = listOf("com.yourname.targetapp"),
-)
-```
+- `key` / `targetPackages` 已换成新包名；
+- 改默认值时同步考虑 `PrefsMigrations.kt`，避免老用户配置被静默改写；
+- 所有 `titleRes` / `summaryRes` 在 `values` 与 `values-en` 都有同名键。
 
-> **依赖前置规范（强制）**：需要前置选项解锁的功能，必须**始终显示**；前置未满足时统一为**禁用（灰显）**，**禁止隐藏**（不得用 `AnimatedVisibility` / 条件渲染按配置值隐藏组件或分区）。依赖用 `OptionSpec.dependsOn`（+ `dependsOnValue`）声明，由 `rememberOptionEnabled(spec)` 统一判定 `enabled`；`HookSliderCard.masterKey` 只控制滑块启用 / 禁用。详见 [接口文档](API.md) 5.7。
+> **可见性**：前置未满足时灰显，不隐藏；规则与 `dependsOn` 用法见 [`API.md`](API.md) §5.7。
 
 ### 7.2 构建页面
 
-使用通用页面组件（详见 [API 文档](API.md) 第 5 节）。**小标题用单语言**（只传 `titleRes`，不要传 `titleEn`）：
+页面组件参数见 [`API.md`](API.md) §5，二级页模板见 §6。二次开发只调整：
 
-```kotlin
-HookOptionsPage(
-    title = stringResource(R.string.tab_features),
-    sections = listOf(
-        HookSection(R.string.section_switch, listOf(spec)),
-    ),
-    isBlurEnabled = isBlurEnabled,
-    extraBottomPadding = extraBottomPadding,
-)
-```
+- 父页 `HookOptionsPage(sections = ...)` 的分区与入口卡片；
+- 作为二级入口的卡片用总结性名词短语做 `titleRes`，描述性内容放二级页；
+- 子页通过 `HookSubPage(..., subPages = ...)` 逐层登记，子页自身不再放搜索栏。
 
-子页面内的功能通过 `HookSubPage` 并入父页搜索（子页面自身无需再放搜索栏）；多级页面可继续嵌套 `subPages`，搜索可达并直接打开对应层级：
-
-```kotlin
-HookOptionsPage(
-    title = stringResource(R.string.tab_features),
-    sections = sections,
-    subPages = listOf(
-        HookSubPage(
-            titleRes = R.string.my_subpage,
-            specs = listOf(subSpec),
-            onOpen = { context.startActivity(Intent(context, MySubPageActivity::class.java)) },
-            // 更深一层子页面，递归并入搜索，命中直接打开该页面
-            subPages = listOf(
-                HookSubPage(
-                    titleRes = R.string.my_deep_subpage,
-                    specs = listOf(deepSpec),
-                    onOpen = { context.startActivity(Intent(context, MyDeepSubPageActivity::class.java)) },
-                ),
-            ),
-        ),
-    ),
-)
-```
-
-**入口卡片文案**：作为二级菜单入口的卡片（跳转二级页 / 弹出对话框）尽量不加小标题（`summaryRes`），大标题（`titleRes`）用总结性名词短语而非描述性句子，描述性说明放到二级页面内。详见 [接口文档](API.md) 5.6。
+**入口卡片文案**：作为二级菜单入口的卡片尽量不写 `summaryRes`，避免一级页出现说明性长句。详见 [`API.md`](API.md) §5.6。
 
 ### 7.3 从功能页开始开发
 

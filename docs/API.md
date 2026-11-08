@@ -1,9 +1,14 @@
 # HyperRefine 接口文档
 
+> **文档定位**
+> - 负责：接口契约、函数 / 类签名、配置系统行为、UI 组件参数、端到端接入顺序。
+> - 不负责：仓库导览与文件地图（见 [`STRUCTURE.md`](STRUCTURE.md)）、真机 adb / 逆向 / 许可证（见 [`WORKFLOW.md`](WORKFLOW.md)）、二次开发标识清单（见 [`CUSTOMIZE.md`](CUSTOMIZE.md)）。
+> - 前置：先读 [`STRUCTURE.md`](STRUCTURE.md) §4–5 确认要改的文件链；本文 §7 是接线细节的唯一来源。
+
 本文档描述模板对外暴露的全部接口，按模块划分：Hook 封装、DexKit 缓存、配置系统、服务与状态、UI 组件、二级页面模板，以及接入步骤。
 
 - 模块结构：`:app`（UI + 服务绑定 + 配置）与 `:hook`（libxposed 入口 + Hook 封装 + 原生 Hook 封装 + DexKit）
-- 底层：`io.github.libxposed:api:102.0.0`（compileOnly）、`io.github.libxposed:service:102.0.0`、`org.luckypray:dexkit:2.2.0`
+- 底层：`io.github.libxposed:api:102.0.0`（compileOnly）、`io.github.libxposed:service:102.0.0`、`org.luckypray:dexkit:2.3.0`
 - UI：`top.yukonga.miuix.kmp`
 
 ---
@@ -366,7 +371,7 @@ hook 代码内需要按设备分支时，直接读 `DeviceContext.current.type`�
 - `invalidateOutline()` 必须回主线程（非主线程用 `View.post`）。
 - 只改当前 helper 实例的字段，不修改系统 Settings、不写目标应用偏好。
 - 混淆类名 / 字段名随版本变化，必须 `versionGate` + `findClassIfExists` + 字段解析失败即
-  fail-closed（只记录日志，不向输入法进程抛异常）；定位信息只落 `reverse_report/<包名>/`。
+  fail-closed（只记录日志，不向输入法进程抛异常）；定位信息只落本地逆向目录（见 [WORKFLOW](WORKFLOW.md)）。
 - 开关默认关闭；关闭时完全不干预官方包名白名单。Hook 可以始终安装并在回调里实时读
   `HookPrefs`（后续切换免重启生效；模块首次安装 / 更新后仍需重启一次目标进程），此时不要给
   `OptionSpec.showStatus = true`，否则关闭状态也会显示「已生效」；若按启动开关决定是否安装，
@@ -1199,6 +1204,7 @@ Card { HookSwitchCard(spec) }
 
 | 关注点 | 文件 |
 |---|---|
+| 工程结构 / 目录地图 / 多文件改动 | `docs/STRUCTURE.md` |
 | libxposed 入口 | `hook/src/main/java/.../hook/xposed/XposedEntry.kt` |
 | Hook 封装 | `hook/.../hook/xposed/HookApi.kt` |
 | 原生 Hook 封装 | `hook/.../hook/nativehook/NativeHookApi.kt`、`BaseNativeHook.kt` |

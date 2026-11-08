@@ -7,7 +7,9 @@
 
 ### 基于 Miuix 的 LSPosed 模块
 
-[接口文档](docs/API.md) | [原生 Hook 指南](docs/NATIVE_HOOK.md) | [二次开发指南](docs/CUSTOMIZE.md) | [模块开发工作流](docs/WORKFLOW.md) | [更新日志](changelog.md) | [Telegram 群组](https://t.me/HyperRefine)
+**开发先读：[开发文档索引](AGENTS.md)** | [工程结构与规范](docs/STRUCTURE.md) | [接口文档](docs/API.md) | [原生 Hook 指南](docs/NATIVE_HOOK.md) | [二次开发指南](docs/CUSTOMIZE.md) | [模块开发工作流](docs/WORKFLOW.md) | [更新日志](changelog.md) | [Telegram 群组](https://t.me/HyperRefine)
+
+> **文档定位**：本文只负责安装、构建、发布、CI 与签名。开发任务路由从 [`AGENTS.md`](AGENTS.md) 开始；接口、仓库地图、合规分别见 API / STRUCTURE / WORKFLOW。
 
 ![Platform](https://img.shields.io/badge/Platform-Android-green)
 ![LSPosed](https://img.shields.io/badge/LSPosed-libxposed%20102-blue)
@@ -16,6 +18,8 @@
 </div>
 
 **HyperRefine** 是一个 **LSPosed 模块**项目，基于 [libxposed API 102](https://libxposed.github.io/api/index-all.html) 与 [Miuix](https://github.com/compose-miuix-ui/miuix) Compose 组件库构建，使用 [MiuixGuiTemplate](https://github.com/Ianzb/MiuixGuiTemplate) 脚手架创建，内置完整的 Hook 二次封装接口与可复用 UI 组件，当前包含百种hook功能，不仅合并了一些实用小型模块的功能，还添加了很多原创新功能。
+
+> **开发者入口**：不要从 `docs/` 目录从头翻文档。先看 [开发文档索引](AGENTS.md)，按任务跳到对应文档；仓库目录与多文件改动见 [工程结构与规范](docs/STRUCTURE.md)。
 
 <br>
 
@@ -119,17 +123,17 @@ $env:KEY_PASSWORD="你的密钥密码"
 
 # 开发
 
-1. 在 `:hook` 模块 `META-INF/xposed/scope.list` 中声明作用域包名（当前覆盖 `system`、`android`、`com.android.systemui` 及多款小米系统应用，完整列表以该文件为准）。
-2. 新建 `BaseLoad` 并在 `HookEntryRegistry` 中登记目标包。
-3. 新建 `BaseHook` 实现具体 Hook 逻辑，必要时用 DexKit 定位成员。
-4. 在 `featureSpecs()`（或自定义注册处）声明 `OptionSpec`，UI 会自动渲染对应组件；子页面功能可用 `HookSubPage` 并入功能页搜索。
-5. 构建并在 LSPosed 中验证功能生效（启用开关并重启目标应用）。
+开发入口是 [`AGENTS.md`](AGENTS.md)；本文只给最短路径，不重复接口与接入细节。
 
-> **需要修改的完整清单（图标、链接、模块元数据、Hook、配置项等）见 [二次开发指南](docs/CUSTOMIZE.md)。**
+1. 第一次接触仓库：先读 [`docs/STRUCTURE.md`](docs/STRUCTURE.md) §1–4，按目录地图定位文件。
+2. 改一个 Hook / 配置项：按 [`AGENTS.md`](AGENTS.md) 的任务路由进入 [`docs/API.md`](docs/API.md) §7，再顺着配置键 → Hook → Load → UI 改。
+3. 构建后在 LSPosed 中启用模块、勾选作用域并重启目标进程；`system_server` 目标需整机重启。
 
-> **实现指定应用的 Hook、或参考其他模块复刻功能时的完整流程（含真机 `adb` 扫描授权、隐私边界与开源合规）见 [模块开发工作流](docs/WORKFLOW.md)。**
-
-详细接口说明见 [接口文档](docs/API.md)。
+> 需要修改的完整标识 / 图标 / 元数据清单见 [二次开发指南](docs/CUSTOMIZE.md)。
+>
+> 真机 `adb` 授权、逆向产物与第三方合规见 [模块开发工作流](docs/WORKFLOW.md)。
+>
+> 具体功能的行为与验证记录见 [功能档案索引](docs/features/README.md)。
 
 <br>
 

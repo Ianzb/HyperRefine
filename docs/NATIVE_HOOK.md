@@ -1,9 +1,12 @@
 # 原生 Hook（NativeHook）开发指南
 
+> **文档定位**
+> - 负责：Rust NativeHook 的 libxposed 契约、符号定位、修改手段、`cargo-ndk` 构建、加载与排查。
+> - 不负责：JavaHook 接入（见 [`API.md`](API.md) §1、§7）、UI / 配置页（见 [`API.md`](API.md) §3–6）、adb 授权与许可证（见 [`WORKFLOW.md`](WORKFLOW.md)）。
+> - 前置：先按 [`STRUCTURE.md`](STRUCTURE.md) §5.5 找到 Native 接线点；本文不重复通用 Hook 注册流程。
+
 本文档面向使用本模板做**原生 Hook** 的开发者。本项目的 NativeHook **只服务 Rust 应用**（`flutter_rust_bridge` 生成的库、纯 Rust `.so` 等），因此全流程不涉及 C/C++：模块侧与目标侧都以 Rust 为中心。
 
-> 阅读前置：[接口文档](API.md) · [模块开发工作流](WORKFLOW.md)（真机 `adb` 授权、隐私与合规）。
->
 > **术语约定**：本项目统一使用 **NativeHook**（面向 Rust 应用的原生 Hook）与 **JavaHook**（Java/Kotlin Hook）两个词；早期草稿中的 `rusthook` 已全部更名为 `nativehook`（含目录、Cargo 包名与日志 TAG）。
 
 ---

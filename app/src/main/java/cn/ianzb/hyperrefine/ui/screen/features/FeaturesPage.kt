@@ -20,7 +20,6 @@ import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.passkey.PasskeyKeys
 import cn.ianzb.hyperrefine.hook.systemserver.DarkModeScheduleKeys
-import cn.ianzb.hyperrefine.hook.systemserver.FreeformDensityKeys
 import cn.ianzb.hyperrefine.hook.systemui.AodBatteryStyleHook
 import cn.ianzb.hyperrefine.hook.systemui.AodBottomIconsHook
 import cn.ianzb.hyperrefine.hook.systemui.AodFullScreenKeepHook
@@ -801,27 +800,6 @@ internal fun featureSpecs(): List<OptionSpec> {
             defaultBoolean = false,
             targetPackages = systemUi,
             deviceScope = setOf(DeviceType.PAD, DeviceType.FOLD),
-            showStatus = true,
-        ),
-        OptionSpec(
-            key = SplitScreenKeys.FREEFORM_FREE_RATIO_SNAP,
-            type = OptionType.SWITCH,
-            titleRes = R.string.freeform_free_ratio_snap,
-            summaryRes = R.string.freeform_free_ratio_snap_summary,
-            defaultBoolean = true,
-            targetPackages = systemUi,
-            deviceScope = setOf(DeviceType.PAD, DeviceType.FOLD),
-            dependsOn = SplitScreenKeys.FREEFORM_FREE_RATIO,
-            showStatus = true,
-        ),
-        OptionSpec(
-            key = FreeformDensityKeys.DENSITY,
-            type = OptionType.SWITCH,
-            titleRes = R.string.freeform_density_scale,
-            summaryRes = R.string.freeform_density_scale_summary,
-            defaultBoolean = true,
-            targetPackages = listOf(FreeformDensityKeys.TARGET),
-            dependsOn = SplitScreenKeys.FREEFORM_FREE_RATIO,
             showStatus = true,
         ),
         OptionSpec(

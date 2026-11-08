@@ -27,6 +27,8 @@ object PrefsMigrations {
     private const val MARKER_SPEED_UNIT_VISIBILITY_V4 = "migration_speed_unit_visibility_v4"
     private const val MARKER_WALLPAPER_DIM_LOCK = "migration_wallpaper_dim_lock_amount"
     private const val MARKER_VOLUME_ENTRY_VISIBILITY = "migration_volume_entry_visibility"
+    private const val MARKER_PERCENT_FONT_WEIGHT = "migration_percent_font_weight_numeric"
+    private const val MARKER_SIDE_VOLUME_MODE = "migration_side_volume_mode"
 
     /** 执行所有迁移。 */
     fun run() {
@@ -38,6 +40,8 @@ object PrefsMigrations {
         migrateSpeedUnitVisibilityV4()
         migrateWallpaperDimLockAmount()
         migrateVolumeEntryVisibility()
+        migratePercentFontWeight()
+        migrateSideVolumeMode()
     }
 
     /**
@@ -191,5 +195,48 @@ object PrefsMigrations {
             PrefsStore.put(AppVolumeKeys.ENTRY_VISIBILITY, value)
         }
         PrefsStore.put(MARKER_VOLUME_ENTRY_VISIBILITY, true)
+    }
+
+    /**
+     * 百分比字重由固定预设名称改为 100–900 的连续数值。
+     * 只迁移仍然存在的旧值；未写入过的键保持不存在，由界面默认值 400 接管。
+     */
+    private fun migratePercentFontWeight() {
+        if (PrefsStore.getBoolean(MARKER_PERCENT_FONT_WEIGHT, false)) return
+        val all = PrefsStore.getAll()
+        POSITION_LOCATIONS.forEach { location ->
+            val key = "${location}_font_weight"
+            val raw = all[key] ?: return@forEach
+            val numeric = when (raw) {
+                is Number -> raw.toInt()
+                is String -> when (raw) {
+                    "light" -> 300
+                    "normal" -> 400
+                    "medium" -> 500
+                    "semibold" -> 600
+                    "bold" -> 700
+                    "black" -> 900
+                    else -> raw.toIntOrNull() ?: 400
+                }
+                else -> return@forEach
+            }
+            PrefsStore.put(key, numeric.coerceIn(100, 900))
+        }
+        PrefsStore.put(MARKER_PERCENT_FONT_WEIGHT, true)
+    }
+
+    /**
+     * 侧边音量条三个点由布尔开关改为三态字符串，旧值 true 对应「隐藏并长按展开」。
+     */
+    private fun migrateSideVolumeMode() {
+        if (PrefsStore.getBoolean(MARKER_SIDE_VOLUME_MODE, false)) return
+        val raw = PrefsStore.getAll()[AppVolumeKeys.SIDE_LONGPRESS]
+        if (raw is Boolean) {
+            PrefsStore.put(
+                AppVolumeKeys.SIDE_LONGPRESS,
+                if (raw) AppVolumeKeys.SIDE_MODE_LONG_PRESS else AppVolumeKeys.SIDE_MODE_OFF,
+            )
+        }
+        PrefsStore.put(MARKER_SIDE_VOLUME_MODE, true)
     }
 }

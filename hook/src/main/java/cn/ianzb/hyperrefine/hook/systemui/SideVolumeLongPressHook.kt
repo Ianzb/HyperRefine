@@ -6,6 +6,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import cn.ianzb.hyperrefine.hook.base.BaseHook
+import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.status.HookStatusReporter
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
@@ -13,13 +14,10 @@ import cn.ianzb.hyperrefine.hook.xposed.Reflect
 import java.util.WeakHashMap
 
 /**
- * 侧边音量条「长按打开音量面板」交互。
+ * 侧边音量条三个点按钮的交互模式。
  *
- * 独立成一条 hook，**不再依赖「侧边音量条百分比」开关**：
- * 只要开启本功能即可长按音量条展开音量面板，并隐藏音量条上的三个点按钮。
- *
- * MIUI 的拖拽逻辑位于 `VolumeColumn.onTouchListener`，被设在音量栏根视图上；这里用
- * [LongPressTouchListener] 包装原监听（保留其拖拽行为），并用 [GestureDetector] 识别长按。
+ * 三态：正常显示、仅隐藏、隐藏并长按。后两者都会隐藏三个点；只有「隐藏并长按」
+ * 才把长按手势装到音量条上。旧配置里的布尔值在迁移前也兼容读取。
  */
 class SideVolumeLongPressHook : BaseHook() {
 
@@ -39,7 +37,7 @@ class SideVolumeLongPressHook : BaseHook() {
                     .forEach { method ->
                         HookHelper.hookAfter(method) { param ->
                             val thiz = param.thisObject ?: return@hookAfter
-                            if (longPressEnabled()) applyLongPress(thiz)
+                            if (hidesExpandButton()) applyLongPress(thiz)
                         }
                     }
             }.onFailure { HookHelper.log("$tag: hook controller failed", it) }
@@ -52,9 +50,9 @@ class SideVolumeLongPressHook : BaseHook() {
                     ?.forEach { method ->
                         HookHelper.hookAfter(method) { param ->
                             val view = param.thisObject ?: return@hookAfter
-                            if (longPressEnabled()) {
+                            if (hidesExpandButton()) {
                                 (Reflect.getObjectField(view, "mExpandButton") as? View)
-                                    ?.let { if (it.visibility != View.GONE) it.visibility = View.GONE }
+                                    ?.let { applyExpandButtonState(it) }
                             }
                         }
                     }
@@ -68,7 +66,8 @@ class SideVolumeLongPressHook : BaseHook() {
     private fun applyLongPress(controller: Any) {
         runCatching {
             val volumeView = Reflect.getObjectField(controller, "mVolumeView") as? View ?: return
-            findExpandButton(volumeView)?.let { if (it.visibility != View.GONE) it.visibility = View.GONE }
+            applyExpandButtonState(findExpandButton(volumeView))
+            if (!usesLongPress()) return
 
             val targets = buildList {
                 add(volumeView)
@@ -101,6 +100,26 @@ class SideVolumeLongPressHook : BaseHook() {
         return null
     }
 
+    /**
+     * 仅隐藏模式保留按钮的可点击区域（alpha=0），长按模式才真正移除按钮。
+     */
+    private fun applyExpandButtonState(button: View?) {
+        button ?: return
+        when (sideMode()) {
+            AppVolumeKeys.SIDE_MODE_LONG_PRESS -> {
+                if (button.visibility != View.GONE) button.visibility = View.GONE
+            }
+            AppVolumeKeys.SIDE_MODE_HIDE -> {
+                if (button.visibility != View.VISIBLE) button.visibility = View.VISIBLE
+                if (button.alpha != 0f) button.alpha = 0f
+            }
+            else -> {
+                if (button.visibility != View.VISIBLE) button.visibility = View.VISIBLE
+                if (button.alpha != 1f) button.alpha = 1f
+            }
+        }
+    }
+
     /** 每个视图只安装一次；若被系统重新覆盖（非本包装器）则重新包装当前监听。 */
     private fun View.installLongPress(controller: Any) {
         // `View.getOnTouchListener()` 为隐藏 API，需反射获取，以保留 MIUI 原有的拖拽监听。
@@ -114,7 +133,7 @@ class SideVolumeLongPressHook : BaseHook() {
     private fun createDetector(context: Context, controller: Any): GestureDetector =
         GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onLongPress(e: MotionEvent) {
-                if (!longPressEnabled()) return
+                if (!usesLongPress()) return
                 // 已展开时不再处理：`onExpandClicked` 是开关式的，重复调用会把面板又收回。
                 val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") as? Boolean }
                     .getOrNull() ?: false
@@ -125,7 +144,24 @@ class SideVolumeLongPressHook : BaseHook() {
             }
         })
 
-    private fun longPressEnabled(): Boolean = HookPrefs.getBoolean(KEY, false)
+    private fun sideMode(): String {
+        // 默认 null：`getString` 在旧 Boolean 配置上会返回默认值而非抛异常，
+        // 若默认 "off" 会让下面的旧布尔兼容分支永远不执行。
+        val stored = HookPrefs.getString(KEY, null)
+        if (stored == AppVolumeKeys.SIDE_MODE_OFF ||
+            stored == AppVolumeKeys.SIDE_MODE_HIDE ||
+            stored == AppVolumeKeys.SIDE_MODE_LONG_PRESS
+        ) {
+            return stored
+        }
+        // 迁移前旧配置是 Boolean：true 等同原来的「隐藏 + 长按」。
+        val legacy = runCatching { HookPrefs.getBoolean(KEY, false) }.getOrDefault(false)
+        return if (legacy) AppVolumeKeys.SIDE_MODE_LONG_PRESS else AppVolumeKeys.SIDE_MODE_OFF
+    }
+
+    private fun hidesExpandButton(): Boolean = sideMode() != AppVolumeKeys.SIDE_MODE_OFF
+
+    private fun usesLongPress(): Boolean = sideMode() == AppVolumeKeys.SIDE_MODE_LONG_PRESS
 
     /** 保留并转调 MIUI 原有的触控监听（拖拽），同时把事件喂给长按检测。 */
     @SuppressLint("ClickableViewAccessibility")
@@ -140,6 +176,18 @@ class SideVolumeLongPressHook : BaseHook() {
     }
 
     companion object {
+        /** 供 `SystemUiLoad` 判断是否需要挂载；该键已从 Boolean 改为三态字符串。 */
+        fun isEnabled(): Boolean {
+            val stored = HookPrefs.getString(KEY, null)
+            if (stored == AppVolumeKeys.SIDE_MODE_HIDE ||
+                stored == AppVolumeKeys.SIDE_MODE_LONG_PRESS
+            ) {
+                return true
+            }
+            if (stored == AppVolumeKeys.SIDE_MODE_OFF) return false
+            return HookPrefs.getBoolean(KEY, false)
+        }
+
         const val KEY = "side_volume_longpress"
         const val CONTROLLER_CLASS = "com.android.systemui.miui.volume.VolumePanelViewController"
         const val DIALOG_VIEW_CLASS = "com.android.systemui.miui.volume.MiuiVolumeDialogView"

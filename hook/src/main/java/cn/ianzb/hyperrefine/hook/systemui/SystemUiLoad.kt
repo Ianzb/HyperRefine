@@ -41,7 +41,7 @@ class SystemUiLoad : BaseLoad() {
         initHook(CcVolumePercentHook(), HookPrefs.getBoolean(CcVolumePercentHook.KEY, false))
         initHook(CcBrightnessPercentHook(), HookPrefs.getBoolean(CcBrightnessPercentHook.KEY, false))
         initHook(SideVolumePercentHook(), HookPrefs.getBoolean(SideVolumePercentHook.KEY, false))
-        initHook(SideVolumeLongPressHook(), HookPrefs.getBoolean(SideVolumeLongPressHook.KEY, false))
+        initHook(SideVolumeLongPressHook(), SideVolumeLongPressHook.isEnabled())
         initHook(DeviceCenterMoreHook(), HookPrefs.getBoolean(DeviceCenterMoreHook.KEY, false))
         initHook(
             DeviceCenterFastLoadHook(),

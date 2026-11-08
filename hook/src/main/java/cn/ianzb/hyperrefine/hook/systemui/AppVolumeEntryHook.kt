@@ -43,6 +43,9 @@ class AppVolumeEntryHook : BaseHook() {
     /** 整体居中平移：面板最近一次的上移目标，避免重复播放动画。 */
     private val lastShift = WeakHashMap<View, Float>()
 
+    /** 官方按钮根是否处于“只隐藏按钮、保留计时器/二级内容”的状态。 */
+    private val hiddenButtonRoots = WeakHashMap<View, Boolean>()
+
     /** 本轮侧边音量条显示期间，用户是否手动操作过入口（手动操作后不再自动展开面板）。 */
     private val userToggled = WeakHashMap<View, Boolean>()
 
@@ -70,6 +73,10 @@ class AppVolumeEntryHook : BaseHook() {
     /** 最近的音量面板控制器，供注入后立即刷新显隐。 */
     @Volatile
     private var lastController: Any? = null
+
+    /** `updateExpandedH` 的参数提示；展开动画首帧 `mExpanded` 可能尚未写入。 */
+    @Volatile
+    private var expandedHint: Boolean? = null
 
     override fun init() {
         // 本 hook 同时实现「入口常显」，据实上报其生效状态。
@@ -282,7 +289,7 @@ class AppVolumeEntryHook : BaseHook() {
             val current = field.get(animator) ?: return
             val length = java.lang.reflect.Array.getLength(current)
             if ((0 until length).any { java.lang.reflect.Array.get(current, it) === extra }) return
-            val component = current.javaClass.componentType
+            val component = current.javaClass.componentType ?: return
             val grown = java.lang.reflect.Array.newInstance(component, length + 1)
             for (i in 0 until length) java.lang.reflect.Array.set(grown, i, java.lang.reflect.Array.get(current, i))
             java.lang.reflect.Array.set(grown, length, extra)
@@ -444,6 +451,13 @@ class AppVolumeEntryHook : BaseHook() {
                     HookHelper.hookAfter(method) { param ->
                         param.thisObject?.let {
                             lastController = it
+                            if (method.name == "updateExpandedH") {
+                                expandedHint = param.args.getOrNull(0) as? Boolean
+                            } else if (method.name == "showVolumePanelH" || method.name == "showH") {
+                                expandedHint = false
+                            } else if (method.name == "dismissH") {
+                                expandedHint = null
+                            }
                             onController(it, method.name)
                         }
                     }
@@ -456,11 +470,12 @@ class AppVolumeEntryHook : BaseHook() {
         if (methodName == "dismissH") runCatching { AppVolumePanel.hide() }
         runCatching {
             val ringer = findRinger(controller) ?: return
-            val entry = findEntry(ringer) ?: return
-            (entry.parent as? ViewGroup)?.let { parent ->
-                applyOfficialVisibility(parent, findDndRoot(parent))
-                parent.post { syncDivider(parent) }
-            }
+            val parent = ringer.parent as? ViewGroup ?: return
+            // 即使模块入口未注入，也要按展开状态刷新官方按钮；二级面板与一级共用
+            // 同一组静音 / 勿扰按钮，只有收起的一级面板才允许隐藏。
+            applyOfficialVisibility(parent, findDndRoot(parent))
+            parent.post { syncDivider(parent) }
+            val entry = findEntry(parent) ?: return
             if (!HookPrefs.getBoolean(key, false)) {
                 applyEntryState(entry, false)
                 shiftPanel(entry, false)
@@ -505,6 +520,25 @@ class AppVolumeEntryHook : BaseHook() {
         val index = parent.indexOfChild(button)
         for (i in index - 1 downTo 0) {
             val child = parent.getChildAt(i)
+            if (child.javaClass.name == "android.view.View") return child
+            if (child is ViewGroup) break
+        }
+        return null
+    }
+
+    /**
+     * 找到按钮所在层级里的官方分隔 View，跳过模块自己插入的 `TAG_DIVIDER`。
+     *
+     * `dnd_layout` 有时不是 `parent` 的直接子项，因此先沿父链回到按钮的实际容器，
+     * 再找紧邻按钮之前的官方分隔；这样展开二级面板时能把一级隐藏掉的分隔恢复回来。
+     */
+    private fun officialDivider(dnd: View?, ringer: View?): View? {
+        val button = dnd ?: ringer ?: return null
+        val container = button.parent as? ViewGroup ?: return null
+        val index = container.indexOfChild(button)
+        for (i in index - 1 downTo 0) {
+            val child = container.getChildAt(i)
+            if (child.tag == TAG_DIVIDER) continue
             if (child.javaClass.name == "android.view.View") return child
             if (child is ViewGroup) break
         }
@@ -586,12 +620,14 @@ class AppVolumeEntryHook : BaseHook() {
 
     /** 结构兜底：返回最后一个「音量按钮根」（即勿扰 dnd_layout 的根视图）。 */
     private fun findDndRoot(root: View): View? {
+        if (idDnd != 0) {
+            root.findViewById<View>(idDnd)?.let { return it }
+        }
         var lastParent: View? = null
         fun visit(v: View) {
             if (v.tag == TAG_ENTRY) return
             if (v.javaClass.name.contains("VolumeBlurFrameLayout")) {
                 lastParent = v.parent as? View
-                return
             }
             if (v is ViewGroup) for (i in 0 until v.childCount) visit(v.getChildAt(i))
         }
@@ -620,18 +656,67 @@ class AppVolumeEntryHook : BaseHook() {
      * 不留下空槽位；同时隐藏分隔 View，避免剩余按钮之间多出一段间距。
      */
     private fun applyOfficialVisibility(parent: ViewGroup, dnd: View?) {
-        val hideRinger = HookPrefs.getBoolean(AppVolumeKeys.HIDE_RINGER, false)
-        val hideDnd = HookPrefs.getBoolean(AppVolumeKeys.HIDE_DND, false)
-        val ringer = findRingerSibling(parent)
-        ringer?.visibility = if (hideRinger) View.GONE else View.VISIBLE
-        dnd?.visibility = if (hideDnd) View.GONE else View.VISIBLE
-        val dividerAnchor = dnd ?: ringer
-        if (dividerAnchor != null) {
-            siblingDivider(parent, dividerAnchor)
-                ?.visibility = if (hideRinger || hideDnd) View.GONE else View.VISIBLE
+        // 一级与二级复用同一组静音 / 勿扰按钮；隐藏只在收起的一级面板生效，
+        // 展开后恢复按钮，避免二级菜单里的两个按钮一起消失。
+        val controller = lastController
+        val expanded = expandedHint ?: if (controller == null) {
+            false
+        } else {
+            (runCatching { Reflect.getObjectField(controller, "mExpanded") }
+                .getOrNull() as? Boolean) ?: false
         }
-        applyBothHiddenSpacing(parent, hideRinger && hideDnd)
+        val hideRinger = !expanded && HookPrefs.getBoolean(AppVolumeKeys.HIDE_RINGER, false)
+        val hideDnd = !expanded && HookPrefs.getBoolean(AppVolumeKeys.HIDE_DND, false)
+        val ringer = findRingerSibling(parent)
+        applyOfficialButtonVisibility(ringer, hideRinger)
+        applyOfficialButtonVisibility(dnd, hideDnd)
+        officialDivider(dnd, ringer)?.visibility =
+            if (hideRinger || hideDnd) View.GONE else View.VISIBLE
+        applyBothHiddenSpacing(parent, hideRinger && hideDnd, expanded)
     }
+
+    /**
+     * 只隐藏官方按钮本体，保留它的根布局与计时器子项。
+     *
+     * `dnd_layout` / `ringer_layout` 内部除了 `bg_blur` 按钮，还有 `timer_layout`
+     * 等二级内容；直接 `GONE` 整个根布局会把这些内容一起带走。
+     */
+    private fun applyOfficialButtonVisibility(root: View?, hide: Boolean) {
+        if (root == null) return
+        val blur = findBlurView(root)
+        if (blur == null) {
+            // 找不到按钮本体时绝不能退回 GONE 整个根布局：一级 / 二级复用同一个
+            // 组件，GONE 根布局会把二级面板的计时器、静音/勿扰按钮一起带走。
+            HookHelper.log("$tag: bg_blur not found under ${root.javaClass.simpleName}; skip hiding")
+            hiddenButtonRoots.remove(root)
+            root.visibility = View.VISIBLE
+            return
+        }
+        root.visibility = View.VISIBLE
+        blur.visibility = if (hide) View.GONE else View.VISIBLE
+        if (hide) hiddenButtonRoots[root] = true else hiddenButtonRoots.remove(root)
+    }
+
+    /** 先按资源 id 找，id 解析失败时按资源名递归兜底。 */
+    private fun findBlurView(root: View): View? {
+        if (idBlur != 0) {
+            runCatching { root.findViewById<View>(idBlur) }.getOrNull()?.let { return it }
+        }
+        if (root.id != View.NO_ID &&
+            runCatching { root.resources.getResourceEntryName(root.id) }.getOrNull() == "bg_blur"
+        ) {
+            return root
+        }
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) {
+                findBlurView(root.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
+    }
+
+    private fun isOfficialButtonVisible(root: View?): Boolean =
+        root != null && root.visibility != View.GONE && hiddenButtonRoots[root] != true
 
     /**
      * 隐藏按钮时分隔线与外层间距的同步。
@@ -642,7 +727,7 @@ class AppVolumeEntryHook : BaseHook() {
      *
      * 仍恢复旧版本可能留下的 0 margin，避免升级后已有面板继续贴死。
      */
-    private fun applyBothHiddenSpacing(parent: ViewGroup, bothHidden: Boolean) {
+    private fun applyBothHiddenSpacing(parent: ViewGroup, bothHidden: Boolean, expanded: Boolean) {
         runCatching {
             val entryVisible = findEntry(parent)?.visibility == View.VISIBLE
             findTaggedChild(parent, TAG_DIVIDER)?.visibility =
@@ -659,7 +744,8 @@ class AppVolumeEntryHook : BaseHook() {
                 }
             }
             // 入口可见时，让展开态容器按实际子项高度自适应；隐藏任意数量都成立。
-            if (findEntry(parent)?.visibility == View.VISIBLE) {
+            // 二级面板展开时入口会被收起，不能再改容器高度，否则会把二级布局撑开。
+            if (!expanded && entryVisible) {
                 ensureExpandedRingerHeight(parent)
             }
         }.onFailure { HookHelper.log("$tag: applyBothHiddenSpacing failed", it) }
@@ -667,7 +753,8 @@ class AppVolumeEntryHook : BaseHook() {
 
     /**
      * 展开态下入口可能和 0~2 个官方按钮同时存在，固定 36dp 装不下。
-     * 只把高度改成 `WRAP_CONTENT`，不记录/恢复旧值：收起态由官方 motion 重新设置。
+     * 只把高度改成 `WRAP_CONTENT`；二级展开时不再恢复成收起态的固定高度，
+     * 否则会把静音 / 勿扰两个按钮压到一起。
      */
     private fun ensureExpandedRingerHeight(parent: ViewGroup) {
         val state = parent.parent as? View ?: return
@@ -700,8 +787,8 @@ class AppVolumeEntryHook : BaseHook() {
         val panel = findVolumeDialog(entry) ?: return
         val ringer = findRingerSibling(parent)
         val dnd = findDndRoot(parent)
-        val ringerVisible = ringer?.visibility != View.GONE
-        val dndVisible = dnd?.visibility != View.GONE
+        val ringerVisible = isOfficialButtonVisible(ringer)
+        val dndVisible = isOfficialButtonVisible(dnd)
         val anyOfficialVisible = ringerVisible || dndVisible
         val clone = findTaggedChild(parent, TAG_DIVIDER)
         // 入口消失或官方按钮全部隐藏时，入口前的分隔线没有下文，必须一并收起；
@@ -887,7 +974,9 @@ class AppVolumeEntryHook : BaseHook() {
     }
 
     private fun updateVisibility(controller: Any, entry: View) {
-        val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") }.getOrNull() as? Boolean ?: false
+        val expanded = expandedHint
+            ?: (runCatching { Reflect.getObjectField(controller, "mExpanded") }.getOrNull() as? Boolean
+                ?: false)
         // 读后台探测快照：官方判定内部会同步调用音频服务，通话等场景单次可阻塞数秒，主线程不能直接调。
         val visibility = entryVisibility()
         val visible = !expanded &&

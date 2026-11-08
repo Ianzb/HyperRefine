@@ -34,6 +34,12 @@ object AppVolumeKeys {
     /** 隐藏侧边音量条里的勿扰按钮内容，保留按钮框与间距。 */
     const val HIDE_DND = "volume_bar_hide_dnd"
 
+    /** 侧边音量条三个点按钮的交互模式：off / hide / long_press。 */
+    const val SIDE_LONGPRESS = "side_volume_longpress"
+    const val SIDE_MODE_OFF = "off"
+    const val SIDE_MODE_HIDE = "hide"
+    const val SIDE_MODE_LONG_PRESS = "long_press"
+
     /** 面板垂直位置百分比（0=顶部，50=居中，100=底部）。 */
     const val HEIGHT_PERCENT = "app_volume_height_percent"
 

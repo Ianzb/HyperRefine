@@ -411,7 +411,7 @@
     <string name="percent_font_size_label">Font size</string>
     <string name="percent_font_size_unit">dp</string>
     <string name="percent_font_weight">Font weight</string>
-    <string name="percent_font_weight_summary">Font weight of the percentage value</string>
+    <string name="percent_font_weight_summary">Higher values make the percentage text bolder (100–900)</string>
     <string name="font_weight_default">Regular</string>
     <string name="font_weight_light">Light</string>
     <string name="font_weight_medium">Medium</string>
@@ -427,8 +427,11 @@
     <string name="side_volume_position_section">Display position</string>
     <string name="side_volume_inside">Show percentage inside the bar</string>
     <string name="side_volume_inside_summary">Off: floats above the volume area; On: inside the bar</string>
-    <string name="side_volume_longpress">Long-press to open volume panel</string>
-    <string name="side_volume_longpress_summary">Long-press to expand the volume panel and hide the three-dot button</string>
+    <string name="side_volume_longpress">Three-dot volume button</string>
+    <string name="side_volume_longpress_summary">Tap the button to expand when shown or hidden; with hide and long-press, long-press the volume bar instead</string>
+    <string name="side_volume_longpress_off">Show normally</string>
+    <string name="side_volume_longpress_hide">Hide button only</string>
+    <string name="side_volume_longpress_long_press">Hide and use long-press</string>
     <string name="side_volume_pos_section">Vertical position</string>
     <string name="side_volume_pos">Position</string>
     <string name="side_volume_pos_summary">Customize the vertical position of the side volume bar</string>

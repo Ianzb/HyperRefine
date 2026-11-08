@@ -359,7 +359,7 @@ const val KEY_CC_RADIUS = "feature_cc_radius"
 const val KEY_FAST_CHARGE_ENTER = "security_center_fast_charge_enter_notify"
 const val KEY_FAST_CHARGE_EXIT = "security_center_fast_charge_exit_notify"
 const val SIDE_INSIDE_KEY = "side_volume_inside"
-const val SIDE_LONGPRESS_KEY = "side_volume_longpress"
+const val SIDE_LONGPRESS_KEY = AppVolumeKeys.SIDE_LONGPRESS
 
 fun percentStyleIntent(context: Context, location: String): Intent =
     Intent(context, PercentStyleActivity::class.java)
@@ -1396,19 +1396,15 @@ internal fun featureSpecs(): List<OptionSpec> {
         )
         specs += OptionSpec(
             key = "${location}_font_weight",
-            type = OptionType.DROPDOWN,
+            type = OptionType.SLIDER,
             titleRes = R.string.percent_font_weight,
             summaryRes = R.string.percent_font_weight_summary,
-            defaultString = "black",
-            entryResIds = listOf(
-                R.string.font_weight_light,
-                R.string.font_weight_default,
-                R.string.font_weight_medium,
-                R.string.font_weight_semibold,
-                R.string.font_weight_bold,
-                R.string.font_weight_black,
-            ),
-            entryValues = listOf("light", "normal", "medium", "semibold", "bold", "black"),
+            defaultFloat = 400f,
+            sliderMin = 100f,
+            sliderMax = 900f,
+            sliderStep = 10f,
+            sliderDecimals = 0,
+            sliderValueLabelRes = R.string.percent_font_weight,
             targetPackages = systemUi,
             dependsOn = PercentLocation.masterKey(location),
         )
@@ -1448,10 +1444,20 @@ internal fun featureSpecs(): List<OptionSpec> {
             )
             specs += OptionSpec(
                 key = SIDE_LONGPRESS_KEY,
-                type = OptionType.SWITCH,
+                type = OptionType.DROPDOWN,
                 titleRes = R.string.side_volume_longpress,
                 summaryRes = R.string.side_volume_longpress_summary,
-                defaultBoolean = false,
+                defaultString = AppVolumeKeys.SIDE_MODE_OFF,
+                entryResIds = listOf(
+                    R.string.side_volume_longpress_off,
+                    R.string.side_volume_longpress_hide,
+                    R.string.side_volume_longpress_long_press,
+                ),
+                entryValues = listOf(
+                    AppVolumeKeys.SIDE_MODE_OFF,
+                    AppVolumeKeys.SIDE_MODE_HIDE,
+                    AppVolumeKeys.SIDE_MODE_LONG_PRESS,
+                ),
                 targetPackages = systemUi,
             )
         }

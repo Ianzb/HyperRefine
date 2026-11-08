@@ -119,7 +119,7 @@ object PercentText {
         val expectedPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, size, tv.resources.displayMetrics)
         // 与视图当前值比较后再写入，避免拖动逐帧触发 measure/layout。
         if (abs(tv.textSize - expectedPx) > 0.5f) tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size)
-        val typeface = typefaceFor(weightOf(HookPrefs.getString("${pref}_font_weight", "normal")))
+        val typeface = typefaceFor(weightFor(pref))
         if (tv.typeface !== typeface) tv.typeface = typeface
 
         val color = textColor(pref, value, max, icon, iconColorRes, highlightColor)
@@ -190,14 +190,34 @@ object PercentText {
         return color.takeIf { Color.alpha(it) != 0 }
     }
 
-    fun weightOf(weight: String?): Int = when (weight) {
-        "light" -> 300
-        "medium" -> 500
-        "semibold" -> 600
-        "bold" -> 700
-        "black" -> 900
-        else -> 400
+    /**
+     * 读取字重；新版本存 100–900 的整数，旧版本存预设名称。
+     *
+     * 先按字符串读，兼容尚未迁移的旧值；若存储类型已是整数 / Float，
+     * `getString` 会返回默认值 null，再退回 `getIntFlexible`。
+     */
+    private fun weightFor(pref: String): Int {
+        val key = "${pref}_font_weight"
+        // `HookPrefs.getString` 在类型不匹配时会返回默认值而不是抛异常；若默认值传
+        // "400"，已写入的整数 / Float 字重就会被永远读成 400。这里默认 null，只有
+        // 真正存了字符串（旧版预设名）才走 `weightOf`，否则按数值读取。
+        val raw = HookPrefs.getString(key, null)
+        return if (raw != null) {
+            weightOf(raw)
+        } else {
+            HookPrefs.getIntFlexible(key, 400).coerceIn(100, 900)
+        }
     }
+
+    fun weightOf(weight: String?): Int =
+        weight?.toIntOrNull()?.coerceIn(100, 900) ?: when (weight) {
+            "light" -> 300
+            "medium" -> 500
+            "semibold" -> 600
+            "bold" -> 700
+            "black" -> 900
+            else -> 400
+        }
 
     private fun typefaceFor(weight: Int): Typeface =
         typefaceCache.getOrPut(weight) { Typeface.create(Typeface.DEFAULT, weight, false) }

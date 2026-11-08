@@ -411,7 +411,7 @@
     <string name="percent_font_size_label">字号</string>
     <string name="percent_font_size_unit">dp</string>
     <string name="percent_font_weight">字重</string>
-    <string name="percent_font_weight_summary">百分比数值的字体粗细</string>
+    <string name="percent_font_weight_summary">数值越大，百分比文字越粗（100–900）</string>
     <string name="font_weight_default">常规</string>
     <string name="font_weight_light">细体</string>
     <string name="font_weight_medium">中等</string>
@@ -427,8 +427,11 @@
     <string name="side_volume_position_section">显示位置</string>
     <string name="side_volume_inside">百分比显示在音量条内部</string>
     <string name="side_volume_inside_summary">关闭时悬浮在音量区域上方；开启时显示在音量条内部</string>
-    <string name="side_volume_longpress">长按打开音量面板</string>
-    <string name="side_volume_longpress_summary">长按展开音量面板，并隐藏音量条上的三个点</string>
+    <string name="side_volume_longpress">音量条三个点按钮</string>
+    <string name="side_volume_longpress_summary">正常显示或仅隐藏时，点击按钮展开面板；隐藏并长按则改为长按音量条展开</string>
+    <string name="side_volume_longpress_off">正常显示</string>
+    <string name="side_volume_longpress_hide">仅隐藏按钮</string>
+    <string name="side_volume_longpress_long_press">隐藏并长按展开</string>
     <string name="side_volume_pos_section">竖直位置</string>
     <string name="side_volume_pos">位置调节</string>
     <string name="side_volume_pos_summary">自定义侧边音量条的竖直位置</string>

@@ -183,12 +183,11 @@ class AppVolumeEntryHook : BaseHook() {
     private fun removeEntry(root: View) {
         val entry = findEntry(root) ?: return
         val parent = entry.parent as? ViewGroup ?: return
-        parent.removeView(entry)
-        entries.remove(parent)
-        val divider = findTaggedChild(parent, TAG_DIVIDER)
-        if (divider != null && findEntry(parent) == null) {
-            parent.removeView(divider)
-        }
+        // 不能从官方音量对话框的 ViewGroup 里 removeView：对话框收起动画结束时会
+        // 对子 View 逐个 dispatchDetachedFromWindow，期间删子 View 可能留下 null
+        // 槽位并触发系统界面 NPE。这里只隐藏，下一次重复注入时再恢复可见。
+        entry.visibility = View.GONE
+        findTaggedChild(parent, TAG_DIVIDER)?.visibility = View.GONE
     }
 
     private fun injectEntry(volumeView: View, animator: Any) {
@@ -233,6 +232,8 @@ class AppVolumeEntryHook : BaseHook() {
             attachDividerSync(parent)
             inflated
         }
+        entry.visibility = View.VISIBLE
+        findTaggedChild(parent, TAG_DIVIDER)?.visibility = View.VISIBLE
         joinAnimator(animator, entry)
         applyOfficialVisibility(parent, dnd)
         lastController?.let { updateVisibility(it, entry) }

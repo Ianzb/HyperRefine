@@ -86,7 +86,9 @@ class AppVolumeEntryHook : BaseHook() {
                 parent.post {
                     applyOfficialVisibility(parent, findDndRoot(parent))
                     lastController?.let { controller ->
-                        findEntry(parent)?.let { updateVisibility(controller, it) }
+                        if (controllerOwnsView(controller, parent)) {
+                            findEntry(parent)?.let { updateVisibility(controller, it) }
+                        }
                     }
                 }
             }
@@ -98,6 +100,7 @@ class AppVolumeEntryHook : BaseHook() {
             hookDialogControlCenter(pluginCl)
             hookRingerLayout(pluginCl)
             hookController(pluginCl)
+            hookControllerControlCenter(pluginCl)
             hookSeekBarAnim(pluginCl)
             hookRingerButtonDelay(pluginCl)
         }
@@ -175,23 +178,35 @@ class AppVolumeEntryHook : BaseHook() {
                         if (param.args.getOrNull(0) as? Boolean != true) return@hookAfter
                         val dialog = param.thisObject as? View ?: return@hookAfter
                         removeEntry(dialog)
+                        restoreOfficialButtons(dialog)
                     }
                 }.onFailure { HookHelper.log("$tag: hook setControlCenterPanel failed", it) }
             }
     }
 
     private fun removeEntry(root: View) {
+        // 控制中心二级面板与侧边面板复用同一套官方组件；切到二级面板时模块入口
+        // 和已经展开的多应用面板都必须收起，不能只隐藏入口按钮。
+        runCatching { AppVolumePanel.hide() }
         val entry = findEntry(root) ?: return
         val parent = entry.parent as? ViewGroup ?: return
         // 不能从官方音量对话框的 ViewGroup 里 removeView：对话框收起动画结束时会
         // 对子 View 逐个 dispatchDetachedFromWindow，期间删子 View 可能留下 null
         // 槽位并触发系统界面 NPE。这里只隐藏，下一次重复注入时再恢复可见。
+        entry.animate().cancel()
+        entry.alpha = 1f
         entry.visibility = View.GONE
+        lastVisible[entry] = false
+        desiredVisible[entry] = false
+        pendingShow.remove(entry)
+        userToggled.remove(entry)
         findTaggedChild(parent, TAG_DIVIDER)?.visibility = View.GONE
     }
 
     private fun injectEntry(volumeView: View, animator: Any) {
         // 控制中心二级音量面板复用同一套 MiuiVolumeDialogView；它不应出现多应用入口。
+        // 控制器上的标记才是权威场景（对话框标记在 CC 初始化时可能尚未转发）。
+        if (isControlCenterController(lastController) && controllerOwnsView(lastController, volumeView)) return
         val dialog = findVolumeDialog(volumeView)
         if (dialog != null && isControlCenterDialog(dialog)) {
             return
@@ -236,7 +251,10 @@ class AppVolumeEntryHook : BaseHook() {
         findTaggedChild(parent, TAG_DIVIDER)?.visibility = View.VISIBLE
         joinAnimator(animator, entry)
         applyOfficialVisibility(parent, dnd)
-        lastController?.let { updateVisibility(it, entry) }
+        // `lastController` 可能仍指向已关闭的控制中心二级面板；只允许当前视图所属的
+        // controller 决定入口显隐，否则侧边音量条刚注入的入口会被 CC 分支立刻收起。
+        lastController?.takeIf { controllerOwnsView(it, volumeView) }
+            ?.let { updateVisibility(it, entry) }
     }
 
     /** 仅当入口尚未加入动画数组时，把入口与对应的 X 记录一起追加。 */
@@ -466,7 +484,92 @@ class AppVolumeEntryHook : BaseHook() {
             }
     }
 
+    /**
+     * 控制中心二级音量面板的权威标记在 [CONTROLLER_CLASS] 上。
+     *
+     * 官方在 `initController` 之前就调用 `setControlCenterPanel(true)`，此时
+     * `mVolumeView` 还不存在，setter 不会把标记转发到对话框；`reInit()` 创建新
+     * 对话框时也不会补写。因此只能读控制器的字段，不能信任对话框上的同名标记。
+     */
+    private fun hookControllerControlCenter(pluginCl: ClassLoader) {
+        val controller = Reflect.findClassIfExists(CONTROLLER_CLASS, pluginCl) ?: return
+        controller.declaredMethods
+            .filter { it.name == "setControlCenterPanel" && it.parameterCount == 1 }
+            .forEach { method ->
+                method.isAccessible = true
+                runCatching {
+                    HookHelper.hookAfter(method) { param ->
+                        if (param.args.getOrNull(0) as? Boolean != true) return@hookAfter
+                        val instance = param.thisObject ?: return@hookAfter
+                        lastController = instance
+                        expandedHint = false
+                        hideControlCenterVolume(instance)
+                    }
+                }.onFailure { HookHelper.log("$tag: hook controller CC failed", it) }
+            }
+    }
+
+    private fun isControlCenterController(controller: Any?): Boolean {
+        if (controller == null) return false
+        val field = runCatching {
+            Reflect.getObjectField(controller, "isControlCenterPanel")
+        }.getOrNull()
+        if (field is Boolean) return field
+        return runCatching {
+            Reflect.callMethod(controller, "isControlCenterPanel") as? Boolean
+        }.getOrNull() == true
+    }
+
+    /**
+     * `lastController` 是跨面板共享的全局状态，控制中心关闭后可能仍指向旧 controller。
+     * 只有 controller 的 `mVolumeView` 确实是当前视图的祖先时，才允许使用它的场景标记。
+     */
+    private fun controllerOwnsView(controller: Any?, view: View): Boolean {
+        if (controller == null) return false
+        val root = runCatching {
+            Reflect.getObjectField(controller, "mVolumeView")
+        }.getOrNull() as? View ?: return false
+        var current: View? = view
+        while (current != null) {
+            if (current === root) return true
+            current = current.parent as? View
+        }
+        return false
+    }
+
+    /** CC 二级面板只显示官方内容：收起模块入口、模块面板，并恢复官方按钮。 */
+    private fun hideControlCenterVolume(controller: Any) {
+        runCatching { AppVolumePanel.hide() }
+        val root = runCatching {
+            Reflect.getObjectField(controller, "mVolumeView")
+        }.getOrNull() as? View ?: return
+        removeEntry(root)
+        restoreOfficialButtons(root)
+    }
+
+    /** 恢复被一级面板隐藏的静音 / 勿扰按钮本体和分隔线。 */
+    private fun restoreOfficialButtons(root: View) {
+        val dnd = (if (idDnd != 0) {
+            runCatching { root.findViewById<View>(idDnd) }.getOrNull()
+        } else {
+            null
+        }) ?: findDndRoot(root) ?: return
+        val parent = dnd.parent as? ViewGroup ?: return
+        val ringer = findRingerSibling(parent)
+        applyOfficialButtonVisibility(ringer, false)
+        applyOfficialButtonVisibility(dnd, false)
+        officialDivider(dnd, ringer)?.visibility = View.VISIBLE
+        // 已经展开，只恢复按钮本体；不要按收起态重设容器高度。
+        applyBothHiddenSpacing(parent, false, true)
+    }
+
     private fun onController(controller: Any, methodName: String) {
+        // 控制中心二级面板与一级共用官方 controller / RingerModeLayout：
+        // 在它上面必须完全隐藏模块入口和面板，也不能套用一级的静音/勿扰隐藏。
+        if (isControlCenterController(controller)) {
+            hideControlCenterVolume(controller)
+            return
+        }
         // 侧边音量条关闭时同步关闭系统界面模式面板，避免再次打开时残留 / 位置错乱。
         if (methodName == "dismissH") runCatching { AppVolumePanel.hide() }
         runCatching {
@@ -475,7 +578,7 @@ class AppVolumeEntryHook : BaseHook() {
             // 即使模块入口未注入，也要按展开状态刷新官方按钮；二级面板与一级共用
             // 同一组静音 / 勿扰按钮，只有收起的一级面板才允许隐藏。
             applyOfficialVisibility(parent, findDndRoot(parent))
-            parent.post { syncDivider(parent) }
+            scheduleDividerSync(parent)
             val entry = findEntry(parent) ?: return
             if (!HookPrefs.getBoolean(key, false)) {
                 applyEntryState(entry, false)
@@ -554,20 +657,29 @@ class AppVolumeEntryHook : BaseHook() {
      */
     private val dividerSyncAttached = WeakHashMap<ViewGroup, Boolean>()
 
+    /** 一次性布局后同步即可，避免每帧递归查找、在快速调音量时造成卡顿。 */
+    private val dividerSyncScheduled = WeakHashMap<ViewGroup, Boolean>()
+
     /** 两个官方按钮都隐藏时临时收紧外层上边距；记住原值以便恢复。 */
     private val originalOuterTopMargins = WeakHashMap<View, Int>()
 
-    /** 每帧同步分隔尺寸，直到入口销毁；保证与官方分隔（其高度随状态变化）始终一致。 */
+    /** 布局变化后合并到下一帧同步一次，保证与官方分隔高度一致。 */
     private fun attachDividerSync(parent: ViewGroup) {
         if (dividerSyncAttached[parent] == true) return
         dividerSyncAttached[parent] = true
-        parent.viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                syncDivider(parent)
-                return true
-            }
-        })
-        parent.post { syncDivider(parent) }
+        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            scheduleDividerSync(parent)
+        }
+        scheduleDividerSync(parent)
+    }
+
+    private fun scheduleDividerSync(parent: ViewGroup) {
+        if (dividerSyncScheduled[parent] == true) return
+        dividerSyncScheduled[parent] = true
+        parent.postOnAnimation {
+            dividerSyncScheduled[parent] = false
+            syncDivider(parent)
+        }
     }
 
     private fun syncDivider(parent: ViewGroup) {
@@ -657,9 +769,15 @@ class AppVolumeEntryHook : BaseHook() {
      * 不留下空槽位；同时隐藏分隔 View，避免剩余按钮之间多出一段间距。
      */
     private fun applyOfficialVisibility(parent: ViewGroup, dnd: View?) {
+        // 控制中心二级面板有自己的 controller 场景，不能套用一级的隐藏规则。
+        // 只有当前 parent 确实属于该 CC controller 时才恢复，避免旧 controller 影响侧边面板。
+        if (isControlCenterController(lastController) && controllerOwnsView(lastController, parent)) {
+            restoreOfficialButtons(parent)
+            return
+        }
         // 一级与二级复用同一组静音 / 勿扰按钮；隐藏只在收起的一级面板生效，
         // 展开后恢复按钮，避免二级菜单里的两个按钮一起消失。
-        val controller = lastController
+        val controller = lastController?.takeIf { controllerOwnsView(it, parent) }
         val expanded = expandedHint ?: if (controller == null) {
             false
         } else {
@@ -975,6 +1093,10 @@ class AppVolumeEntryHook : BaseHook() {
     }
 
     private fun updateVisibility(controller: Any, entry: View) {
+        if (isControlCenterController(controller)) {
+            hideControlCenterVolume(controller)
+            return
+        }
         val expanded = expandedHint
             ?: (runCatching { Reflect.getObjectField(controller, "mExpanded") }.getOrNull() as? Boolean
                 ?: false)
@@ -986,7 +1108,10 @@ class AppVolumeEntryHook : BaseHook() {
                 AppVolumePlayback.snapshot().hasActive)
         applyEntryState(entry, visible, dodge = expanded)
         // 快照过期时请一次后台刷新；结果回来（播放状态可能已变化）再重算一次入口状态。
-        AppVolumePlayback.refresh(entry.context) { lastController?.let { updateVisibility(it, entry) } }
+        // 回调也必须校验 controller 仍属于该入口，避免期间切到 CC 后被旧 controller 收起。
+        AppVolumePlayback.refresh(entry.context) {
+            if (controllerOwnsView(controller, entry)) updateVisibility(controller, entry)
+        }
     }
 
     private fun entryVisibility(): String = when (HookPrefs.getString(AppVolumeKeys.ENTRY_VISIBILITY, AppVolumeKeys.VISIBILITY_AUTO)) {
@@ -1001,6 +1126,11 @@ class AppVolumeEntryHook : BaseHook() {
      * 已展开时、或用户本轮手动操作过入口后，不再自动展开。
      */
     private fun maybeAutoShow(controller: Any, entry: View) {
+        // CC 二级面板不是侧边音量条，不能触发模块的自动展开。
+        if (isControlCenterController(controller)) {
+            hideControlCenterVolume(controller)
+            return
+        }
         if (!canAutoShow(entry)) return
         if (AppVolumePanel.isShowing()) return
         val root = entry.rootView as? ViewGroup ?: return
@@ -1012,6 +1142,7 @@ class AppVolumeEntryHook : BaseHook() {
     }
 
     private fun tryAutoShow(controller: Any, entry: View, root: ViewGroup, dialog: View) {
+        if (isControlCenterController(controller)) return
         if (!canAutoShow(entry)) return
         if (AppVolumePanel.isShowing()) return
         // 入口自己会按「入口显示方式」隐藏；自动展开是独立开关，不能因入口隐藏而失效。

@@ -15,6 +15,7 @@ import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.status.HookStatusReporter
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
+import java.lang.ref.WeakReference
 import java.util.WeakHashMap
 
 /**
@@ -33,6 +34,15 @@ class AppVolumeEntryHook : BaseHook() {
 
     /** 每个 ringer 父容器对应的入口视图。 */
     private val entries = WeakHashMap<ViewGroup, View>()
+    /** controller → 铃声按钮布局；只在仍 attach 时复用，避免持有已销毁的面板。 */
+    private val ringerCache = WeakHashMap<Any, WeakReference<View>>()
+    /** parent → 上次写入的官方按钮可见性签名，避免每次音量键都重复 setVisibility。 */
+    private val officialVisibilityState = WeakHashMap<ViewGroup, Long>()
+
+    /** 滑条 → 入口；边界拖动时每帧镜像动画，不能每帧递归遍历整棵对话框。 */
+    private val mirrorEntryCache = WeakHashMap<View, WeakReference<View>>()
+    /** 入口 → 自身 bg_blur；同上，避免每帧 findViewById 递归。 */
+    private val mirrorBlurCache = WeakHashMap<View, WeakReference<View>>()
 
     /** 每个官方 `MiuiRingerModeLayout` 对应的入口 RingerButtonHelper。 */
     private val helpers = WeakHashMap<Any, Any>()
@@ -84,10 +94,11 @@ class AppVolumeEntryHook : BaseHook() {
         HookPrefs.registerListener {
             entries.keys.toList().forEach { parent ->
                 parent.post {
+                    officialVisibilityState.remove(parent)
                     applyOfficialVisibility(parent, findDndRoot(parent))
                     lastController?.let { controller ->
                         if (controllerOwnsView(controller, parent)) {
-                            findEntry(parent)?.let { updateVisibility(controller, it) }
+                            entryOf(parent)?.let { updateVisibility(controller, it) }
                         }
                     }
                 }
@@ -220,7 +231,7 @@ class AppVolumeEntryHook : BaseHook() {
             ?: findDndRoot(volumeView)
             ?: return
         val parent = dnd.parent as? ViewGroup ?: return
-        val existing = findEntry(parent)
+        val existing = entryOf(parent) ?: findEntry(parent)?.also { entries[parent] = it }
         val entry = existing ?: run {
             val dndIndex = parent.indexOfChild(dnd)
             var insertAt = dndIndex + 1
@@ -250,6 +261,7 @@ class AppVolumeEntryHook : BaseHook() {
         entry.visibility = View.VISIBLE
         findTaggedChild(parent, TAG_DIVIDER)?.visibility = View.VISIBLE
         joinAnimator(animator, entry)
+        officialVisibilityState.remove(parent)
         applyOfficialVisibility(parent, dnd)
         // `lastController` 可能仍指向已关闭的控制中心二级面板；只允许当前视图所属的
         // controller 决定入口显隐，否则侧边音量条刚注入的入口会被 CC 分支立刻收起。
@@ -402,9 +414,15 @@ class AppVolumeEntryHook : BaseHook() {
         if (idBlur == 0) return
         // 多应用音量面板的滑条不参与镜像，否则其边缘动画会带着入口 / 勿扰按钮一起动。
         if (slider.tag == OfficialVolumeColumnFactory.SLIDER_TAG) return
-        val entry = findEntry(slider.rootView) ?: return
+        val cached = mirrorEntryCache[slider]?.get()?.takeIf { it.parent != null }
+        val entry = cached ?: findEntry(slider.rootView)?.also {
+            mirrorEntryCache[slider] = WeakReference(it)
+        } ?: return
         if (entry.visibility != View.VISIBLE) return
-        val blur = entry.findViewById<View>(idBlur) ?: return
+        val blur = mirrorBlurCache[entry]?.get()?.takeIf { it.parent != null }
+            ?: entry.findViewById<View>(idBlur)?.also {
+                mirrorBlurCache[entry] = WeakReference(it)
+            } ?: return
         when (name) {
             // 只跟随勿扰按钮（紧邻入口）的平移，避免 setRingerY + setDndY 叠加导致幅度翻倍。
             "setDndY" -> {
@@ -555,6 +573,7 @@ class AppVolumeEntryHook : BaseHook() {
             null
         }) ?: findDndRoot(root) ?: return
         val parent = dnd.parent as? ViewGroup ?: return
+        officialVisibilityState.remove(parent)
         val ringer = findRingerSibling(parent)
         applyOfficialButtonVisibility(ringer, false)
         applyOfficialButtonVisibility(dnd, false)
@@ -578,8 +597,7 @@ class AppVolumeEntryHook : BaseHook() {
             // 即使模块入口未注入，也要按展开状态刷新官方按钮；二级面板与一级共用
             // 同一组静音 / 勿扰按钮，只有收起的一级面板才允许隐藏。
             applyOfficialVisibility(parent, findDndRoot(parent))
-            scheduleDividerSync(parent)
-            val entry = findEntry(parent) ?: return
+            val entry = entryOf(parent) ?: return
             if (!HookPrefs.getBoolean(key, false)) {
                 applyEntryState(entry, false)
                 shiftPanel(entry, false)
@@ -592,14 +610,19 @@ class AppVolumeEntryHook : BaseHook() {
     }
 
     private fun findRinger(controller: Any): View? {
-        callAny(controller, listOf("getRingerModeLayout", "getVolumeRingerModeLayout"))
-            ?.let { return it as? View }
-        val delegate = runCatching { Reflect.callMethod(controller, "getDelegate") }.getOrNull()
-        if (delegate != null) {
-            callAny(delegate, listOf("getRingerModeLayout", "getVolumeRingerModeLayout"))
-                ?.let { return it as? View }
+        val cached = ringerCache[controller]?.get()
+        if (cached != null && cached.isAttachedToWindow) return cached
+        ringerCache.remove(controller)
+        val found = callAny(controller, listOf("getRingerModeLayout", "getVolumeRingerModeLayout"))
+            ?.let { it as? View }
+            ?: runCatching { Reflect.callMethod(controller, "getDelegate") }.getOrNull()?.let { delegate ->
+                callAny(delegate, listOf("getRingerModeLayout", "getVolumeRingerModeLayout"))
+                    ?.let { it as? View }
+            }
+        if (found != null && found.isAttachedToWindow) {
+            ringerCache[controller] = WeakReference(found)
         }
-        return null
+        return found
     }
 
     private fun callAny(target: Any, names: List<String>): Any? {
@@ -616,6 +639,14 @@ class AppVolumeEntryHook : BaseHook() {
                 findEntry(root.getChildAt(i))?.let { return it }
             }
         }
+        return null
+    }
+
+    /** 优先用注入时记录的映射，避免每次音量键都递归遍历整个面板。 */
+    private fun entryOf(parent: ViewGroup): View? {
+        val entry = entries[parent]
+        if (entry != null && entry.parent === parent) return entry
+        entries.remove(parent)
         return null
     }
 
@@ -696,10 +727,11 @@ class AppVolumeEntryHook : BaseHook() {
                 lp.width = src.width
                 lp.height = src.height
                 clone.layoutParams = lp
-            }
-            // 分隔尺寸最终确定后，按真实多出高度重新校正整体平移量。
-            findEntry(parent)?.let { entry ->
-                shiftPanel(entry, lastVisible[entry] ?: true)
+                // 只有分隔尺寸真的变化时才重算平移。官方展开/收起动画期间每帧都会
+                // 触发 layout，若每次无条件重启动画，会让整条音量条持续抖动。
+                entryOf(parent)?.let { entry ->
+                    shiftPanel(entry, lastVisible[entry] ?: true)
+                }
             }
         }.onFailure { HookHelper.log("$tag: syncDivider failed", it) }
     }
@@ -786,12 +818,19 @@ class AppVolumeEntryHook : BaseHook() {
         }
         val hideRinger = !expanded && HookPrefs.getBoolean(AppVolumeKeys.HIDE_RINGER, false)
         val hideDnd = !expanded && HookPrefs.getBoolean(AppVolumeKeys.HIDE_DND, false)
+        // 同一 parent 上重复调用时，场景未变就不再重写官方按钮可见性 / 间距；
+        // 音量键连续触发 showVolumePanelH 时这里是主要热路径。
+        var signature = if (expanded) 1L else 0L
+        if (hideRinger) signature = signature or 2L
+        if (hideDnd) signature = signature or 4L
+        if (officialVisibilityState[parent] == signature) return
         val ringer = findRingerSibling(parent)
         applyOfficialButtonVisibility(ringer, hideRinger)
         applyOfficialButtonVisibility(dnd, hideDnd)
         officialDivider(dnd, ringer)?.visibility =
             if (hideRinger || hideDnd) View.GONE else View.VISIBLE
         applyBothHiddenSpacing(parent, hideRinger && hideDnd, expanded)
+        officialVisibilityState[parent] = signature
     }
 
     /**
@@ -848,7 +887,7 @@ class AppVolumeEntryHook : BaseHook() {
      */
     private fun applyBothHiddenSpacing(parent: ViewGroup, bothHidden: Boolean, expanded: Boolean) {
         runCatching {
-            val entryVisible = findEntry(parent)?.visibility == View.VISIBLE
+            val entryVisible = entryOf(parent)?.visibility == View.VISIBLE
             findTaggedChild(parent, TAG_DIVIDER)?.visibility =
                 if (entryVisible && !bothHidden) View.VISIBLE else View.GONE
 

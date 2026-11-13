@@ -167,6 +167,38 @@ internal object StatusBarIconRuntime {
         }
     }
 
+    /**
+     * 原生隐私容器会先把自己设为可见再播放淡入，而 refreshSoon 要到下一帧才套用显示模式，
+     * 控制中心里就会闪一下。隐私状态变化频率很低，这里同步读取一次配置并立即隐藏。
+     */
+    fun refreshPrivacyNow(view: View?) {
+        view ?: return
+        if (!HookPrefs.getBoolean(StatusBarIconKeys.ENABLED, false)) return
+        val display = StatusBarIconConfigReader.display(StatusBarIconRegistry.PRIVACY)
+        val hide = when (display) {
+            StatusBarIconMode.HIDDEN.value -> true
+            StatusBarIconMode.CC_ONLY_HIDE.value -> isControlCenterPrivacy(view)
+            else -> false
+        }
+        if (hide && view.visibility != View.GONE) {
+            view.visibility = View.GONE
+        }
+    }
+
+    private fun isControlCenterPrivacy(view: View): Boolean {
+        val name = view.javaClass.simpleName
+        // 这两个容器本身就是控制中心的真实/过渡隐私组件。
+        if (name == "MiuiPrivacyContainerView" || name == "MiuiFakePrivacyContainerView") {
+            return true
+        }
+        var parent = view.parent
+        while (parent is View) {
+            if (parent.javaClass.simpleName.contains("ControlCenter")) return true
+            parent = parent.parent
+        }
+        return false
+    }
+
     /** 注册控制器创建的每个图标组；控制中心 fake 组也必须能按自定义条件直接隐藏。 */
     fun registerIconGroup(group: ViewGroup?) {
         group ?: return

@@ -20,7 +20,7 @@
 | 时间 | `clock` / `MiuiClock` | 5 种基础项 | 偏移/间距/大小缩放/透明度/对齐/字重/字号 | 状态栏、通知中心大/小标题、控制中心、横屏五种格式；每种格式先由开关决定是否自定义，开启后默认填入当前系统格式，横屏默认在日期与星期之间保留空格；1s ticker；宽度开关 + 20..240dp 滑条（默认 60dp） |
 | 平板日期 | `pad_clock` / `MiuiClock`（仅平板显示入口） | 5 种基础项 | 偏移/间距/大小缩放/透明度/字重/字号 | 作为左侧独立图标行显示/隐藏；格式先由开关决定是否自定义，默认填入系统日期/星期格式 |
 | 运营商 | `operator_name` | 5 种基础项 | 偏移/间距/大小缩放/透明度/字重/字号 | 仅宿主已创建该 View 时生效 |
-| 隐私指示 | `privacy_area` / `MiuiPrivacyContainerView` | 5 种基础项 | 偏移/间距/大小缩放/透明度 | 状态栏是 `privacy_area`，控制中心是独立的 `MiuiPrivacyContainerView` / `MiuiFakePrivacyContainerView`；运行时按 View 所在宿主分别套用五种模式，并在原生 `onPromptInfoChanged` / `setPrivacyIcons` / `onAttachedToWindow` 后重刷。预览为自绘相机+麦克风组合，不使用带底板的通用通知图标 |
+| 隐私指示 | `privacy_area` / `MiuiPrivacyContainerView` | 5 种基础项 | 偏移/间距/大小缩放/透明度 | 状态栏是 `privacy_area`，控制中心是独立的 `MiuiPrivacyContainerView` / `MiuiFakePrivacyContainerView`；运行时按 View 所在宿主分别套用五种模式；原生 `onPromptInfoChanged` / `setPrivacyIcons` / `onAttachedToWindow` 返回后先同步套用隐藏（只读隐私组件配置），再投递一次下一帧重刷，避免原生淡入抢先绘制一帧。预览为自绘相机+麦克风组合，不使用带底板的通用通知图标 |
 | 通知图标 | `notification_icon_area` / `NotificationIconContainer` | 5 种基础项，无条件项 | 偏移/间距/大小缩放/透明度 | 位于左侧宿主；最多图标数 1..16；可开启“按隐藏图标数量显示圆点”，用原生溢出点的位置/颜色/动画显示 1..3 个点；排序/去重/优先级/点击由原生管理 |
 | 网速 | `network_speed` (`NetworkSpeedView`) | 5 种 + 有/无流量 | 偏移/间距/大小缩放/透明度/对齐/字重/字号 | 字号开关 + 滑条与时间同位置；单位开关、单位换算、慢速隐藏阈值、1..10s 更新间隔；支持系统双行、仅数字、单行（数字与单位同一行，字号约为普通数值的两倍）、上下行双排；上下行合并仍由原生绘制 |
 | Wi‑Fi | `wifi` | 5 种 + 连接/断开、开启/关闭 | 偏移/间距/大小缩放/透明度 | 信号格、上下行、网络类型角标由原生绘制 |

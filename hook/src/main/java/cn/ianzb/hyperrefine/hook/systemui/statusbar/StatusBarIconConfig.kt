@@ -87,6 +87,18 @@ object StatusBarIconConfigReader {
         return StatusBarIconSnapshot(enabled, order, configs)
     }
 
+    /** 只读单个组件的显示模式，供隐私指示这类高频同步回调使用。 */
+    fun display(id: String): String {
+        val config = readComponent(id)
+        return when {
+            config.display.isNotBlank() -> config.display
+            config.logic == StatusBarIconLogic.CUSTOM &&
+                config.condition != StatusBarIconCondition.NONE ->
+                "condition:${config.condition.value}"
+            else -> config.mode.value
+        }
+    }
+
     /** 只读排序，不展开 47 个组件的全部配置；用于每个图标插入时快速求目标位置。 */
     fun loadOrderedIds(): List<String> {
         val order = readOrder()

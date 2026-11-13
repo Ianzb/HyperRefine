@@ -520,8 +520,15 @@ class StatusBarIconHook : BaseHook() {
                     }
                     .forEach { method ->
                         runCatching {
-                            StatusBarMembers.after(method) {
-                                guard.run { StatusBarIconRuntime.refreshSoon() }
+                            StatusBarMembers.after(method) { param ->
+                                guard.run {
+                                    // 原生会先把容器设为可见再播放淡入；只 post 刷新会晚一帧，
+                                    // 控制中心组件会闪一下。这里在当前调用栈内先同步隐藏。
+                                    StatusBarIconRuntime.refreshPrivacyNow(
+                                        param.thisObject as? View,
+                                    )
+                                    StatusBarIconRuntime.refreshSoon()
+                                }
                             }
                         }.onFailure {
                             android.util.Log.w(

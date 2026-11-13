@@ -3,6 +3,7 @@ package cn.ianzb.hyperrefine.hook.systemui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.view.GestureDetector
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import cn.ianzb.hyperrefine.hook.base.BaseHook
@@ -11,6 +12,7 @@ import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.status.HookStatusReporter
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
+import java.lang.ref.WeakReference
 import java.util.WeakHashMap
 
 /**
@@ -81,7 +83,7 @@ class SideVolumeLongPressHook : BaseHook() {
                 (tempColumn?.let { runCatching { Reflect.getObjectField(it, "slider") }.getOrNull() } as? View)?.let { add(it) }
             }.distinctBy { System.identityHashCode(it) }
 
-            targets.forEach { it.installLongPress(controller) }
+            targets.forEach { it.installLongPress(controller, volumeView) }
         }.onFailure { HookHelper.log("$tag: long-press setup failed", it) }
     }
 
@@ -121,28 +123,79 @@ class SideVolumeLongPressHook : BaseHook() {
     }
 
     /** 每个视图只安装一次；若被系统重新覆盖（非本包装器）则重新包装当前监听。 */
-    private fun View.installLongPress(controller: Any) {
+    private fun View.installLongPress(controller: Any, pressView: View) {
         // `View.getOnTouchListener()` 为隐藏 API，需反射获取，以保留 MIUI 原有的拖拽监听。
         val current = runCatching { Reflect.callMethod(this, "getOnTouchListener") }.getOrNull() as? View.OnTouchListener
         if (current is LongPressTouchListener) return
-        val detector = detectors.getOrPut(this) { createDetector(context, controller) }
+        val detector = detectors.getOrPut(this) { createDetector(context, controller, pressView) }
         setOnTouchListener(LongPressTouchListener(detector, current))
         HookHelper.log("$tag: long-press installed on ${javaClass.simpleName} (original=${current != null})")
     }
 
-    private fun createDetector(context: Context, controller: Any): GestureDetector =
-        GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+    private fun createDetector(context: Context, controller: Any, pressView: View): GestureDetector {
+        // 用弱引用保存音量条根视图，避免 GestureDetector 反向持有 View 导致 WeakHashMap 的 key 无法回收。
+        val pressRef = WeakReference(pressView)
+        return GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
             override fun onLongPress(e: MotionEvent) {
                 if (!usesLongPress()) return
                 // 已展开时不再处理：`onExpandClicked` 是开关式的，重复调用会把面板又收回。
                 val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") as? Boolean }
                     .getOrNull() ?: false
                 if (expanded) return
-                HookHelper.log("$tag: long-press -> expand")
-                runCatching { Reflect.callMethod(controller, "onExpandClicked") }
-                    .onFailure { HookHelper.log("$tag: onExpandClicked failed", it) }
+
+                val target = pressRef.get()
+                if (target == null || !target.isAttachedToWindow) {
+                    expand(controller)
+                    return
+                }
+                playPressFeedback(target) { expand(controller) }
             }
         })
+    }
+
+    /**
+     * 长按确认时先给按压反馈，再打开二级面板。
+     * 动画只作用于音量条根视图，不影响滑动条自身的拖拽与布局测量。
+     */
+    private fun playPressFeedback(target: View, onPressed: () -> Unit) {
+        // 忽略音量条自身可能设置的 haptic 开关，但仍遵循系统全局触感设置。
+        target.performHapticFeedback(
+            HapticFeedbackConstants.LONG_PRESS,
+            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING,
+        )
+        if (!target.isAttachedToWindow) {
+            onPressed()
+            return
+        }
+        // 必须先完全回弹再触发官方展开动画：官方展开本身也会缩放/平移音量列，
+        // 两个缩放同时进行会让整条音量条在展开瞬间抽搐。
+        target.animate().cancel()
+        target.animate()
+            .scaleX(PRESS_SCALE)
+            .scaleY(PRESS_SCALE)
+            .setDuration(PRESS_DOWN_MS)
+            .withEndAction {
+                if (!target.isAttachedToWindow) {
+                    onPressed()
+                    return@withEndAction
+                }
+                target.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(PRESS_UP_MS)
+                    .withEndAction {
+                        if (target.isAttachedToWindow) onPressed()
+                    }
+                    .start()
+            }
+            .start()
+    }
+
+    private fun expand(controller: Any) {
+        HookHelper.log("$tag: long-press -> expand")
+        runCatching { Reflect.callMethod(controller, "onExpandClicked") }
+            .onFailure { HookHelper.log("$tag: onExpandClicked failed", it) }
+    }
 
     private fun sideMode(): String {
         // 默认 null：`getString` 在旧 Boolean 配置上会返回默认值而非抛异常，
@@ -191,6 +244,9 @@ class SideVolumeLongPressHook : BaseHook() {
         const val KEY = "side_volume_longpress"
         const val CONTROLLER_CLASS = "com.android.systemui.miui.volume.VolumePanelViewController"
         const val DIALOG_VIEW_CLASS = "com.android.systemui.miui.volume.MiuiVolumeDialogView"
+        private const val PRESS_SCALE = 0.94f
+        private const val PRESS_DOWN_MS = 55L
+        private const val PRESS_UP_MS = 85L
 
         private val detectors = WeakHashMap<View, GestureDetector>()
     }

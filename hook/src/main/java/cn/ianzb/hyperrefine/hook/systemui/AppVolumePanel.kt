@@ -210,7 +210,14 @@ object AppVolumePanel {
         anchor: View,
         attempt: Int = 0,
     ) {
-        hide()
+        // 关闭动画期间 host 仍非空。此时再 show 会覆盖 host，旧容器的收尾
+        // 因 identity guard 不再 removeView，留下两层 overlay 和未恢复的 insets。
+        // 已挂载则视为仍在展示；已 detach 则先同步收尾再重建。
+        val existing = host
+        if (existing != null) {
+            if (existing.isAttachedToWindow) return
+            cleanup(existing)
+        }
         closing = false
         // 侧边音量条已经隐藏时不要再创建窗口；否则会生成一个没有锚点的面板。
         if (!dialog.isAttachedToWindow || !dialog.isShown) return
@@ -326,6 +333,8 @@ object AppVolumePanel {
             }
         })
 
+        // 创建视图期间 dialog 可能已被移除；不要在正在销毁的窗口上 addView。
+        if (!root.isAttachedToWindow || !dialog.isAttachedToWindow || !dialog.isShown) return
         host = container
         card = panel
         dialogRef = dialog
@@ -353,6 +362,11 @@ object AppVolumePanel {
         dialog.postOnAnimation(monitor)
         root.addView(container)
 
+        // addView 之后仍可能刚好进入 dismiss；此时不要再改 insets / 窗口属性。
+        if (!dialog.isAttachedToWindow || !dialog.isShown) {
+            cleanup(container)
+            return
+        }
         // 侧边音量条保持显示；仅接管窗口触摸区域，使位于其左侧的面板可正常拖动。
         pauseInsets(dialog)
         clearWindowDim(dialog)

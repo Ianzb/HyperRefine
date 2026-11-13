@@ -259,6 +259,9 @@ class AppVolumeEntryHook : BaseHook() {
             inflated
         }
         entry.visibility = View.VISIBLE
+        copyOfficialMaterial(entry, dnd)
+        // RingerButtonHelper 可能在 attach 后再次写入 bg_blur，布局完成后再对齐一次。
+        entry.post { if (entry.isAttachedToWindow) copyOfficialMaterial(entry, dnd) }
         findTaggedChild(parent, TAG_DIVIDER)?.visibility = View.VISIBLE
         joinAnimator(animator, entry)
         officialVisibilityState.remove(parent)
@@ -310,6 +313,22 @@ class AppVolumeEntryHook : BaseHook() {
             val blur = entry.findViewById<View>(idBlur)
             blur?.setOnClickListener { onEntryClick(entry) }
         }
+    }
+
+    /**
+     * 入口复用的是 ringer 布局，但官方背景材质由 RingerButtonHelper 在 attach 后按
+     * 自身状态写入 bg_blur。这里直接复制同组静音/勿扰按钮的最终 drawable，
+     * 避免模块入口出现默认底色 / 不同圆角与模糊层。
+     */
+    private fun copyOfficialMaterial(entry: View, official: View) {
+        if (idBlur == 0) return
+        val source = official.findViewById<View>(idBlur) ?: return
+        val target = entry.findViewById<View>(idBlur) ?: return
+        val background = source.background
+        target.background = background?.constantState?.newDrawable()?.mutate() ?: background
+        target.backgroundTintList = source.backgroundTintList
+        val foreground = source.foreground
+        target.foreground = foreground?.constantState?.newDrawable()?.mutate() ?: foreground
     }
 
     /** 把入口追加进原生动画数组，使其拥有与原生按钮一致的延迟出现动画。 */
@@ -589,15 +608,22 @@ class AppVolumeEntryHook : BaseHook() {
             hideControlCenterVolume(controller)
             return
         }
-        // 侧边音量条关闭时同步关闭系统界面模式面板，避免再次打开时残留 / 位置错乱。
-        if (methodName == "dismissH") runCatching { AppVolumePanel.hide() }
+        // 侧边音量条关闭时同步关闭系统界面模式面板，并结束本轮入口会话。
+        // 否则 lastVisible 会停留在上一轮的 true，下一次 showVolumePanelH 时
+        // applyEntryState 会因状态相同提前返回，永远走不到 showEntry / 自动展开。
+        if (methodName == "dismissH") {
+            resetEntrySession()
+            runCatching { AppVolumePanel.hide() }
+        }
         runCatching {
             val ringer = findRinger(controller) ?: return
             val parent = ringer.parent as? ViewGroup ?: return
             // 即使模块入口未注入，也要按展开状态刷新官方按钮；二级面板与一级共用
             // 同一组静音 / 勿扰按钮，只有收起的一级面板才允许隐藏。
             applyOfficialVisibility(parent, findDndRoot(parent))
-            val entry = entryOf(parent) ?: return
+            val entry = entryOf(parent)
+                ?: findEntry(parent)?.also { entries[parent] = it }
+                ?: return
             if (!HookPrefs.getBoolean(key, false)) {
                 applyEntryState(entry, false)
                 shiftPanel(entry, false)
@@ -607,6 +633,14 @@ class AppVolumeEntryHook : BaseHook() {
             // 侧边音量条真正显示时，按需自动展开多应用音量面板。
             if (methodName == "showVolumePanelH") maybeAutoShow(controller, entry)
         }.onFailure { HookHelper.log("$tag: onController failed", it) }
+    }
+
+    /** 官方音量条关闭：清空本轮入口显隐/自动展开状态，下一轮重新判断。 */
+    private fun resetEntrySession() {
+        lastVisible.clear()
+        desiredVisible.clear()
+        pendingShow.clear()
+        userToggled.clear()
     }
 
     private fun findRinger(controller: Any): View? {
@@ -1128,7 +1162,10 @@ class AppVolumeEntryHook : BaseHook() {
         entry.animate().alpha(1f).withEndAction(null).setDuration(FADE_DURATION_MS).start()
         (entry.parent as? ViewGroup)?.let { ensureExpandedRingerHeight(it) }
         shiftPanel(entry, true)
-        if (!autoRefreshing) lastController?.let { maybeAutoShow(it, entry) }
+        if (!autoRefreshing) {
+            lastController?.takeIf { controllerOwnsView(it, entry) }
+                ?.let { maybeAutoShow(it, entry) }
+        }
     }
 
     private fun updateVisibility(controller: Any, entry: View) {
@@ -1182,20 +1219,11 @@ class AppVolumeEntryHook : BaseHook() {
 
     private fun tryAutoShow(controller: Any, entry: View, root: ViewGroup, dialog: View) {
         if (isControlCenterController(controller)) return
+        if (!controllerOwnsView(controller, entry)) return
         if (!canAutoShow(entry)) return
         if (AppVolumePanel.isShowing()) return
-        // 入口自己会按「入口显示方式」隐藏；自动展开是独立开关，不能因入口隐藏而失效。
-        if (lastVisible[entry] != true && entryVisibility() != AppVolumeKeys.VISIBILITY_NEVER) {
-            // 入口还没出现：按最新的「正在播放的应用」重算一次入口状态
-            // （应用可能刚刚才开始播放 / 官方列表刚刷新出来）。
-            autoRefreshing = true
-            try {
-                runCatching { updateVisibility(controller, entry) }
-            } finally {
-                autoRefreshing = false
-            }
-            if (lastVisible[entry] != true) return
-        }
+        // 入口是否可见由「入口显示方式」单独控制，自动展开不能依赖它。
+        if (!entry.isAttachedToWindow) return
         // 两次延迟重试之间侧边条可能已经收回，避免在隐藏的 dialog 上创建面板。
         if (!dialog.isAttachedToWindow || !dialog.isShown) return
         runCatching { AppVolumePanel.show(root, dialog, entry.context, pluginClassLoader, entry) }

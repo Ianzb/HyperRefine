@@ -149,11 +149,11 @@ object AppVolumePanel {
             }
             anim.withEndAction {
                 toRelease.forEach { it.release() }
-                cleanup(currentHost)
+                cleanup(currentHost, fromDetach = !currentHost.isAttachedToWindow)
             }.start()
         } else {
             toRelease.forEach { it.release() }
-            cleanup(currentHost)
+            cleanup(currentHost, fromDetach = !currentHost.isAttachedToWindow)
         }
     }
 
@@ -172,7 +172,14 @@ object AppVolumePanel {
         return (if (toLeft) -1f else 1f) * panel.width * 0.25f
     }
 
-    private fun cleanup(currentHost: View) {
+    /**
+     * 收尾面板。
+     *
+     * [fromDetach] 表示当前回调正处在 View.dispatchDetachedFromWindow 的调用栈里：
+     * 此时绝不能再对 parent 做 removeView（会改动正在遍历的子 View 数组，
+     * 原生侧会因此拿到 null child 并崩溃），也不再恢复窗口 inset/dim。
+     */
+    private fun cleanup(currentHost: View, fromDetach: Boolean = false) {
         if (host !== currentHost) return
         host = null
         card = null
@@ -190,8 +197,22 @@ object AppVolumePanel {
         dialogAttachListener = null
         dialogMonitor?.let { runnable -> runCatching { dialogRef?.removeCallbacks(runnable) } }
         dialogMonitor = null
-        runCatching { (currentHost.parent as? ViewGroup)?.removeView(currentHost) }
-        restoreDialog()
+        val dialog = dialogRef
+        val dialogGone = dialog?.isAttachedToWindow != true
+        if (!fromDetach) {
+            runCatching { (currentHost.parent as? ViewGroup)?.removeView(currentHost) }
+        }
+        if (dialogGone) {
+            // 窗口正在销毁：只释放列引用，别碰已经分离的 ViewTreeObserver / WindowManager。
+            officialColumns.forEach { runCatching { it.release() } }
+            officialColumns.clear()
+            dialogRef = null
+            windowAttrsOriginal = null
+            insetsProxy = null
+        } else {
+            restoreDialog()
+        }
+        HookHelper.log("$TAG: cleanup fromDetach=$fromDetach dialogGone=$dialogGone")
     }
 
     private fun restoreDialog() {
@@ -216,7 +237,7 @@ object AppVolumePanel {
         val existing = host
         if (existing != null) {
             if (existing.isAttachedToWindow) return
-            cleanup(existing)
+            cleanup(existing, fromDetach = true)
         }
         closing = false
         // 侧边音量条已经隐藏时不要再创建窗口；否则会生成一个没有锚点的面板。
@@ -329,7 +350,7 @@ object AppVolumePanel {
         container.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) {}
             override fun onViewDetachedFromWindow(v: View) {
-                if (host === v) cleanup(v)
+                if (host === v) cleanup(v, fromDetach = true)
             }
         })
 
@@ -342,7 +363,7 @@ object AppVolumePanel {
         val detachListener = object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) {}
             override fun onViewDetachedFromWindow(v: View) {
-                if (host === container) cleanup(container)
+                if (host === container) cleanup(container, fromDetach = true)
             }
         }
         dialogAttachListener = detachListener
@@ -352,7 +373,7 @@ object AppVolumePanel {
             override fun run() {
                 if (host !== container) return
                 if (!dialog.isAttachedToWindow || !dialog.isShown) {
-                    cleanup(container)
+                    cleanup(container, fromDetach = !dialog.isAttachedToWindow)
                     return
                 }
                 dialog.postOnAnimation(this)
@@ -364,7 +385,7 @@ object AppVolumePanel {
 
         // addView 之后仍可能刚好进入 dismiss；此时不要再改 insets / 窗口属性。
         if (!dialog.isAttachedToWindow || !dialog.isShown) {
-            cleanup(container)
+            cleanup(container, fromDetach = !dialog.isAttachedToWindow)
             return
         }
         // 侧边音量条保持显示；仅接管窗口触摸区域，使位于其左侧的面板可正常拖动。
@@ -379,7 +400,9 @@ object AppVolumePanel {
                 // 侧边音量条已被隐藏 / detach 时立即清理，避免 dialog 坐标为 0 后面板被
                 // positionLeftOfDialog 推到屏幕最左侧并残留。
                 if (!dialog.isAttachedToWindow || !dialog.isShown) {
-                    if (host === container) cleanup(container)
+                    if (host === container) {
+                        cleanup(container, fromDetach = !dialog.isAttachedToWindow)
+                    }
                     return true
                 }
                 // 淡出期间暂停跟随（否则侧边条一变就瞬移），交给整体平移 + 淡出。

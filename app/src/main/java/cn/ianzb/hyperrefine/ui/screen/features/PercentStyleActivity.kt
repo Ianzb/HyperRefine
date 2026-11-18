@@ -2,7 +2,7 @@ package cn.ianzb.hyperrefine.ui.screen.features
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
@@ -10,6 +10,8 @@ import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
+import cn.ianzb.hyperrefine.ui.component.pref.SearchLandingLazyColumn
+import cn.ianzb.hyperrefine.ui.component.pref.searchSectionItem
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.screen.subpage.BaseSubPageActivity
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
@@ -69,7 +71,10 @@ class PercentStyleActivity : BaseSubPageActivity() {
             },
         )
 
-        LazyColumn(
+        val listState = rememberLazyListState()
+        SearchLandingLazyColumn(
+            scrollBehavior = scrollBehavior,
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .then(
@@ -77,6 +82,7 @@ class PercentStyleActivity : BaseSubPageActivity() {
                         Modifier.pageScrollModifiers(
                             showTopAppBar = true,
                             topAppBarScrollBehavior = scrollBehavior,
+                            contentState = listState,
                         )
                     } else {
                         Modifier
@@ -86,14 +92,14 @@ class PercentStyleActivity : BaseSubPageActivity() {
         ) {
             // 长按打开音量面板：始终显示且置于页面最前。
             interactionSection?.let { section ->
-                item {
+                searchSectionItem(section) {
                     HookSectionCard(section) {
                         section.specs.forEach { HookOptionView(it) }
                     }
                 }
             }
             // 规范：依赖百分比总开关的样式项始终显示，未开启时禁用灰显（不隐藏）。
-            item {
+            searchSectionItem(percentSection) {
                 HookSectionCard(percentSection) {
                     percentSection.specs.forEach { HookOptionView(it) }
                 }

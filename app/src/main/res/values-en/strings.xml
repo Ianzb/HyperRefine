@@ -28,6 +28,8 @@
     <string name="action_confirm">Confirm</string>
     <string name="search_hint">Search features</string>
     <string name="search_empty">No matching feature found</string>
+    <string name="package_search_hint">Search app names or packages</string>
+    <string name="package_search_empty">No matching apps</string>
 
     <!-- Home -->
     <string name="home_status_title">Status Card</string>
@@ -58,7 +60,7 @@
     <string name="theme_monet_light">Monet Light</string>
     <string name="theme_monet_dark">Monet Dark</string>
     <string name="floating_navbar">Floating Navbar</string>
-    <string name="floating_navbar_summary">Use a floating bottom navigation bar</string>
+    <string name="floating_navbar_summary">Use floating style bottom navigation bar</string>
     <string name="liquid_glass">Liquid Glass</string>
     <string name="liquid_glass_summary">iOS-style liquid glass blur effect</string>
     <string name="blur_enabled">Background Blur</string>
@@ -338,7 +340,10 @@
  <string name="voice_assist_ime_global_material_summary">Use rounded top corners and background blur for the keyboard panel in all apps, not only in selected system apps; restart the keyboard once after enabling it for the first time</string>
  <string name="voice_assist_ime_material_opacity">Material opacity</string>
  <string name="voice_assist_ime_material_opacity_summary">Adjust only the keyboard material tint strength; 0 keeps the blur without tint and 100 is the official default. Blur radius and keyboard content are unchanged</string>
- <string name="sogou_ime_title">Sogou Keyboard</string>
+ <string name="phrase_reorder_section">Clipboard &amp; phrases</string>
+<string name="phrase_reorder_enabled">Drag to reorder phrases</string>
+<string name="phrase_reorder_enabled_summary">Drag the handle beside a phrase to reorder it. The order is stored locally</string>
+<string name="sogou_ime_title">Sogou Keyboard</string>
  <string name="sogou_ime_glass">Keyboard glass material</string>
  <string name="sogou_ime_glass_summary">Add background blur and rounded corners to the Sogou keyboard; reopen the keyboard after enabling or changing it</string>
  <string name="sogou_ime_blur_radius">Blur radius</string>
@@ -497,7 +502,7 @@
     <string name="about_telegram">Telegram Group</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.7.0</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.8.0</string>
     <string name="license_agpl">GNU AGPL v3.0</string>
     <string name="license_agpl_summary">View full license text</string>
     <string name="third_party_licenses_title">Third Party Licenses &amp; Credits</string>
@@ -770,4 +775,15 @@
     <string name="sb_category_battery">Battery</string>
     <string name="sb_category_devices">Devices</string>
     <string name="sb_category_status">Status</string>
+    <string name="current_changelog">View Current Changelog</string>
+    <string name="current_changelog_unavailable">No changelog is available for this version.</string>
+    <string name="bottom_bar_style">Bottom Bar Style</string>
+    <string name="bottom_bar_style_hyperos">Floating</string>
+    <string name="bottom_bar_style_ios">Glass</string>
+    <string name="bottom_bar_style_summary">Used on narrow screens and on wide screens without a rail</string>
+    <string name="rail_style">Rail Style</string>
+    <string name="rail_style_none">Off</string>
+    <string name="rail_style_top">Top Pill</string>
+    <string name="rail_style_left">Left Panel</string>
+    <string name="rail_style_summary">Wide screens only; when enabled the rail replaces the bottom bar and starts in the selected form</string>
 </resources>

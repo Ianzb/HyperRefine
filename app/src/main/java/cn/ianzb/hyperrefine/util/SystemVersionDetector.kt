@@ -16,9 +16,8 @@ object SystemVersionDetector {
     fun getHyperOsVersion(): String =
         getProp("ro.mi.os.version.incremental").ifEmpty { getProp("ro.system.build.version.incremental") }
 
-    /** Android 版本描述，如 `Android 15 (SDK 35)`。 */
-    fun getAndroidVersion(): String =
-        "Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})"
+    /** Android 主版本号，如 `17`。 */
+    fun getAndroidVersion(): String = "${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})"
 
     @SuppressLint("PrivateApi")
     private fun getProp(property: String): String = try {

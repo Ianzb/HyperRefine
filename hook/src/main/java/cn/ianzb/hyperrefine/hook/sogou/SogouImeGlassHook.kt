@@ -143,6 +143,7 @@ class SogouImeGlassHook : BaseHook() {
     }
 
     private fun dispatch(root: View, source: String) {
+        if (!HookPrefs.getBoolean(key, false)) return
         Log.i(LOG_TAG, "setInputView[$source] ${root.javaClass.name} ${root.width}x${root.height}")
         HookHelper.log(
             "$tag: setInputView[$source] ${root.javaClass.name} ${root.width}x${root.height}",
@@ -162,7 +163,9 @@ class SogouImeGlassHook : BaseHook() {
      * 让后完成布局的键盘面板成为目标。重复 apply 对同一目标由 [AppliedState] 去重。
      */
     private fun resolveAndApply(root: View, source: String, attempt: Int) {
+        if (!HookPrefs.getBoolean(key, false)) return
         root.postDelayed({
+            if (!HookPrefs.getBoolean(key, false)) return@postDelayed
             val target = resolveEffectTarget(root)
             Log.i(
                 LOG_TAG,
@@ -170,7 +173,7 @@ class SogouImeGlassHook : BaseHook() {
                     " -> ${target.javaClass.simpleName}:${target.width}x${target.height}",
             )
             apply(target)
-            if (attempt < RESOLVE_RETRY_DELAYS.size) {
+            if (attempt + 1 < RESOLVE_RETRY_DELAYS.size) {
                 resolveAndApply(root, source, attempt + 1)
             }
         }, RESOLVE_RETRY_DELAYS[attempt])

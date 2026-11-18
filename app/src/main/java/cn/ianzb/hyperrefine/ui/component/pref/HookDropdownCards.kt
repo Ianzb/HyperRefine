@@ -6,10 +6,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.prefs.OptionSpec
-import top.yukonga.miuix.kmp.preference.CheckboxLocation
-import top.yukonga.miuix.kmp.preference.CheckboxPreference
-import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
-import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
+import cn.ianzb.hyperrefine.ui.util.LocalPreferenceBackdrop
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.glass.GlassDropdownPreference
+import top.yukonga.miuix.kmp.preference.RadioButtonPreference
 
 /**
  * 下拉卡片：第一个选项为“默认（不 hook）”，其它选项按值 hook。
@@ -18,17 +18,20 @@ import top.yukonga.miuix.kmp.preference.WindowDropdownPreference
 fun HookDropdownCard(
     spec: OptionSpec,
     modifier: Modifier = Modifier,
+    backdrop: LayerBackdrop? = LocalPreferenceBackdrop.current,
 ) {
     val enabled = rememberOptionEnabled(spec)
     val value = ConfigState.string(spec.key, spec.defaultString)
     val items = spec.entryResIds.map { stringResource(it) }
     val selectedIndex = spec.entryValues.indexOf(value).takeIf { it >= 0 } ?: 0
-    WindowDropdownPreference(
+    GlassDropdownPreference(
         items = items,
         selectedIndex = selectedIndex,
         title = stringResource(spec.titleRes),
         summary = spec.summaryRes.takeIf { it != 0 }?.let { stringResource(it) },
         enabled = enabled,
+        backdrop = backdrop,
+        renderInRootScaffold = true,
         modifier = modifier,
         onSelectedIndexChange = { index ->
             ConfigState.set(spec.key, spec.entryValues.getOrElse(index) { spec.defaultString })
@@ -37,35 +40,7 @@ fun HookDropdownCard(
     )
 }
 
-/**
- * 单选卡片：右侧 checkbox 表示选中项（单选语义）。
- */
-/**
- * 覆盖层下拉卡片：不创建独立 Window，避免 SystemUI 把隐藏的弹窗当成顶层窗口采样。
- */
-@Composable
-fun HookOverlayDropdownCard(
-    spec: OptionSpec,
-    modifier: Modifier = Modifier,
-) {
-    val enabled = rememberOptionEnabled(spec)
-    val value = ConfigState.string(spec.key, spec.defaultString)
-    val items = spec.entryResIds.map { stringResource(it) }
-    val selectedIndex = spec.entryValues.indexOf(value).takeIf { it >= 0 } ?: 0
-    OverlayDropdownPreference(
-        items = items,
-        selectedIndex = selectedIndex,
-        title = stringResource(spec.titleRes),
-        summary = spec.summaryRes.takeIf { it != 0 }?.let { stringResource(it) },
-        enabled = enabled,
-        modifier = modifier,
-        onSelectedIndexChange = { index ->
-            ConfigState.set(spec.key, spec.entryValues.getOrElse(index) { spec.defaultString })
-            if (index != defaultIndex(spec)) ensureScopeFor(spec)
-        },
-    )
-}
-
+/** 单选卡片。 */
 @Composable
 fun HookRadioCard(
     spec: OptionSpec,
@@ -76,16 +51,14 @@ fun HookRadioCard(
     Column(modifier = modifier) {
         spec.entryResIds.forEachIndexed { index, resId ->
             val entryValue = spec.entryValues.getOrElse(index) { spec.defaultString }
-            val selected = value == entryValue
-            CheckboxPreference(
+            RadioButtonPreference(
                 title = stringResource(resId),
-                checked = selected,
-                onCheckedChange = {
+                selected = value == entryValue,
+                onClick = {
                     ConfigState.set(spec.key, entryValue)
                     if (index != defaultIndex(spec)) ensureScopeFor(spec)
                 },
                 enabled = enabled,
-                checkboxLocation = CheckboxLocation.End,
             )
         }
     }

@@ -22,5 +22,6 @@ dependencies {
     compileOnly(libs.libxposed.api)
     api(libs.libxposed.service)
     api(libs.dexkit)
+    compileOnly(libs.androidx.recyclerview)
     testImplementation(libs.junit)
 }

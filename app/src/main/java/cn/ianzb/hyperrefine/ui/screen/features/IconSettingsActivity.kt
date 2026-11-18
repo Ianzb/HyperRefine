@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.ui.component.AppTopAppBarIconAction
 import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconComponent
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconCondition
@@ -27,9 +28,11 @@ import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.prefs.OptionRegistry
 import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.prefs.OptionType
-import cn.ianzb.hyperrefine.ui.component.pref.HookOverlayDropdownCard
+import cn.ianzb.hyperrefine.ui.component.pref.HookDropdownCard
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
+import cn.ianzb.hyperrefine.ui.component.pref.SearchLandingLazyColumn
+import cn.ianzb.hyperrefine.ui.component.pref.searchSectionItem
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.component.pref.HookSliderCard
 import cn.ianzb.hyperrefine.ui.component.pref.HookSwitchCard
@@ -47,9 +50,8 @@ import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Help
+import top.yukonga.miuix.kmp.icon.glass.Help
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /** 单个组件的二级设置：已验证正常的窗口结构承载全部组件内容。 */
@@ -133,10 +135,13 @@ class IconSettingsActivity : BaseSubPageActivity() {
             mobileSpecs.forEach(OptionRegistry::register)
         }
 
-        LazyColumn(
+        val listState = rememberLazyListState()
+        SearchLandingLazyColumn(
+            scrollBehavior = scroll,
+            state = listState,
             modifier = Modifier.fillMaxSize().then(
                 if (scroll != null) {
-                    Modifier.pageScrollModifiers(showTopAppBar = true, topAppBarScrollBehavior = scroll)
+                    Modifier.pageScrollModifiers(showTopAppBar = true, topAppBarScrollBehavior = scroll, contentState = listState)
                 } else {
                     Modifier
                 },
@@ -172,7 +177,7 @@ class IconSettingsActivity : BaseSubPageActivity() {
                         specs = specs,
                     ),
                 ) {
-                    HookOverlayDropdownCard(display)
+                    HookDropdownCard(display)
                     if (alarm != null) HookSliderCard(alarm)
                 }
             }
@@ -207,7 +212,7 @@ class IconSettingsActivity : BaseSubPageActivity() {
                     ) {
                         patterns.forEach { spec -> HookTextCard(spec) }
                         HookSwitchCard(amPm)
-                        HookOverlayDropdownCard(align)
+                        HookDropdownCard(align)
                         HookSwitchCard(refresh)
                         HookSliderCard(width)
                     }
@@ -258,16 +263,18 @@ class IconSettingsActivity : BaseSubPageActivity() {
             }
 
             if (id == StatusBarIconRegistry.WIFI && wifiSpecs.isNotEmpty()) {
-                item {
-                    HookSectionCard(HookSection(titleRes = R.string.sb_icon_wifi, specs = wifiSpecs)) {
+                val section = HookSection(titleRes = R.string.sb_icon_wifi, specs = wifiSpecs)
+                searchSectionItem(section) {
+                    HookSectionCard(section) {
                         wifiSpecs.forEach { spec -> HookOptionView(spec) }
                     }
                 }
             }
 
             if (id == StatusBarIconRegistry.MOBILE && mobileSpecs.isNotEmpty()) {
-                item {
-                    HookSectionCard(HookSection(titleRes = R.string.sb_icon_mobile, specs = mobileSpecs)) {
+                val section = HookSection(titleRes = R.string.sb_icon_mobile, specs = mobileSpecs)
+                searchSectionItem(section) {
+                    HookSectionCard(section) {
                         mobileSpecs.forEach { spec -> HookOptionView(spec) }
                     }
                 }
@@ -768,7 +775,7 @@ class IconSettingsActivity : BaseSubPageActivity() {
 @Composable
 private fun ClockFormatDocsAction() {
     val context = LocalContext.current
-    IconButton(
+    AppTopAppBarIconAction(
         onClick = {
             runCatching {
                 context.startActivity(
@@ -781,10 +788,9 @@ private fun ClockFormatDocsAction() {
         },
     ) {
         Icon(
-            imageVector = MiuixIcons.Help,
+            imageVector = MiuixIcons.Glass.Help,
             contentDescription = stringResource(R.string.sb_clock_format_docs),
-            tint = MiuixTheme.colorScheme.onBackground,
-            modifier = Modifier.size(24.dp),
+            tint = MiuixTheme.colorScheme.onSurface,
         )
     }
 }

@@ -759,16 +759,16 @@ fun rememberHookStatus(spec: OptionSpec): HookStatus   // 见 5.3
 
 | 组件 | 基于 | 说明 |
 |---|---|---|
-| `HookSwitchCard` | `SwitchPreference` | 关不 hook、开 hook |
-| `HookCheckboxCard` | `CheckboxPreference` | 复选框卡片 |
+| `HookSwitchCard` | `BasicComponent` + `Switch` | 关不 hook、开 hook |
+| `HookCheckboxCard` | `BasicComponent` + `Checkbox` | 复选框卡片 |
 | `HookArrowCard` | `ArrowPreference` | 跳转二级页面 |
-| `HookDropdownCard` | `WindowDropdownPreference` | 第一项为默认（不 hook），其余按值 hook |
-| `HookRadioCard` | `CheckboxPreference`(End) | 右侧复选框表示选中项（单选语义） |
+| `HookDropdownCard` | `GlassDropdownPreference` | 第一项为默认（不 hook），其余按值 hook |
+| `HookRadioCard` | `RadioButtonPreference` | 右侧单选按钮表示选中项 |
 | `HookSliderCard` | `SliderPreference` | 主开关控制显隐与生效，支持整数/小数/范围，数值类型说明居左、当前值紧邻箭头，点击弹出输入对话框 |
-| `HookTextCard` | `ArrowPreference` + `WindowDialog` | 点击弹出文本输入对话框 |
-| `HookPackageListCard` | `ArrowPreference` + `WindowDialog` | 包名列表输入（多行），驱动页面右上角「重启应用」按钮 |
+| `HookTextCard` | `ArrowPreference` + `AppDialog` | 点击弹出文本输入对话框 |
+| `HookPackageListCard` | `ArrowPreference` + `AppDialog` | 包名列表输入（多行），驱动页面右上角「重启应用」按钮 |
 | `HookOptionView` | 分发器 | 按 `OptionSpec.type` 渲染对应组件 |
-| `HookOptionsPage` | `Scaffold` + `SearchBar` | 通用功能页面（顶栏 + 搜索 + 分区列表 + 子页面搜索） |
+| `HookOptionsPage` | `AppLazyPage` | 通用功能页面，支持全局搜索定位 |
 | `HookSubPage` | — | 子页面搜索入口：把子页面（支持多级嵌套）内的功能并入父页搜索 |
 | `HookSectionCard` | `SmallTitle` + `Card` | 组件分区卡片容器 |
 
@@ -778,7 +778,11 @@ fun rememberHookStatus(spec: OptionSpec): HookStatus   // 见 5.3
 @Composable fun HookSwitchCard(spec: OptionSpec, modifier: Modifier = Modifier)
 @Composable fun HookCheckboxCard(spec: OptionSpec, modifier: Modifier = Modifier)
 @Composable fun HookArrowCard(spec: OptionSpec, modifier: Modifier = Modifier, onClick: () -> Unit)
-@Composable fun HookDropdownCard(spec: OptionSpec, modifier: Modifier = Modifier)
+@Composable fun HookDropdownCard(
+    spec: OptionSpec,
+    modifier: Modifier = Modifier,
+    backdrop: LayerBackdrop? = LocalPreferenceBackdrop.current,
+)
 @Composable fun HookRadioCard(spec: OptionSpec, modifier: Modifier = Modifier)
 @Composable fun HookSliderCard(spec: OptionSpec, modifier: Modifier = Modifier)
 @Composable fun HookTextCard(spec: OptionSpec, modifier: Modifier = Modifier)
@@ -786,6 +790,7 @@ fun rememberHookStatus(spec: OptionSpec): HookStatus   // 见 5.3
 @Composable fun HookOptionView(
     spec: OptionSpec,
     modifier: Modifier = Modifier,
+    backdrop: LayerBackdrop? = LocalPreferenceBackdrop.current,
     onArrowClick: () -> Unit = {},
 )
 ```
@@ -822,7 +827,7 @@ fun ensureScopeFor(spec: OptionSpec)
 
 ### 5.4 通用页面 `HookOptionsPage`
 
-一次性获得「顶栏 + 可折叠搜索栏 + 分区列表」的完整布局，搜索结果为可点击列表项，点击后收起搜索并滚动定位到对应分区（不内联渲染组件）；子页面（含多级嵌套）功能可通过 `subPages` 并入同一搜索。
+提供玻璃顶栏和分区列表。功能页顶栏以及 HyperOS 底栏上的搜索按钮打开全局搜索；子页面（含多级嵌套）的选项通过 `subPages` 接入。
 
 ```kotlin
 data class HookSection(
@@ -834,7 +839,7 @@ data class HookSection(
 data class HookSubPage(
     val titleRes: Int,               // 子页面标题，作为搜索结果摘要（多级路径）的一部分
     val specs: List<OptionSpec>,     // 该层子页面直接包含的配置项（并入搜索）
-    val onOpen: () -> Unit,          // 点击搜索结果时打开该子页面
+    val onOpen: (String) -> Unit,    // 打开子页面并传递命中的配置键
     val subPages: List<HookSubPage> = emptyList(), // 更深一层子页面，递归并入搜索
 )
 
@@ -845,16 +850,23 @@ fun HookOptionsPage(
     subPages: List<HookSubPage> = emptyList(),          // 子页面功能并入搜索
     isBlurEnabled: Boolean = true,
     extraBottomPadding: Dp = 0.dp,
-    topContent: (@Composable () -> Unit)? = null,        // 页面顶部提示区（搜索展开时隐藏）
+    topContent: (@Composable () -> Unit)? = null,        // 页面顶部提示区
     onArrowClick: (OptionSpec) -> Unit = {},
+    onBack: (() -> Unit)? = null,
+    userScrollEnabled: Boolean = true,
+    showSearch: Boolean = true,
     customActionPackages: List<String> = emptyList(),   // 额外注入重启应用包名
     topBarActions: (@Composable () -> Unit)? = null,     // 顶栏右侧扩展槽
+    externalSearchKey: String? = null,                  // 待跳转的配置键
+    onExternalSearchHandled: () -> Unit = {},
+    onSearchEntryClick: ((OptionSpec) -> Unit)? = null,
 )
 
 @Composable
 fun HookSectionCard(
     section: HookSection,
     modifier: Modifier = Modifier,
+    flashToken: Int = 0,
     content: @Composable () -> Unit,
 )
 ```
@@ -863,15 +875,15 @@ fun HookSectionCard(
 
 行为：
 - 自动把本页分区与 `subPages`（**含多级嵌套 `HookSubPage.subPages`**）内的全部 `OptionSpec` 注册到 `OptionRegistry`，标题接入全局搜索。
-- 搜索栏基于 Miuix `SearchBar` + `InputField`（胶囊输入框、清除按钮、取消按钮）。
-- 搜索结果为可点击列表项（标题 = 配置项标题，摘要 = 所属分区 / 子页面多级路径「父 / 子」）；点击后收起搜索、清空输入：本页分区则滚动定位，子页面功能则调用对应层级 `HookSubPage.onOpen()` **直接打开目标页面**，**不内联渲染组件**。
-- 结果按目标去重（同一分区 / 子页面只显示一条），并包含通过 `masterKey` 引用的配置项（如滑块主开关）。
+- `AppSearchOverlay` 参考 Miuix 官方示例，覆盖导航栏，支持键盘、清除和返回退出。
+- 搜索结果为可点击列表项（标题 = 配置项标题，摘要 = 所属分区 / 子页面多级路径「父 / 子」）；点击后收起搜索、清空输入：本页分区则滚动定位，子页面功能则调用对应层级 `HookSubPage.onOpen(key)` **直接打开目标页面**，**不内联渲染组件**。
+- 搜索按配置项列出结果，可匹配标题、功能说明和页面路径，并在结果中高亮关键词。命中分区时滚动定位、折叠顶栏并闪烁两次。命中子页面功能时，用 `Intent.withSearchTarget(key)` 转发命中键，目标页使用 `SearchLandingLazyColumn` 与 `searchSectionItem` 定位并播放相同反馈。
 - 箭头卡片点击回调 `onArrowClick(spec)`。
 - **重启应用**：当分区内存在 `PACKAGE_LIST` 选项，或传入 `customActionPackages` 时，顶栏右上角出现「重启」图标按钮。点击弹出 `QuickActionDialog`：每行右侧勾选应用（默认全选），底部左侧「全选 / 全不选」、右侧「重启」（无勾选时禁用），对选中包批量结束进程（需 Root；普通应用不会自动重新打开，系统界面由系统自动拉起），完成后弹出成功提示（`quick_action_restart_success`；缺少 Root 时为 `scope_restart_need_root`）。
   - 包名来源 = 全部 `PACKAGE_LIST` 选项解析结果 + `customActionPackages`，去重。
   - 二次开发可通过 `customActionPackages` 直接暴露任意自定义应用，无需用户手动输入。
 - **顶栏扩展**：`topBarActions` 渲染在自动生成的「重启应用」按钮之前；子页面可用 `QuickActionsAction(packages)` 注入同样式的右上角入口（见 5.6）。
-- **顶部提示区**：`topContent` 渲染在搜索栏上方（搜索展开时隐藏），用于放置系统版本要求等说明卡片；为空则不显示。
+- **顶部提示区**：`topContent` 渲染在分区列表上方，用于放置系统版本要求等说明卡片；为空则不显示。
 
 ### 5.5 完整使用示例
 
@@ -961,7 +973,7 @@ HookSectionCard(
 
 ### 5.6 布局规范（间距统一，强制要求）
 
-> **所有页面必须遵循以下间距规范**，新增页面 / 组件时请复用 `HookOptionsPage`、`HookSectionCard`、`SubPageScaffold`，禁止自行硬编码间距，以保证全局视觉一致。
+> **所有页面必须遵循以下间距规范**，新增页面 / 组件时请复用 `HookOptionsPage`、`HookSectionCard`、`SubPageScaffold`，静态设置分组使用 `AppSectionCard`，禁止自行硬编码间距，以保证全局视觉一致。
 
 | 位置 | 规范 | 说明 |
 |---|---|---|
@@ -1040,7 +1052,7 @@ AnimatedVisibility(
   - `sliderUnitRes` → 显示在**数值右侧**的单位后缀（如 `%`、`dp`）。
   仅当 `masterKey == null && sliderValueLabelRes == 0` 时，`HookSliderCard` 才会退化为把 `titleRes` 作为**滑动组件外面**的独立标题显示（见 `HookSliderCard.kt` 中 `if (masterKey == null && spec.sliderValueLabelRes == 0)` 分支）。
   **因此：若希望标题与数值同行、显示在数值左侧，必须设置 `sliderValueLabelRes`（可直接复用 `titleRes` 的字符串资源），否则标题会显示在滑动组件外面。** 指定 `sliderValueLabelRes` 后不会再额外渲染外部标题。
-- 点击滑块行空白弹出居中 `WindowDialog`：第一行左右显示最小值 / 最大值，中间显示「当前值 · 默认值」；下方 `TextField` 手动输入（超范围提示错误）；底部按钮 **取消 / 恢复默认 / 确定**。
+- 点击滑块行空白弹出居中 `AppDialog`：第一行左右显示最小值 / 最大值，中间显示「当前值 · 默认值」；下方 `TextField` 手动输入（超范围提示错误）；底部按钮 **取消 / 恢复默认 / 确定**。
 
 **`HookTextCard` 细则：** 主界面为一行（标题 + 当前值摘要），点击弹出与滑块一致的对话框：当前值 / 默认值同行左右显示 + `TextField` + 取消 / 恢复默认 / 确定。
 
@@ -1077,7 +1089,9 @@ fun SubPageScaffold(
 )
 ```
 
-提供顶栏返回、背景模糊与主题统一的脚手架；`topBarActions` 用于注入「重启应用」等右上角入口。
+使用 `AppPageScaffold` 提供玻璃顶栏和统一的页面采样层。玻璃对话框与下拉从 `LocalPreferenceBackdrop` 获取页面内容采样源，关闭背景模糊时使用不透明材质。顶栏位于采样层之外，主页面弹层统一挂到根 Scaffold。应用顶栏采用 miuix Glass 材质的渐进模糊参数；「顶栏渐变」功能的强度和不透明度设置用于被 Hook 的应用。二级页列表应把自己的 `LazyListState` 传给 `pageScrollModifiers(contentState = ...)`，使短列表也能正常回弹。
+
+`topBarActions` 用于注入「重启应用」等右上角入口。
 
 ### 6.2 `BaseSubPageActivity`
 

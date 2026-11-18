@@ -2,7 +2,7 @@ package cn.ianzb.hyperrefine.ui.screen.features
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
@@ -10,6 +10,8 @@ import cn.ianzb.hyperrefine.hook.systemui.VolumeBarKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
+import cn.ianzb.hyperrefine.ui.component.pref.SearchLandingLazyColumn
+import cn.ianzb.hyperrefine.ui.component.pref.searchSectionItem
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.screen.subpage.BaseSubPageActivity
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
@@ -81,7 +83,10 @@ class VolumeBarLayoutActivity : BaseSubPageActivity() {
                 ),
             ),
         )
-        LazyColumn(
+        val listState = rememberLazyListState()
+        SearchLandingLazyColumn(
+            scrollBehavior = scrollBehavior,
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .then(
@@ -89,6 +94,7 @@ class VolumeBarLayoutActivity : BaseSubPageActivity() {
                         Modifier.pageScrollModifiers(
                             showTopAppBar = true,
                             topAppBarScrollBehavior = scrollBehavior,
+                            contentState = listState,
                         )
                     } else {
                         Modifier
@@ -97,7 +103,7 @@ class VolumeBarLayoutActivity : BaseSubPageActivity() {
             contentPadding = contentPadding,
         ) {
             sections.forEach { section ->
-                item {
+                searchSectionItem(section) {
                     HookSectionCard(section) {
                         section.specs.forEach { HookOptionView(it) }
                     }

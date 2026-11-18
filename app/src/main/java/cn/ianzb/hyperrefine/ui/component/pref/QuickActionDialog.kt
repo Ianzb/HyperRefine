@@ -3,12 +3,8 @@ package cn.ianzb.hyperrefine.ui.component.pref
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -22,19 +18,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.ui.component.AppDialog
+import cn.ianzb.hyperrefine.ui.component.AppDialogButton
+import cn.ianzb.hyperrefine.ui.component.AppDialogButtonRow
 import cn.ianzb.hyperrefine.ui.component.SystemRestartConfirmDialog
 import cn.ianzb.hyperrefine.xposed.AppRestarter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.basic.Button
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.preference.CheckboxLocation
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
-import top.yukonga.miuix.kmp.window.WindowDialog
-import top.yukonga.miuix.kmp.basic.Text as MiuixText
 
 /**
  * 包名列表重启对话框：勾选后批量「重启」。
@@ -68,7 +62,7 @@ fun QuickActionDialog(
         }
     }
 
-    WindowDialog(
+    AppDialog(
         show = true,
         title = stringResource(R.string.quick_action_title),
         onDismissRequest = onDismiss,
@@ -95,9 +89,8 @@ fun QuickActionDialog(
                     }
                 }
             }
-            Spacer(Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                TextButton(
+            AppDialogButtonRow {
+                AppDialogButton(
                     text = stringResource(
                         if (allSelected) R.string.quick_action_deselect_all
                         else R.string.quick_action_select_all,
@@ -105,18 +98,15 @@ fun QuickActionDialog(
                     onClick = {
                         selected = if (allSelected) emptySet() else uniquePackages.toSet()
                     },
-                    colors = ButtonDefaults.textButtonColors(),
                     modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.width(8.dp))
-                Button(
+                AppDialogButton(
+                    text = stringResource(R.string.quick_action_restart),
                     onClick = { requestRestart(selected.toList()) },
-                    enabled = selected.isNotEmpty(),
-                    colors = ButtonDefaults.buttonColorsPrimary(),
                     modifier = Modifier.weight(1f),
-                ) {
-                    MiuixText(text = stringResource(R.string.quick_action_restart))
-                }
+                    primary = true,
+                    enabled = selected.isNotEmpty(),
+                )
             }
         }
     }

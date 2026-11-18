@@ -3,7 +3,7 @@ package cn.ianzb.hyperrefine.ui.screen.features
 import android.content.Intent
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -12,6 +12,8 @@ import cn.ianzb.hyperrefine.hook.miuix.MiuixAppLoad
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
+import cn.ianzb.hyperrefine.ui.component.pref.SearchLandingLazyColumn
+import cn.ianzb.hyperrefine.ui.component.pref.searchSectionItem
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.screen.subpage.BaseSubPageActivity
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
@@ -42,7 +44,10 @@ class AppBeautifyActivity : BaseSubPageActivity() {
                 featureSpec(KEY_TOP_BAR_BLUR),
             ),
         )
-        LazyColumn(
+        val listState = rememberLazyListState()
+        SearchLandingLazyColumn(
+            scrollBehavior = scrollBehavior,
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .then(
@@ -50,6 +55,7 @@ class AppBeautifyActivity : BaseSubPageActivity() {
                         Modifier.pageScrollModifiers(
                             showTopAppBar = true,
                             topAppBarScrollBehavior = scrollBehavior,
+                            contentState = listState,
                         )
                     } else {
                         Modifier
@@ -57,7 +63,7 @@ class AppBeautifyActivity : BaseSubPageActivity() {
                 ),
             contentPadding = contentPadding,
         ) {
-            item {
+            searchSectionItem(blurSection) {
                 HookSectionCard(blurSection) {
                     blurSection.specs.forEach { spec ->
                         HookOptionView(spec = spec) {

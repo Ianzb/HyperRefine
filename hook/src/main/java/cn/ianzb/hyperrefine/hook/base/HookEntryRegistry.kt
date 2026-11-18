@@ -10,6 +10,7 @@ import cn.ianzb.hyperrefine.hook.miuix.MiuixAppLoad
 import cn.ianzb.hyperrefine.hook.notification.NotificationLoad
 import cn.ianzb.hyperrefine.hook.passkey.PasskeyLoad
 import cn.ianzb.hyperrefine.hook.packageinstaller.PackageInstallerLoad
+import cn.ianzb.hyperrefine.hook.phrase.PhraseLoad
 import cn.ianzb.hyperrefine.hook.securitycenter.SecurityCenterLoad
 import cn.ianzb.hyperrefine.hook.sogou.SogouImeLoad
 import cn.ianzb.hyperrefine.hook.systemserver.SystemServerLoad
@@ -43,6 +44,7 @@ object HookEntryRegistry {
         WeatherLoad(),
         PasskeyLoad(),
         BrowserLoad(),
+        PhraseLoad(),
         VoiceAssistLoad(),
         VoiceAssistImeLoad(),
         SogouImeLoad(),

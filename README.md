@@ -57,7 +57,7 @@
 git clone https://github.com/Ianzb/HyperRefine
 cd HyperRefine
 
-# 设置 JDK 25（CI 使用 temurin 25）和 Android SDK
+# 设置 JDK 25（CI 使用 temurin 25）和 Android SDK Platform 37.2
 # 编辑 local.properties 指向你的 SDK 路径
 
 # 构建 Debug APK

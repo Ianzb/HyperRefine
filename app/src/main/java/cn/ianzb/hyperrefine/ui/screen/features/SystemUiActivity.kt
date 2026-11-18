@@ -3,7 +3,7 @@ package cn.ianzb.hyperrefine.ui.screen.features
 import android.content.Intent
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -12,6 +12,8 @@ import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
+import cn.ianzb.hyperrefine.ui.component.pref.SearchLandingLazyColumn
+import cn.ianzb.hyperrefine.ui.component.pref.searchSectionItem
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.screen.subpage.BaseSubPageActivity
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
@@ -129,7 +131,10 @@ class SystemUiActivity : BaseSubPageActivity() {
             }
         }
 
-        LazyColumn(
+        val listState = rememberLazyListState()
+        SearchLandingLazyColumn(
+            scrollBehavior = scrollBehavior,
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .then(
@@ -137,6 +142,7 @@ class SystemUiActivity : BaseSubPageActivity() {
                         Modifier.pageScrollModifiers(
                             showTopAppBar = true,
                             topAppBarScrollBehavior = scrollBehavior,
+                            contentState = listState,
                         )
                     } else {
                         Modifier
@@ -154,7 +160,7 @@ class SystemUiActivity : BaseSubPageActivity() {
                 darkModeSection,
                 windowSection,
             ).forEach { section ->
-                item {
+                searchSectionItem(section) {
                     HookSectionCard(section) {
                         section.specs.forEach { spec ->
                             HookOptionView(spec = spec, onArrowClick = { openSubPage(spec.key) })

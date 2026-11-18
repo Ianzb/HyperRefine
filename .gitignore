@@ -21,3 +21,5 @@ local.properties
 
 # 逆向分析产物（本地保留，不入库）
 /reverse_report/
+/.tmp_shots
+/.tmp_scope

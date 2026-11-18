@@ -1,12 +1,10 @@
 package cn.ianzb.hyperrefine.ui.component.pref
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,13 +16,13 @@ import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.prefs.OptionSpec
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.TextButton
+import cn.ianzb.hyperrefine.ui.component.AppDialog
+import cn.ianzb.hyperrefine.ui.component.AppDialogButton
+import cn.ianzb.hyperrefine.ui.component.AppDialogButtonRow
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowDialog
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 
 /**
@@ -82,88 +80,68 @@ private fun TextValueDialog(
     spec: OptionSpec,
     onDismiss: () -> Unit,
 ) {
-    WindowDialog(
+    val current = ConfigState.string(spec.key, spec.defaultString).ifEmpty { spec.defaultString }
+    var input by remember { mutableStateOf(current) }
+
+    AppDialog(
         show = true,
         title = stringResource(spec.titleRes),
         summary = stringResource(R.string.hook_text_dialog_summary),
         onDismissRequest = onDismiss,
     ) {
-        TextValueEditor(
-            spec = spec,
-            onDismiss = onDismiss,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
-private fun TextValueEditor(
-    spec: OptionSpec,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val current = ConfigState.string(spec.key, spec.defaultString).ifEmpty { spec.defaultString }
-    var input by remember { mutableStateOf(current) }
-
-    Column(modifier = modifier) {
-        val notSet = stringResource(R.string.hook_text_not_set)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            MiuixText(
-                text = stringResource(
-                    R.string.hook_text_current,
-                    current.ifEmpty { notSet },
-                ),
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                style = MiuixTheme.textStyles.footnote2,
+        Column(modifier = Modifier.fillMaxWidth()) {
+            val notSet = stringResource(R.string.hook_text_not_set)
+            Row(modifier = Modifier.fillMaxWidth()) {
+                MiuixText(
+                    text = stringResource(
+                        R.string.hook_text_current,
+                        current.ifEmpty { notSet },
+                    ),
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = MiuixTheme.textStyles.footnote2,
+                )
+                Spacer(Modifier.weight(1f))
+                MiuixText(
+                    text = stringResource(
+                        R.string.hook_text_default,
+                        spec.defaultString.ifEmpty { notSet },
+                    ),
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = MiuixTheme.textStyles.footnote2,
+                )
+            }
+            Spacer(Modifier.padding(top = 8.dp))
+            TextField(
+                value = input,
+                onValueChange = { input = it },
+                label = stringResource(R.string.hook_text_placeholder),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
             )
-            MiuixText(
-                text = stringResource(
-                    R.string.hook_text_default,
-                    spec.defaultString.ifEmpty { notSet },
-                ),
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                style = MiuixTheme.textStyles.footnote2,
-            )
-        }
-        Spacer(Modifier.padding(top = 8.dp))
-        TextField(
-            value = input,
-            onValueChange = { input = it },
-            label = stringResource(R.string.hook_text_placeholder),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            TextButton(
-                text = stringResource(R.string.action_cancel),
-                onClick = onDismiss,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            TextButton(
-                text = stringResource(R.string.hook_slider_restore_default),
-                onClick = {
-                    ConfigState.set(spec.key, spec.defaultString)
-                    onDismiss()
-                },
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            TextButton(
-                text = stringResource(R.string.action_confirm),
-                onClick = {
-                    ConfigState.set(spec.key, input)
-                    onDismiss()
-                },
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-                modifier = Modifier.weight(1f),
-            )
+            AppDialogButtonRow {
+                AppDialogButton(
+                    text = stringResource(R.string.action_cancel),
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f),
+                )
+                AppDialogButton(
+                    text = stringResource(R.string.hook_slider_restore_default),
+                    onClick = {
+                        ConfigState.set(spec.key, spec.defaultString)
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                AppDialogButton(
+                    text = stringResource(R.string.action_confirm),
+                    onClick = {
+                        ConfigState.set(spec.key, input)
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f),
+                    primary = true,
+                )
+            }
         }
     }
 }

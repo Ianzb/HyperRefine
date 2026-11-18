@@ -8,10 +8,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.res.stringResource
 import cn.ianzb.hyperrefine.AppSettings
 import cn.ianzb.hyperrefine.LocaleHelper
 import cn.ianzb.hyperrefine.ui.component.SubPageScaffold
+import cn.ianzb.hyperrefine.ui.component.pref.LocalSearchTarget
+import cn.ianzb.hyperrefine.ui.component.pref.SEARCH_TARGET_EXTRA
 import cn.ianzb.hyperrefine.ui.theme.AppTheme
 import cn.ianzb.hyperrefine.ui.util.applyWindowBackground
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
@@ -67,7 +70,9 @@ abstract class BaseSubPageActivity : ComponentActivity() {
                     onBack = { finish() },
                     topBarActions = topBarActions,
                 ) { padding ->
-                    SubPageContent(settings.isBlurEnabled, padding)
+                    CompositionLocalProvider(LocalSearchTarget provides intent.getStringExtra(SEARCH_TARGET_EXTRA)) {
+                        SubPageContent(settings.isBlurEnabled, padding)
+                    }
                 }
             }
         }

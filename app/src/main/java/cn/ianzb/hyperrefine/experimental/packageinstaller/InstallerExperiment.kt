@@ -11,6 +11,7 @@ import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.component.pref.HookSubPage
+import cn.ianzb.hyperrefine.ui.component.pref.withSearchTarget
 
 /** The app's only integration surface for this removable experimental feature. */
 internal object InstallerExperiment {
@@ -27,7 +28,7 @@ internal object InstallerExperiment {
     fun searchPage(context: Context) = HookSubPage(
         titleRes = R.string.section_packageinstaller,
         specs = packageInstallerSpecs(),
-        onOpen = { open(context) },
+        onOpen = { key -> open(context, key) },
     )
 
     @Composable
@@ -39,7 +40,7 @@ internal object InstallerExperiment {
         }
     }
 
-    private fun open(context: Context) {
-        context.startActivity(Intent(context, PackageInstallerActivity::class.java))
+    private fun open(context: Context, searchTarget: String? = null) {
+        context.startActivity(Intent(context, PackageInstallerActivity::class.java).withSearchTarget(searchTarget))
     }
 }

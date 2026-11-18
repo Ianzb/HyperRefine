@@ -1,19 +1,10 @@
 package cn.ianzb.hyperrefine.ui.component
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.window.WindowDialog
 
 /**
  * 重启系统前的二次确认对话框。
@@ -26,27 +17,23 @@ fun SystemRestartConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    WindowDialog(
+    AppDialog(
         show = true,
         title = stringResource(R.string.restart_system_confirm_title),
         summary = stringResource(R.string.restart_system_confirm_message),
         onDismissRequest = onDismiss,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            TextButton(
+        AppDialogButtonRow {
+            AppDialogButton(
                 text = stringResource(R.string.action_cancel),
                 onClick = onDismiss,
                 modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.width(8.dp))
-            TextButton(
+            AppDialogButton(
                 text = stringResource(R.string.restart_system_confirm_action),
                 onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColorsPrimary(),
                 modifier = Modifier.weight(1f),
+                destructive = true,
             )
         }
     }

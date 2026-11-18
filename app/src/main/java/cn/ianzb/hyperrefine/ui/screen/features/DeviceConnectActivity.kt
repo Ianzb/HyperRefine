@@ -3,7 +3,7 @@ package cn.ianzb.hyperrefine.ui.screen.features
 import android.content.Intent
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -12,17 +12,19 @@ import androidx.compose.ui.res.stringResource
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.hook.connect.ConnectKeys
 import cn.ianzb.hyperrefine.hook.connect.MirrorKeys
+import cn.ianzb.hyperrefine.ui.component.AppTopAppBarIconAction
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
+import cn.ianzb.hyperrefine.ui.component.pref.SearchLandingLazyColumn
+import cn.ianzb.hyperrefine.ui.component.pref.searchSectionItem
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.screen.subpage.BaseSubPageActivity
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.icon.glass.SettingsOutline
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -71,7 +73,10 @@ class DeviceConnectActivity : BaseSubPageActivity() {
             )
         }
 
-        LazyColumn(
+        val listState = rememberLazyListState()
+        SearchLandingLazyColumn(
+            scrollBehavior = scrollBehavior,
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .then(
@@ -79,6 +84,7 @@ class DeviceConnectActivity : BaseSubPageActivity() {
                         Modifier.pageScrollModifiers(
                             showTopAppBar = true,
                             topAppBarScrollBehavior = scrollBehavior,
+                            contentState = listState,
                         )
                     } else {
                         Modifier
@@ -86,12 +92,12 @@ class DeviceConnectActivity : BaseSubPageActivity() {
                 ),
             contentPadding = contentPadding,
         ) {
-            item {
+            searchSectionItem(featureSection) {
                 HookSectionCard(featureSection) {
                     featureSection.specs.forEach { HookOptionView(it) }
                 }
             }
-            item {
+            searchSectionItem(mirrorSection) {
                 HookSectionCard(mirrorSection) {
                     mirrorSection.specs.forEach { HookOptionView(it) }
                 }
@@ -106,9 +112,9 @@ class DeviceConnectActivity : BaseSubPageActivity() {
  * 打开小米互联（`com.milink.service`）的通知流转设置页（订阅应用）。
  */
 @Composable
-private fun OpenCrossDeviceSettingsAction(modifier: Modifier = Modifier) {
+private fun OpenCrossDeviceSettingsAction() {
     val context = LocalContext.current
-    IconButton(
+    AppTopAppBarIconAction(
         onClick = {
             val intent = Intent().apply {
                 setClassName(CROSS_DEVICE_SETTINGS_PACKAGE, CROSS_DEVICE_SETTINGS_PROXY_ACTIVITY)
@@ -117,10 +123,9 @@ private fun OpenCrossDeviceSettingsAction(modifier: Modifier = Modifier) {
             }
             runCatching { context.startActivity(intent) }
         },
-        modifier = modifier,
     ) {
         Icon(
-            imageVector = MiuixIcons.Settings,
+            imageVector = MiuixIcons.Glass.SettingsOutline,
             contentDescription = stringResource(R.string.device_connect_open_settings),
             tint = MiuixTheme.colorScheme.onSurface,
         )

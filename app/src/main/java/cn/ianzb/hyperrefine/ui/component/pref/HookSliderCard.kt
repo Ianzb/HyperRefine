@@ -1,12 +1,10 @@
 package cn.ianzb.hyperrefine.ui.component.pref
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,14 +17,14 @@ import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.prefs.OptionSpec
+import cn.ianzb.hyperrefine.ui.component.AppDialog
+import cn.ianzb.hyperrefine.ui.component.AppDialogButton
+import cn.ianzb.hyperrefine.ui.component.AppDialogButtonRow
 import cn.ianzb.hyperrefine.ui.util.claimPagerSwipe
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowDialog
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.Locale
@@ -116,7 +114,7 @@ private fun SliderValueDialog(
     var input by remember { mutableStateOf(formatNumber(current, spec.sliderDecimals)) }
     var isError by remember { mutableStateOf(false) }
 
-    WindowDialog(
+    AppDialog(
         show = true,
         title = stringResource(spec.titleRes),
         summary = stringResource(R.string.hook_slider_dialog_summary),
@@ -171,17 +169,13 @@ private fun SliderValueDialog(
                     style = MiuixTheme.textStyles.footnote2,
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                TextButton(
+            AppDialogButtonRow {
+                AppDialogButton(
                     text = stringResource(R.string.action_cancel),
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.width(8.dp))
-                TextButton(
+                AppDialogButton(
                     text = stringResource(R.string.hook_slider_restore_default),
                     onClick = {
                         ConfigState.set(spec.key, spec.defaultFloat)
@@ -189,15 +183,14 @@ private fun SliderValueDialog(
                     },
                     modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.width(8.dp))
-                TextButton(
+                AppDialogButton(
                     text = stringResource(R.string.action_confirm),
                     onClick = {
                         parseInput(input, spec)?.let { ConfigState.set(spec.key, it) }
                         onDismiss()
                     },
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
                     modifier = Modifier.weight(1f),
+                    primary = true,
                 )
             }
         }

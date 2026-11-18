@@ -3,17 +3,20 @@ package cn.ianzb.hyperrefine.ui.screen.features
 import android.content.Intent
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.experimental.packageinstaller.InstallerExperiment
+import cn.ianzb.hyperrefine.hook.phrase.PhraseReorderKeys
 import cn.ianzb.hyperrefine.hook.sogou.SogouImeKeys
 import cn.ianzb.hyperrefine.hook.weather.WeatherKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
+import cn.ianzb.hyperrefine.ui.component.pref.SearchLandingLazyColumn
+import cn.ianzb.hyperrefine.ui.component.pref.searchSectionItem
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.screen.subpage.BaseSubPageActivity
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
@@ -34,6 +37,7 @@ class ExperimentalActivity : BaseSubPageActivity() {
                 listOf(
                     WeatherKeys.TARGET_PACKAGE,
                     SogouImeKeys.PKG_SOGOU_IME,
+                    PhraseReorderKeys.PKG_PHRASE,
                 ),
             )
         }
@@ -53,6 +57,12 @@ class ExperimentalActivity : BaseSubPageActivity() {
                 ),
             ),
             HookSection(
+                titleRes = R.string.phrase_reorder_section,
+                specs = listOf(
+                    featureSpec(KEY_PHRASE_REORDER),
+                ),
+            ),
+            HookSection(
                 titleRes = R.string.sogou_ime_title,
                 specs = listOf(
                     featureSpec(KEY_SOGOU_IME_GLASS),
@@ -61,7 +71,10 @@ class ExperimentalActivity : BaseSubPageActivity() {
                 ),
             ),
         )
-        LazyColumn(
+        val listState = rememberLazyListState()
+        SearchLandingLazyColumn(
+            scrollBehavior = scrollBehavior,
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .then(
@@ -69,6 +82,7 @@ class ExperimentalActivity : BaseSubPageActivity() {
                         Modifier.pageScrollModifiers(
                             showTopAppBar = true,
                             topAppBarScrollBehavior = scrollBehavior,
+                            contentState = listState,
                         )
                     } else {
                         Modifier
@@ -77,7 +91,7 @@ class ExperimentalActivity : BaseSubPageActivity() {
             contentPadding = contentPadding,
         ) {
             sections.forEach { section ->
-                item {
+                searchSectionItem(section) {
                     HookSectionCard(section) {
                         section.specs.forEach { spec ->
                             HookOptionView(
@@ -92,7 +106,9 @@ class ExperimentalActivity : BaseSubPageActivity() {
                     }
                 }
             }
-            item { InstallerExperiment.EntryCard() }
+            searchSectionItem(HookSection(specs = listOf(InstallerExperiment.entrySpec()))) {
+                InstallerExperiment.EntryCard()
+            }
         }
     }
 }

@@ -47,6 +47,7 @@ import cn.ianzb.hyperrefine.ui.component.pref.rememberEffectiveDeviceType
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.component.pref.HookSubPage
+import cn.ianzb.hyperrefine.ui.component.pref.withSearchTarget
 import cn.ianzb.hyperrefine.ui.component.pref.HookSwitchCard
 import cn.ianzb.hyperrefine.ui.component.statusbar.StatusBarIconRow
 import cn.ianzb.hyperrefine.ui.component.statusbar.componentTitleRes
@@ -175,10 +176,11 @@ private fun detailSubPages(context: Context): List<HookSubPage> =
         )
     }
 
-private fun openDetail(context: Context, id: String) {
+internal fun openDetail(context: Context, id: String, searchTarget: String? = null) {
     context.startActivity(
         Intent(context, IconSettingsActivity::class.java)
-            .putExtra(IconSettingsActivity.EXTRA_COMPONENT, id),
+            .putExtra(IconSettingsActivity.EXTRA_COMPONENT, id)
+            .withSearchTarget(searchTarget),
     )
 }
 

@@ -8,28 +8,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -40,55 +33,51 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import cn.ianzb.hyperrefine.ui.component.UpdateDialog
-import cn.ianzb.hyperrefine.ui.component.liquid.LiquidGlassNavigationBar
-import cn.ianzb.hyperrefine.ui.component.liquid.LiquidGlassNavigationBarItem
+import cn.ianzb.hyperrefine.ui.component.LocalAppTopBarCompact
+import cn.ianzb.hyperrefine.ui.component.LocalAppTopBarTitleAlpha
+import cn.ianzb.hyperrefine.ui.component.liquid.IosLiquidGlassNavigationBar
+import cn.ianzb.hyperrefine.ui.component.search.AppSearchOverlay
+import cn.ianzb.hyperrefine.ui.component.search.AppSearchResults
+import cn.ianzb.hyperrefine.ui.component.search.AppSearchState
+import cn.ianzb.hyperrefine.ui.component.search.LocalAppSearchState
 import cn.ianzb.hyperrefine.ui.screen.about.AboutPageContent
 import cn.ianzb.hyperrefine.ui.screen.features.FeaturesPageView
 import cn.ianzb.hyperrefine.ui.screen.home.HomePageView
 import cn.ianzb.hyperrefine.ui.screen.settings.SettingsPageView
 import cn.ianzb.hyperrefine.ui.theme.AppTheme
+import cn.ianzb.hyperrefine.ui.util.LocalAppPageStartInset
 import cn.ianzb.hyperrefine.ui.util.applyWindowBackground
-import cn.ianzb.hyperrefine.ui.util.isInDarkTheme
 import cn.ianzb.hyperrefine.ui.util.pagerSwipeOverride
-import cn.ianzb.hyperrefine.ui.util.shouldExpandNavigationRail
+import cn.ianzb.hyperrefine.ui.util.LocalPreferenceBackdrop
+import cn.ianzb.hyperrefine.ui.util.rememberBlurBackdrop
 import cn.ianzb.hyperrefine.ui.util.shouldShowSplitPane
-import cn.ianzb.hyperrefine.xposed.XposedServiceManager
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
-import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
-import top.yukonga.miuix.kmp.basic.FloatingToolbarDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.NavigationBar
-import top.yukonga.miuix.kmp.basic.NavigationBarItem
-import top.yukonga.miuix.kmp.basic.NavigationRail
-import top.yukonga.miuix.kmp.basic.NavigationRailItem
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.rememberNavigationRailState
-import top.yukonga.miuix.kmp.blur.BlendColorEntry
-import top.yukonga.miuix.kmp.blur.BlurDefaults
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
-import top.yukonga.miuix.kmp.blur.highlight.Highlight
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
-import top.yukonga.miuix.kmp.blur.textureBlur
+import top.yukonga.miuix.kmp.glass.GlassIconButton
+import top.yukonga.miuix.kmp.glass.GlassNavigationBar
+import top.yukonga.miuix.kmp.glass.GlassNavigationBarDefaults
+import top.yukonga.miuix.kmp.glass.GlassNavigationItem
+import top.yukonga.miuix.kmp.glass.GlassNavigationRail
+import top.yukonga.miuix.kmp.glass.GlassNavigationRailDefaults
+import top.yukonga.miuix.kmp.glass.rememberGlassNavigationRailState
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Home
-import top.yukonga.miuix.kmp.icon.extended.Info
-import top.yukonga.miuix.kmp.icon.extended.ListView
-import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.icon.glass.HomeOutline
+import top.yukonga.miuix.kmp.icon.glass.Info
+import top.yukonga.miuix.kmp.icon.glass.ListView
+import top.yukonga.miuix.kmp.icon.glass.Search
+import top.yukonga.miuix.kmp.icon.glass.SettingsOutline
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PagerGestureNestedScrollConnection
@@ -121,8 +110,8 @@ class MainActivity : ComponentActivity() {
                     catch (_: Exception) { ColorSchemeMode.System }
                 )
             }
-            var isFloatingNavbar by remember { mutableStateOf(savedSettings.isFloatingNavbar) }
-            var isLiquidGlass by remember { mutableStateOf(savedSettings.isLiquidGlass) }
+            var bottomBarStyle by remember { mutableStateOf(savedSettings.bottomBarStyle) }
+            var railStyle by remember { mutableStateOf(savedSettings.railStyle) }
             var isBlurEnabled by remember { mutableStateOf(savedSettings.isBlurEnabled) }
             var checkUpdateOnLaunch by remember { mutableStateOf(savedSettings.checkUpdateOnLaunch) }
             var hideLauncherIcon by remember { mutableStateOf(savedSettings.hideLauncherIcon) }
@@ -173,46 +162,58 @@ class MainActivity : ComponentActivity() {
                     this@MainActivity,
                     AppSettings(
                         themeMode = themeMode.name,
-                        isFloatingNavbar = isFloatingNavbar,
-                        isLiquidGlass = isLiquidGlass,
+                        bottomBarStyle = bottomBarStyle,
+                        railStyle = railStyle,
                         isBlurEnabled = isBlurEnabled,
                         checkUpdateOnLaunch = checkUpdateOnLaunch,
                         hideLauncherIcon = hideLauncherIcon,
+                        language = LocaleHelper.getSavedLanguage(this@MainActivity).code,
                     )
                 )
             }
 
             AppTheme(themeMode = themeMode) {
-                MainScreen(
-                    themeMode = themeMode,
-                    isFloatingNavbar = isFloatingNavbar,
-                    isLiquidGlass = isLiquidGlass,
-                    isBlurEnabled = isBlurEnabled,
-                    checkUpdateOnLaunch = checkUpdateOnLaunch,
-                    hideLauncherIcon = hideLauncherIcon,
-                    isCheckingUpdate = isCheckingUpdate,
-                    onThemeModeChange = { themeMode = it; persistState() },
-                    onFloatingNavbarChange = { isFloatingNavbar = it; persistState() },
-                    onLiquidGlassChange = { isLiquidGlass = it; persistState() },
-                    onBlurEnabledChange = { isBlurEnabled = it; persistState() },
-                    onCheckUpdateOnLaunchChange = { checkUpdateOnLaunch = it; persistState() },
-                    onHideLauncherIconChange = {
-                        hideLauncherIcon = it
-                        LauncherIconController.apply(this@MainActivity, it)
-                        persistState()
-                    },
-                    onCheckUpdate = { checkUpdate() },
-                )
-
-                updateInfo?.let { info ->
-                    UpdateDialog(
-                        info = info,
-                        onDismissRequest = { updateInfo = null },
-                        onConfirm = {
-                            updateInfo = null
-                            runCatching { uriHandler.openUri(info.releaseUrl) }
+                // 与 miuix 示例的 AppContent 一致：全应用只在这里放一个「只负责弹层」的外层
+                // Scaffold（无顶栏/底栏、不消费 insets），它同时包住 pager、悬浮底栏与宽屏侧栏，
+                // 因此它的 popupHost 在绘制顺序上位于这些导航 chrome 之上。
+                // 弹层统一用 renderInRootScaffold = true 注册到这里，就天然「永远盖在底栏/侧栏
+                // 上面」，既不会被底栏遮挡，也不需要任何额外的避让垫高。
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = Color.Transparent,
+                    contentWindowInsets = WindowInsets(0),
+                ) {
+                    MainScreen(
+                        themeMode = themeMode,
+                        bottomBarStyle = bottomBarStyle,
+                        railStyle = railStyle,
+                        isBlurEnabled = isBlurEnabled,
+                        checkUpdateOnLaunch = checkUpdateOnLaunch,
+                        hideLauncherIcon = hideLauncherIcon,
+                        isCheckingUpdate = isCheckingUpdate,
+                        onThemeModeChange = { themeMode = it; persistState() },
+                        onBottomBarStyleChange = { bottomBarStyle = it; persistState() },
+                        onRailStyleChange = { railStyle = it; persistState() },
+                        onBlurEnabledChange = { isBlurEnabled = it; persistState() },
+                        onCheckUpdateOnLaunchChange = { checkUpdateOnLaunch = it; persistState() },
+                        onHideLauncherIconChange = {
+                            hideLauncherIcon = it
+                            LauncherIconController.apply(this@MainActivity, it)
+                            persistState()
                         },
-                    )
+                        onCheckUpdate = { checkUpdate() },
+                    ) {
+                        updateInfo?.let { info ->
+                            UpdateDialog(
+                                info = info,
+                                onDismissRequest = { updateInfo = null },
+                                onConfirm = {
+                                    updateInfo = null
+                                    runCatching { uriHandler.openUri(info.releaseUrl) }
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -222,19 +223,20 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MainScreen(
     themeMode: ColorSchemeMode,
-    isFloatingNavbar: Boolean,
-    isLiquidGlass: Boolean,
+    bottomBarStyle: BottomBarStyle,
+    railStyle: RailStyle,
     isBlurEnabled: Boolean,
     checkUpdateOnLaunch: Boolean,
     hideLauncherIcon: Boolean,
     isCheckingUpdate: Boolean,
     onThemeModeChange: (ColorSchemeMode) -> Unit,
-    onFloatingNavbarChange: (Boolean) -> Unit,
-    onLiquidGlassChange: (Boolean) -> Unit,
+    onBottomBarStyleChange: (BottomBarStyle) -> Unit,
+    onRailStyleChange: (RailStyle) -> Unit,
     onBlurEnabledChange: (Boolean) -> Unit,
     onCheckUpdateOnLaunchChange: (Boolean) -> Unit,
     onHideLauncherIconChange: (Boolean) -> Unit,
     onCheckUpdate: () -> Unit,
+    overlay: @Composable () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val pagerState = rememberPagerState(pageCount = { 4 })
@@ -250,10 +252,10 @@ private fun MainScreen(
         stringResource(R.string.tab_about)
     )
     val icons = listOf(
-        MiuixIcons.Home,
-        MiuixIcons.ListView,
-        MiuixIcons.Settings,
-        MiuixIcons.Info
+        MiuixIcons.Glass.HomeOutline,
+        MiuixIcons.Glass.ListView,
+        MiuixIcons.Glass.SettingsOutline,
+        MiuixIcons.Glass.Info
     )
 
     LaunchedEffect(pagerState.currentPage) {
@@ -264,21 +266,35 @@ private fun MainScreen(
     }
 
     val surfaceColor = MiuixTheme.colorScheme.surface
-    val backdrop = rememberLayerBackdrop {
-        drawRect(surfaceColor)
-        drawContent()
-    }
-    val blurActive = isBlurEnabled
+    // 全局搜索：状态挂在导航容器上，底栏搜索按钮与各主页面顶栏搜索按钮共用同一份状态。
+    val searchState = remember { AppSearchState() }
+    var pendingFeatureSearchKey by remember { mutableStateOf<String?>(null) }
+    val backdrop = if (isBlurEnabled) rememberBlurBackdrop() else null
 
-    val navBarMode = if (!isFloatingNavbar) 0 else if (!isLiquidGlass) 1 else 2
     val isWideScreen = shouldShowSplitPane()
-    // 横屏时仅普通底栏改为左侧 NavigationRail；悬浮栏与液态玻璃保留底部。
-    val useNavigationRail = isWideScreen && navBarMode == 0
-
-    val railState = rememberNavigationRailState()
-    val expandRail = shouldExpandNavigationRail()
-    LaunchedEffect(expandRail) {
-        if (expandRail) railState.expand() else railState.collapse()
+    // 宽屏且用户未关闭侧边导航栏时才走官方 GlassNavigationRail；
+    // 关闭侧栏（或窄屏）时退回底部悬浮栏，保持完整的四页导航。
+    val useRail = isWideScreen && railStyle.isEnabled
+    // 侧栏形态由设置决定：「左面」进入即展开成左侧面板，「上面」进入停在顶部折叠胶囊。
+    val expandSidebar = railStyle == RailStyle.Left
+    val sidebarState = rememberGlassNavigationRailState(initialExpanded = expandSidebar)
+    LaunchedEffect(expandSidebar) {
+        sidebarState.expanded = expandSidebar
+    }
+    // 内容让位的宽度：与 demo 的 overlayStart 完全一致 —— 侧栏宽度乘以形变进度，
+    // 形变过程中逐帧跟随，因此内容与面板始终严丝合缝，不会出现面板先展开、内容后让位的遮挡。
+    // progress 每帧变化，这里在组合期读取，形变期间会逐帧触发本函数重组以重算 padding。
+    // 侧栏被关掉（或窄屏改用底部悬浮栏）时必须归零：GlassNavigationRail 不再参与组合，
+    // 它的 state 会停留在原来的展开进度上，若继续沿用就会让页面整体右移出一条空白。
+    val sidebarInset: Dp =
+        if (useRail) {
+            (GlassNavigationRailDefaults.Margin + GlassNavigationRailDefaults.ExpandedWidth) *
+                sidebarState.progress
+        } else {
+            0.dp
+        }
+    val railItems = items.mapIndexed { index, label ->
+        GlassNavigationItem(icon = icons[index], label = label)
     }
 
     val onItemSelected: (Int) -> Unit = select@{ index ->
@@ -302,266 +318,265 @@ private fun MainScreen(
         }
     }
 
-    val pagerContent: @Composable (Dp, PaddingValues) -> Unit = { navBarHeight, pagerPadding ->
+    // 宽屏侧栏是覆盖层：留白不能加在 Pager 上（那会让页面整体被裁窄，侧栏背后只剩平色，
+    // 玻璃只采样到「最右边一小条内容」）。改为通过 LocalAppPageStartInset 下发给每个页面，
+    // 由页面自身的内容列/顶栏让位；页面背景与渐变仍铺满全宽，侧栏背后因此始终是连续的全宽
+    // 内容，滑动时经过的也是相邻页的空白带而不是它的卡片（对齐 demo 的 overlayStart 语义）。
+    val pagerContent: @Composable (Dp) -> Unit = { navBarHeight ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(Modifier.layerBackdrop(backdrop))
+                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                 .background(surfaceColor)
         ) {
-            HorizontalPager(
-                state = pagerState,
-                beyondViewportPageCount = 1,
-                contentPadding = pagerPadding,
-                modifier = Modifier
-                    .fillMaxSize()
-                    // Cross-Axis 拦截 + 子组件（滑条）手势放行：见 PagerSwipeOverride.kt
-                    .pagerSwipeOverride(pagerState = pagerState),
-                userScrollEnabled = false,
-                pageNestedScrollConnection = PagerGestureNestedScrollConnection,
-            ) { page ->
-                when (page) {
-                    0 -> HomePageView(
-                        isBlurEnabled = isBlurEnabled,
-                        refreshKey = homeRefreshKey,
-                        extraBottomPadding = navBarHeight,
-                        onOpenFeatures = { onItemSelected(1) },
-                    )
-                    1 -> FeaturesPageView(
-                        isBlurEnabled = isBlurEnabled,
-                        extraBottomPadding = navBarHeight,
-                    )
-                    2 -> SettingsPageView(
-                        currentMode = themeMode,
-                        onModeChange = onThemeModeChange,
-                        isFloatingNavbar = isFloatingNavbar,
-                        onFloatingNavbarChange = onFloatingNavbarChange,
-                        isLiquidGlass = isLiquidGlass,
-                        onLiquidGlassChange = onLiquidGlassChange,
-                        isBlurEnabled = isBlurEnabled,
-                        onBlurEnabledChange = onBlurEnabledChange,
-                        checkUpdateOnLaunch = checkUpdateOnLaunch,
-                        onCheckUpdateOnLaunchChange = onCheckUpdateOnLaunchChange,
-                        hideLauncherIcon = hideLauncherIcon,
-                        onHideLauncherIconChange = onHideLauncherIconChange,
-                        onCheckUpdate = onCheckUpdate,
-                        isCheckingUpdate = isCheckingUpdate,
-                        extraBottomPadding = navBarHeight,
-                    )
-                    3 -> AboutPageContent(
-                        openLicensePage = {
-                            context.startActivity(Intent(context, LicenseActivity::class.java))
-                        },
-                        isBlurEnabled = isBlurEnabled,
-                    )
-                }
-            }
-        }
-    }
-
-    if (useNavigationRail) {
-        val navigationBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        val density = LocalDensity.current
-        var railWidthPx by remember { mutableIntStateOf(0) }
-        val railWidth = with(density) { railWidthPx.toDp() }
-        Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .consumeWindowInsets(
-                        WindowInsets.systemBars
-                            .add(WindowInsets.displayCutout)
-                            .only(WindowInsetsSides.Start)
-                    )
+            CompositionLocalProvider(
+                // 顶栏采样的是「页面内容」图层，必须由各页面自己提供（见 rememberTopBarBackdrop），
+                // 这里传应用级 backdrop 会让顶栏所在的图层包含顶栏自身，触发 RenderNode 无限递归。
+                // 侧栏占位留给页面自己消费；Pager 保持全宽，玻璃才能采样到连续背景。
+                LocalAppPageStartInset provides sidebarInset,
             ) {
-                pagerContent(navigationBarBottom, PaddingValues(start = railWidth))
-            }
-            NavigationRail(
-                modifier = Modifier
-                    .onSizeChanged { railWidthPx = it.width }
-                    .then(
-                        if (blurActive) {
-                            Modifier.textureBlur(
-                                backdrop = backdrop,
-                                shape = RectangleShape,
-                                blurRadius = 25f,
-                                colors = BlurDefaults.blurColors(
-                                    blendColors = listOf(
-                                        BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(0.5f)),
-                                    ),
-                                ),
-                            )
-                        } else {
-                            Modifier
-                        }
-                    ),
-                color = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface,
-                state = railState,
-            ) {
-                items.forEachIndexed { index, label ->
-                    NavigationRailItem(
-                        selected = selectedIndex == index,
-                        onClick = { onItemSelected(index) },
-                        icon = icons[index],
-                        label = label,
-                    )
-                }
-            }
-        }
-    } else {
-        Scaffold(
-            popupHost = { },
-            bottomBar = {
-                BottomNavigationBar(
-                    mode = navBarMode,
-                    items = items,
-                    icons = icons,
-                    selectedIndex = selectedIndex,
-                    backdrop = backdrop,
-                    blurActive = blurActive,
-                    onItemSelected = onItemSelected,
-                )
-            }
-        ) { globalPadding ->
-            pagerContent(globalPadding.calculateBottomPadding(), PaddingValues(0.dp))
-        }
-    }
-}
-
-@Composable
-private fun BottomNavigationBar(
-    mode: Int,
-    items: List<String>,
-    icons: List<androidx.compose.ui.graphics.vector.ImageVector>,
-    selectedIndex: Int,
-    backdrop: LayerBackdrop,
-    blurActive: Boolean,
-    onItemSelected: (Int) -> Unit,
-) {
-    when (mode) {
-        2 -> {
-            // 液态玻璃底栏：视觉与交互移植自 SukiSU-Ultra
-            // （见 ui/component/liquid/LiquidGlassNavigationBar.kt）。
-            // 宽度由内容决定（width(IntrinsicSize.Min)），因此这里只需居中并留出安全边距。
-            val navigationBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            val bottomPadding = if (navigationBarBottom != 0.dp) 8.dp + navigationBarBottom else 28.dp
-            Box(modifier = Modifier.fillMaxWidth()) {
-                LiquidGlassNavigationBar(
+                HorizontalPager(
+                    state = pagerState,
+                    beyondViewportPageCount = 1,
+                    contentPadding = PaddingValues(0.dp),
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        // 吞掉落在底栏空白处的点按，避免穿透到底层 Pager。
-                        .pointerInput(Unit) {
-                            detectTapGestures { }
-                        }
-                        .padding(start = 28.dp, end = 28.dp, bottom = bottomPadding),
-                    selectedIndex = selectedIndex,
-                    onSelected = onItemSelected,
-                    backdrop = backdrop,
-                    tabsCount = items.size,
-                    isBlurEnabled = blurActive,
-                ) { activateTab ->
-                    items.forEachIndexed { index, label ->
-                        LiquidGlassNavigationBarItem(
-                            selected = selectedIndex == index,
-                            onClick = { activateTab(index) },
-                            modifier = Modifier.defaultMinSize(minWidth = 76.dp),
-                        ) {
-                            // 图标与文字取 LocalContentColor：底栏内部会把它在指示器胶囊内
-                            // 重新着色为主题色（accent），因此这里不能写死 tint。
-                            Icon(
-                                imageVector = icons[index],
-                                contentDescription = label,
-                            )
-                            Text(
-                                text = label,
-                                fontSize = 11.sp,
-                                lineHeight = 14.sp,
-                                maxLines = 1,
-                                softWrap = false,
-                                overflow = TextOverflow.Visible,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        1 -> {
-            val floatingBarColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surfaceContainer
-            val floatingBarShape = RoundedCornerShape(FloatingToolbarDefaults.CornerRadius)
-            val isDark = isInDarkTheme()
-            val floatingHighlight = remember(isDark) {
-                if (isDark) Highlight.GlassStrokeMiddleDark else Highlight.GlassStrokeMiddleLight
-            }
-            FloatingNavigationBar(
-                modifier = if (blurActive) {
-                    Modifier.textureBlur(
-                        backdrop = backdrop,
-                        shape = floatingBarShape,
-                        blurRadius = 25f,
-                        colors = BlurDefaults.blurColors(
-                            blendColors = listOf(
-                                BlendColorEntry(color = MiuixTheme.colorScheme.surfaceContainer.copy(0.4f)),
-                            ),
-                        ),
-                        highlight = floatingHighlight,
-                    )
-                } else {
-                    Modifier
-                },
-                color = floatingBarColor,
-            ) {
-                items.forEachIndexed { index, label ->
-                    FloatingNavigationBarItem(
-                        selected = selectedIndex == index,
-                        onClick = { onItemSelected(index) },
-                        icon = icons[index],
-                        label = label,
-                        enabled = true
-                    )
-                }
-            }
-        }
-        else -> {
-            val barColor = if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
-            Box(
-                modifier = Modifier
-                    .then(
-                        if (blurActive) {
-                            Modifier.textureBlur(
-                                backdrop = backdrop,
-                                shape = RectangleShape,
-                                blurRadius = 25f,
-                                colors = BlurDefaults.blurColors(
-                                    blendColors = listOf(
-                                        BlendColorEntry(color = MiuixTheme.colorScheme.surface.copy(0.5f)),
-                                    ),
-                                ),
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
-                    .background(barColor)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {},
-                    )
-            ) {
-                NavigationBar(
-                    color = barColor,
-                ) {
-                    items.forEachIndexed { index, label ->
-                        NavigationBarItem(
-                            selected = selectedIndex == index,
-                            onClick = { onItemSelected(index) },
-                            icon = icons[index],
-                            label = label,
-                            enabled = true
+                        .fillMaxSize()
+                        // Cross-Axis 拦截 + 子组件（滑条）手势放行：见 PagerSwipeOverride.kt
+                        .pagerSwipeOverride(pagerState = pagerState),
+                    userScrollEnabled = false,
+                    pageNestedScrollConnection = PagerGestureNestedScrollConnection,
+                ) { page ->
+                    when (page) {
+                        0 -> HomePageView(
+                            isBlurEnabled = isBlurEnabled,
+                            refreshKey = homeRefreshKey,
+                            extraBottomPadding = navBarHeight,
+                            onOpenFeatures = { onItemSelected(1) },
+                        )
+                        1 -> FeaturesPageView(
+                            isBlurEnabled = isBlurEnabled,
+                            extraBottomPadding = navBarHeight,
+                            pendingSearchKey = pendingFeatureSearchKey,
+                            onSearchKeyHandled = { pendingFeatureSearchKey = null },
+                        )
+                        2 -> SettingsPageView(
+                            currentMode = themeMode,
+                            onModeChange = onThemeModeChange,
+                            bottomBarStyle = bottomBarStyle,
+                            onBottomBarStyleChange = onBottomBarStyleChange,
+                            railStyle = railStyle,
+                            onRailStyleChange = onRailStyleChange,
+                            isBlurEnabled = isBlurEnabled,
+                            onBlurEnabledChange = onBlurEnabledChange,
+                            checkUpdateOnLaunch = checkUpdateOnLaunch,
+                            onCheckUpdateOnLaunchChange = onCheckUpdateOnLaunchChange,
+                            hideLauncherIcon = hideLauncherIcon,
+                            onHideLauncherIconChange = onHideLauncherIconChange,
+                            onCheckUpdate = onCheckUpdate,
+                            isCheckingUpdate = isCheckingUpdate,
+                            extraBottomPadding = navBarHeight,
+                        )
+                        3 -> AboutPageContent(
+                            openLicensePage = {
+                                context.startActivity(Intent(context, LicenseActivity::class.java))
+                            },
+                            isBlurEnabled = isBlurEnabled,
+                            extraBottomPadding = navBarHeight,
                         )
                     }
                 }
             }
         }
     }
+
+    CompositionLocalProvider(LocalAppSearchState provides searchState) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (useRail) {
+                // 宽屏且侧栏开启：按 miuix example 的 PersistentGlassNavigationRail 做法，把官方
+                // GlassNavigationRail 作为全屏 overlay 叠在内容层之上——它自身 fillMaxSize()，
+                // 并负责折叠胶囊（顶部水平居中）⇄ 展开面板（贴左 GlassNavigationRailDefaults.Margin）
+                // 的形变与系统栏 insets。
+                val navigationBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    CompositionLocalProvider(
+                        // 折叠胶囊占据顶部中央，页面顶栏标题随之淡出、展开时再浮现（demo 的 chromeTitleAlpha）。
+                        LocalAppTopBarTitleAlpha provides sidebarState.progress,
+                        // 宽屏不用大标题（对应 demo 的 expandable = !isWideScreen），否则大标题会顶到胶囊上。
+                        LocalAppTopBarCompact provides true,
+                    ) {
+                        pagerContent(navigationBarBottom)
+                    }
+                    GlassNavigationRail(
+                        items = railItems,
+                        selectedIndex = selectedIndex,
+                        onSelect = onItemSelected,
+                        // 直接复用包裹页面内容的 backdrop 图层：侧栏才能真正模糊到底下的页面内容。
+                        backdrop = backdrop,
+                        state = sidebarState,
+                    )
+                }
+            } else {
+                Scaffold(
+                    bottomBar = {
+                        BottomNavigationBar(
+                            style = bottomBarStyle,
+                            items = items,
+                            icons = icons,
+                            selectedIndex = selectedIndex,
+                            backdrop = backdrop,
+                            onItemSelected = onItemSelected,
+                            // 底栏搜索入口只在功能页出现（功能项都在那一页，其它页面用顶栏入口）。
+                            onSearchClick = if (selectedIndex == 1) searchState::open else null,
+                        )
+                    }
+                ) { globalPadding ->
+                    pagerContent(globalPadding.calculateBottomPadding())
+                }
+            }
+
+            // 搜索界面放在导航容器最后：绘制顺序因此在悬浮底栏 / 宽屏侧栏之上
+            // （与 miuix 示例 GlassPage 的搜索层级一致），遮住底栏并独占输入。
+            AppSearchOverlay(
+                expanded = searchState.expanded,
+                onDismissRequest = { searchState.close() },
+                label = stringResource(R.string.search_hint),
+            ) { query ->
+                AppSearchResults(
+                    query = query,
+                    onPick = { key ->
+                        searchState.close()
+                        pendingFeatureSearchKey = key
+                        onItemSelected(1)
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            CompositionLocalProvider(LocalPreferenceBackdrop provides backdrop) {
+                overlay()
+            }
+        }
+    }
+}
+
+/** 玻璃底栏收敛后的胶囊宽度（miuix 示例 4 个 tab 的实测值，本项目同为 4 个 tab）。 */
+private val NavigationBarCapsuleMaxWidth = 344.dp
+
+/** 胶囊可用宽度超过该值就收敛，否则铺满（示例阈值）。 */
+private val NavigationBarCapsuleMaxAvailable = 400.dp
+
+/** 每个 tab 在示例里额外计入可用宽度的间距。 */
+private val NavigationBarItemSpacing = 10.dp
+
+/** 示例里从 tab 间距中扣掉的固定量。 */
+private val NavigationBarSpacingPadding = 6.dp
+
+/**
+ * 底部导航栏。
+ *
+ * @param onSearchClick 非空时在玻璃底栏右侧渲染独立的搜索按钮（全局搜索入口之一；另一个入口是
+ *   各主页面的顶栏搜索按钮），点击唤起搜索界面。
+ */
+@Composable
+private fun BottomNavigationBar(
+    style: BottomBarStyle,
+    items: List<String>,
+    icons: List<ImageVector>,
+    selectedIndex: Int,
+    backdrop: LayerBackdrop?,
+    onItemSelected: (Int) -> Unit,
+    onSearchClick: (() -> Unit)? = null,
+) {
+    when (style) {
+        // HyperOS 玻璃底栏：官方 miuix-glass 组件（与 miuix example 的 AppContent 一致）。
+        // 高度、图标/文字尺寸、指示器内缩、边缘高光、模糊与折射全部由 GlassNavigationBar 负责，
+        // 这里只保留 demo 的左右 24.dp 边距、宽度收敛逻辑、搜索按钮与「吞掉空白点按」的手势壳。
+        BottomBarStyle.HyperOS -> {
+            val glassItems = items.mapIndexed { index, label ->
+                GlassNavigationItem(icon = icons[index], label = label)
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // 吞掉落在底栏空白处的点按（含两侧留白），避免穿透到底层 Pager。
+                    .pointerInput(Unit) {
+                        detectTapGestures { }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                GlassNavigationBar(
+                    items = glassItems,
+                    selectedIndex = selectedIndex,
+                    onSelect = onItemSelected,
+                    backdrop = backdrop,
+                    // 搜索按钮是胶囊之外独立的一颗玻璃圆钮（与 demo 的 trailingAction 一致）。
+                    trailingAction = onSearchClick?.let { openSearch ->
+                        {
+                            GlassIconButton(
+                                onClick = openSearch,
+                                backdrop = backdrop,
+                                size = GlassNavigationBarDefaults.Height,
+                                material = GlassNavigationBarDefaults.material(),
+                            ) {
+                                Icon(
+                                    imageVector = MiuixIcons.Glass.Search,
+                                    contentDescription = stringResource(R.string.search_hint),
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .glassNavigationBarWidth(items.size),
+                )
+            }
+        }
+
+        // iOS 液态玻璃底栏：移植自 miuix example 的 component/liquid（见 ui/component/liquid/）。
+        BottomBarStyle.IOS -> {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                IosLiquidGlassNavigationBar(
+                    items = items,
+                    icons = icons,
+                    selectedIndex = selectedIndex,
+                    onItemClick = onItemSelected,
+                    backdrop = backdrop,
+                    isBlurActive = backdrop != null,
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .glassNavigationBarWidth(items.size, trailingActionWidth = 0.dp),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 玻璃底栏宽度（复刻 miuix 示例 `GlassPage` 的底栏写法）。
+ *
+ * 手机上底栏本就该铺满（左右各 24.dp 留白）；但宽度变大后继续拉伸会让胶囊被拉得很长、
+ * tab 间距变得松散。示例的做法是：按「胶囊 + 右侧搜索按钮」估算胶囊可用宽度，
+ * 超过 400.dp 时把底栏收成 344.dp 胶囊加预留的动作按钮宽度，由父级 `Box` 居中，
+ * 否则保持铺满。液态玻璃底栏没有独立动作按钮，因此无需预留宽度。
+ */
+private fun Modifier.glassNavigationBarWidth(
+    itemCount: Int,
+    trailingActionWidth: Dp = GlassNavigationBarDefaults.Height + GlassNavigationBarDefaults.ActionSpacing,
+): Modifier = layout { measurable, constraints ->
+    val actionWidth = trailingActionWidth.roundToPx()
+    // 示例里 4 个 tab 时胶囊宽 344.dp、每个 tab 的额外间距 10.dp - 6.dp 归入可用宽度判断，
+    // 阈值 400.dp；这里保持同一组数值，仅把 tab 数换成参数。
+    val extraSpacing = (NavigationBarItemSpacing * (itemCount - 1) - NavigationBarSpacingPadding).roundToPx()
+    val available = constraints.maxWidth - actionWidth + extraSpacing
+    val width = if (constraints.hasBoundedWidth && available > NavigationBarCapsuleMaxAvailable.roundToPx()) {
+        (NavigationBarCapsuleMaxWidth.roundToPx() + actionWidth).coerceIn(constraints.minWidth, constraints.maxWidth)
+    } else {
+        constraints.maxWidth
+    }
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
 }

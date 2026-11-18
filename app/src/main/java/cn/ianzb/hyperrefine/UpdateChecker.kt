@@ -62,6 +62,16 @@ object UpdateChecker {
         "1.0"
     }
 
+    fun currentChangelog(context: Context, version: String): String {
+        val changelog = context.assets.open("changelog.md").bufferedReader().use { it.readText() }
+        val heading = Regex("""^##[ \t]+v?(\S+)[ \t]*\r?$""", RegexOption.MULTILINE)
+        val current = heading.findAll(changelog).firstOrNull { it.groupValues[1] == version }
+            ?: return ""
+        val start = current.range.last + 1
+        val end = heading.find(changelog, start)?.range?.first ?: changelog.length
+        return changelog.substring(start, end).trim()
+    }
+
     fun isNewerVersion(latest: String, current: String): Boolean {
         val l = latest.trim().removePrefix("v").removePrefix("V")
         val c = current.trim().removePrefix("v").removePrefix("V")

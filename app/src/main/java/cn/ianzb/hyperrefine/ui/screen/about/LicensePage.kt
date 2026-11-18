@@ -1,28 +1,19 @@
 package cn.ianzb.hyperrefine.ui.screen.about
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -30,19 +21,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
-import cn.ianzb.hyperrefine.ui.util.BlurredBar
-import cn.ianzb.hyperrefine.ui.util.blurSource
+import cn.ianzb.hyperrefine.ui.component.AppSectionCard
+import cn.ianzb.hyperrefine.ui.component.AppPageScaffold
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
-import cn.ianzb.hyperrefine.ui.util.rememberBlurState
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.TopAppBar
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
@@ -79,7 +62,7 @@ private val licenseSections: List<LicenseSection> = listOf(
         libraries = listOf(
             LibraryInfo(
                 "Miuix (compose-miuix-ui)",
-                "0.9.4",
+                "0.9.5-beta01",
                 "Apache-2.0",
                 "https://github.com/compose-miuix-ui/miuix",
             ),
@@ -100,6 +83,12 @@ private val licenseSections: List<LicenseSection> = listOf(
                 "BOM 2026.09.00",
                 "Apache-2.0",
                 "https://developer.android.com/jetpack/androidx/compose/material-icons",
+            ),
+            LibraryInfo(
+                "commonmark-java",
+                "0.30.0",
+                "BSD-2-Clause",
+                "https://github.com/commonmark/commonmark-java",
             ),
         ),
     ),
@@ -246,35 +235,12 @@ fun LicensePageContent(
     isBlurEnabled: Boolean = true,
 ) {
     val topAppBarScrollBehavior = MiuixScrollBehavior()
-    val hazeState = rememberBlurState()
-    val blurActive = isBlurEnabled && hazeState != null
-    val barColor = if (blurActive) Color.Transparent else colorScheme.surface
 
-    Scaffold(
-        topBar = {
-            BlurredBar(hazeState, blurActive, topAppBarScrollBehavior) {
-                TopAppBar(
-                    title = stringResource(R.string.third_party_licenses_title),
-                    color = barColor,
-                    scrollBehavior = topAppBarScrollBehavior,
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            val layoutDirection = LocalLayoutDirection.current
-                            Icon(
-                                modifier = Modifier.graphicsLayer {
-                                    if (layoutDirection == LayoutDirection.Rtl) scaleX = -1f
-                                },
-                                imageVector = MiuixIcons.Back,
-                                contentDescription = stringResource(R.string.action_back),
-                                tint = colorScheme.onBackground
-                            )
-                        }
-                    },
-                )
-            }
-        },
-        popupHost = { },
-        contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal),
+    AppPageScaffold(
+        title = stringResource(R.string.third_party_licenses_title),
+        isBlurEnabled = isBlurEnabled,
+        scrollBehavior = topAppBarScrollBehavior,
+        onBack = onBack,
     ) { innerPadding ->
         val uriHandler = LocalUriHandler.current
         val lazyListState = rememberLazyListState()
@@ -287,73 +253,60 @@ fun LicensePageContent(
             end = innerPadding.calculateEndPadding(layoutDirection) + cutoutPadding.calculateRightPadding(LayoutDirection.Ltr),
         )
 
-        Box(
-            modifier = Modifier.blurSource(if (isBlurEnabled) hazeState else null)
-        ) {
-            LazyColumn(
-                state = lazyListState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pageScrollModifiers(
-                        showTopAppBar = true,
-                        topAppBarScrollBehavior = topAppBarScrollBehavior,
-                    )
-                    .padding(
-                        start = contentPadding.calculateStartPadding(layoutDirection),
-                        end = contentPadding.calculateEndPadding(layoutDirection),
-                    ),
-                contentPadding = PaddingValues(
-                    top = contentPadding.calculateTopPadding(),
-                    bottom = contentPadding.calculateBottomPadding(),
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier
+                .fillMaxSize()
+                .pageScrollModifiers(
+                    showTopAppBar = true,
+                    topAppBarScrollBehavior = topAppBarScrollBehavior,
+                )
+                .padding(
+                    start = contentPadding.calculateStartPadding(layoutDirection),
+                    end = contentPadding.calculateEndPadding(layoutDirection),
                 ),
-            ) {
-                item {
-                    MiuixText(
-                        text = stringResource(R.string.licenses_header),
-                        color = colorScheme.onSurfaceVariantSummary,
-                        style = top.yukonga.miuix.kmp.theme.MiuixTheme.textStyles.footnote2,
-                        textAlign = TextAlign.Start,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 28.dp, vertical = 12.dp),
-                    )
-                }
+            contentPadding = PaddingValues(
+                top = contentPadding.calculateTopPadding(),
+                bottom = contentPadding.calculateBottomPadding(),
+            ),
+        ) {
+            item {
+                MiuixText(
+                    text = stringResource(R.string.licenses_header),
+                    color = colorScheme.onSurfaceVariantSummary,
+                    style = top.yukonga.miuix.kmp.theme.MiuixTheme.textStyles.footnote2,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 28.dp, vertical = 12.dp),
+                )
+            }
 
-                licenseSections.forEach { section ->
-                    item(key = "section_${section.titleRes}") {
-                        SmallTitle(text = stringResource(section.titleRes))
-                    }
-                    items(
-                        items = section.libraries,
-                        key = { "${section.titleRes}_${it.name}" },
-                    ) { library ->
-                        Card(
-                            modifier = Modifier
-                                .padding(horizontal = 12.dp)
-                                .padding(bottom = 12.dp)
-                        ) {
-                            ArrowPreference(
-                                title = library.name,
-                                summary = buildString {
-                                    if (library.version.isNotBlank() && library.version != "-") {
-                                        append("v").append(library.version).append(" · ")
-                                    }
-                                    append(library.license)
-                                },
-                                onClick = {
-                                    if (library.website.isNotBlank()) {
-                                        uriHandler.openUri(library.website)
-                                    }
-                                },
-                            )
-                        }
-                    }
+            licenseSections.forEach { section ->
+                item(key = "section_${section.titleRes}") {
+                    SmallTitle(text = stringResource(section.titleRes))
                 }
-
-                item {
-                    Spacer(Modifier.height(12.dp))
+                items(
+                    items = section.libraries,
+                    key = { "${section.titleRes}_${it.name}" },
+                ) { library ->
+                    AppSectionCard {
+                        ArrowPreference(
+                            title = library.name,
+                            summary = buildString {
+                                if (library.version.isNotBlank() && library.version != "-") {
+                                    append("v").append(library.version).append(" · ")
+                                }
+                                append(library.license)
+                            },
+                            onClick = {
+                                uriHandler.openUri(library.website)
+                            },
+                        )
+                    }
                 }
             }
+
         }
     }
 }

@@ -1,12 +1,15 @@
 package cn.ianzb.hyperrefine.ui.screen.scope
 
 import android.widget.Toast
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.ui.component.AppSectionCard
 import cn.ianzb.hyperrefine.ui.component.SystemRestartConfirmDialog
 import cn.ianzb.hyperrefine.ui.screen.subpage.BaseSubPageActivity
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
@@ -39,8 +43,8 @@ import kotlin.time.Duration.Companion.milliseconds
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
@@ -81,8 +85,29 @@ class ScopeListActivity : BaseSubPageActivity() {
         val safeModePackages = SafeModeReader.safeModePackages
         val coroutineScope = rememberCoroutineScope()
         val scrollBehavior = LocalSubPageScrollBehavior.current
+        val listState = rememberLazyListState()
+
+        // 搜索：按包名或应用名（大小写不敏感）过滤当前作用域列表。
+        var query by remember { mutableStateOf("") }
+        val trimmedQuery = query.trim()
+        val filteredScope = remember(scope, trimmedQuery) {
+            if (trimmedQuery.isEmpty()) {
+                scope
+            } else {
+                val packageManager = context.packageManager
+                scope.filter { packageName ->
+                    packageName.contains(trimmedQuery, ignoreCase = true) ||
+                        runCatching {
+                            packageManager.getApplicationLabel(
+                                packageManager.getApplicationInfo(packageName, 0),
+                            ).toString()
+                        }.getOrNull()?.contains(trimmedQuery, ignoreCase = true) == true
+                }
+            }
+        }
 
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .then(
@@ -90,6 +115,7 @@ class ScopeListActivity : BaseSubPageActivity() {
                         Modifier.pageScrollModifiers(
                             showTopAppBar = true,
                             topAppBarScrollBehavior = scrollBehavior,
+                            contentState = listState,
                         )
                     } else {
                         Modifier
@@ -107,7 +133,35 @@ class ScopeListActivity : BaseSubPageActivity() {
                     )
                 }
             } else {
-                items(scope, key = { it }) { packageName ->
+                item(key = "scope_search") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                            .padding(top = 12.dp, bottom = 8.dp),
+                    ) {
+                        InputField(
+                            query = query,
+                            onQueryChange = { query = it },
+                            onSearch = { query = it },
+                            expanded = false,
+                            onExpandedChange = {},
+                            label = stringResource(R.string.package_search_hint),
+                        )
+                    }
+                }
+            }
+            if (scope.isNotEmpty() && filteredScope.isEmpty()) {
+                item(key = "scope_search_empty") {
+                    MiuixText(
+                        text = stringResource(R.string.package_search_empty),
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        style = MiuixTheme.textStyles.footnote2,
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp),
+                    )
+                }
+            } else {
+                items(filteredScope, key = { it }) { packageName ->
                     val packageManager = context.packageManager
                     val appInfo = remember(packageName) {
                         runCatching { packageManager.getApplicationInfo(packageName, 0) }.getOrNull()
@@ -158,11 +212,7 @@ class ScopeListActivity : BaseSubPageActivity() {
                         }
                     }
 
-                    Card(
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp)
-                            .padding(top = 12.dp)
-                    ) {
+                    AppSectionCard {
                         BasicComponent(
                             title = appName,
                             summary = summary,

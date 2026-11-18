@@ -10,8 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
@@ -19,6 +17,7 @@ import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.xposed.HookStatus
 import cn.ianzb.hyperrefine.xposed.HookStatusStore
+import androidx.compose.ui.state.ToggleableState
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.Switch
@@ -29,7 +28,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 /**
  * 副标题：基础文案。
  *
- * 生效状态不再拼进摘要，而是作为大标题后的彩色标签由 [HookTitleWithStatus] 渲染。
+ * 生效状态不再拼进摘要，而是作为彩色标签由 [HookStatusBadge] 渲染。
  * 功能关闭时不显示历史「已生效」证据；但设备不支持 / 作用域未勾选时仍显示灰色「不可用」。
  */
 @Composable
@@ -41,6 +40,9 @@ private fun optionSummary(spec: OptionSpec): String? =
  *
  * 标题字号 / 字重与 Miuix `BasicComponent` 默认标题一致；标签紧跟在标题文字后，
  * 标题过长时由标签保持自身宽度、标题自行换行。
+ *
+ * 开关 / 复选框卡片已改用 Miuix `SwitchPreference` / `CheckboxPreference`，
+ * 该标题行仅供下拉、单选、滑块等仍在自绘的卡片复用。
  */
 @Composable
 private fun HookTitleWithStatus(
@@ -107,6 +109,8 @@ fun HookSwitchCard(
 
     BasicComponent(
         modifier = modifier,
+        enabled = enabled,
+        onClick = { update(!checked) },
         endActions = {
             Switch(
                 checked = checked,
@@ -114,20 +118,13 @@ fun HookSwitchCard(
                 enabled = enabled,
             )
         },
-        onClick = if (enabled) {
-            { update(!checked) }
-        } else {
-            null
-        },
-        role = Role.Switch,
-        enabled = enabled,
     ) {
         HookTitleWithStatus(
             title = stringResource(spec.titleRes),
             status = status,
             enabled = enabled,
         )
-        HookSummary(optionSummary(spec), enabled)
+        HookSummary(text = optionSummary(spec), enabled = enabled)
     }
 }
 
@@ -152,27 +149,22 @@ fun HookCheckboxCard(
 
     BasicComponent(
         modifier = modifier,
+        enabled = enabled,
+        onClick = { update(!checked) },
         endActions = {
             Checkbox(
                 state = ToggleableState(checked),
-                onClick = null,
+                onClick = { update(!checked) },
                 enabled = enabled,
             )
         },
-        onClick = if (enabled) {
-            { update(!checked) }
-        } else {
-            null
-        },
-        role = Role.Checkbox,
-        enabled = enabled,
     ) {
         HookTitleWithStatus(
             title = stringResource(spec.titleRes),
             status = status,
             enabled = enabled,
         )
-        HookSummary(optionSummary(spec), enabled)
+        HookSummary(text = optionSummary(spec), enabled = enabled)
     }
 }
 

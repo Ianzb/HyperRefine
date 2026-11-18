@@ -10,9 +10,8 @@ import androidx.compose.ui.res.stringResource
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.ui.component.pref.QuickActionDialog
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.glass.Refresh
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -31,11 +30,12 @@ fun QuickActionsAction(
     if (packages.isEmpty()) return
     var showDialog by remember { mutableStateOf(false) }
 
-    IconButton(onClick = { showDialog = true }, modifier = modifier) {
+    AppTopAppBarIconAction(onClick = { showDialog = true }) {
         Icon(
-            imageVector = MiuixIcons.Refresh,
+            imageVector = MiuixIcons.Glass.Refresh,
             contentDescription = stringResource(R.string.quick_action_title),
             tint = MiuixTheme.colorScheme.onSurface,
+            modifier = modifier,
         )
     }
 

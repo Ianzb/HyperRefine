@@ -28,6 +28,8 @@
     <string name="action_confirm">确定</string>
     <string name="search_hint">搜索功能</string>
     <string name="search_empty">未找到匹配的功能</string>
+    <string name="package_search_hint">搜索应用名或包名</string>
+    <string name="package_search_empty">未找到匹配的应用</string>
 
     <!-- Home -->
     <string name="home_status_title">状态卡片</string>
@@ -338,7 +340,10 @@
  <string name="voice_assist_ime_global_material_summary">让所有应用的输入法面板都使用顶部圆角与背景模糊，而不只限于部分官方应用；首次开启后需重启一次输入法</string>
  <string name="voice_assist_ime_material_opacity">材质不透明度</string>
  <string name="voice_assist_ime_material_opacity_summary">仅调整输入法材质层的着色强度，0 只保留背景模糊，100 为官方默认；不改变模糊半径和输入法内容</string>
- <string name="sogou_ime_title">搜狗输入法</string>
+ <string name="phrase_reorder_section">剪贴板与常用语</string>
+<string name="phrase_reorder_enabled">常用语拖动排序</string>
+<string name="phrase_reorder_enabled_summary">在常用语列表中拖动右侧手柄调整顺序，仅影响本机显示顺序</string>
+<string name="sogou_ime_title">搜狗输入法</string>
  <string name="sogou_ime_glass">键盘玻璃材质</string>
  <string name="sogou_ime_glass_summary">为搜狗输入法键盘叠加背景模糊与圆角；首次开启或调整后需重新打开键盘</string>
  <string name="sogou_ime_blur_radius">模糊半径</string>
@@ -497,7 +502,7 @@
     <string name="about_telegram">Telegram 群组</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">第三方许可证与致谢</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.7.0</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.8.0</string>
     <string name="license_agpl">GNU AGPL v3.0</string>
     <string name="license_agpl_summary">查看完整协议文本</string>
     <string name="third_party_licenses_title">第三方许可证与致谢</string>
@@ -770,4 +775,15 @@
     <string name="sb_category_battery">电池</string>
     <string name="sb_category_devices">设备</string>
     <string name="sb_category_status">状态</string>
+    <string name="current_changelog">查看当前更新日志</string>
+    <string name="current_changelog_unavailable">暂无当前版本的更新日志。</string>
+    <string name="bottom_bar_style">底栏样式</string>
+    <string name="bottom_bar_style_hyperos">悬浮</string>
+    <string name="bottom_bar_style_ios">玻璃</string>
+    <string name="bottom_bar_style_summary">窄屏与未启用侧栏的宽屏使用该样式</string>
+    <string name="rail_style">侧栏样式</string>
+    <string name="rail_style_none">关闭</string>
+    <string name="rail_style_top">顶部胶囊</string>
+    <string name="rail_style_left">左侧面板</string>
+    <string name="rail_style_summary">仅在宽屏生效；启用后由侧栏取代底栏，进入时停在所选形态</string>
 </resources>

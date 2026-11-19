@@ -15,6 +15,7 @@
 
 ### 修复
 
+- **网速 · 单行显示**（目标 `com.android.systemui`）：数字与单位紧贴显示，例如 `12.3KB/s`（[#82](https://github.com/Ianzb/HyperRefine/issues/82)）。
 - 修复手机端搜索条位置偏低的问题。搜索条与页面顶栏共用顶部安全区，状态栏和挖孔重叠的部分只计算一次。
 - **控制中心隐私指示 · 隐藏模式下闪现**（目标 `com.android.systemui`）：原生隐私容器会先把自己设为可见再播放淡入，而模块此前只在下一帧刷新显示模式，控制中心会闪一下再消失。现在 `onPromptInfoChanged` / `setPrivacyIcons` / `onAttachedToWindow` 回调后同步套用隐藏模式，再保留下一帧刷新做状态对账。
 - **音量面板 · 控制中心二级页与快速调音性能**（目标 `com.android.systemui`）：官方二级音量页复用同一个 `VolumePanelViewController`，而对话框上的 `isControlCenterPanel` 可能在控制器创建前就调用 setter 而保持 false。现在改为读取控制器自身标记，并校验 `mVolumeView` 归属：二级页始终不显示多应用入口和多应用面板，静音 / 勿扰隐藏也只在收起的一级面板生效；同时缓存铃声按钮与官方按钮可见性状态，避免每次音量键都重复反射、递归查找和重写可见性，并把原先每帧执行的 `OnPreDrawListener` 分隔线同步改为布局变化后合并到下一帧执行一次，减少快速调音量时的递归查找和布局抖动。

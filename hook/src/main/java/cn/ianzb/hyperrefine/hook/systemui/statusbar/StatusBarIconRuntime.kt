@@ -734,7 +734,7 @@ internal object StatusBarIconRuntime {
             when (config.speedStyle) {
                 "single_line" -> {
                     val (down, _) = sampleTraffic(view)
-                    numberText.text = formatSpeed(down, showUnit, config.speedUnitStyle)
+                    numberText.text = formatSpeed(down, showUnit, config.speedUnitStyle, unitSeparator = "")
                     unitText.text = ""
                 }
                 "dual_line" -> {
@@ -890,6 +890,7 @@ internal object StatusBarIconRuntime {
         bytesPerSecond: Long,
         showUnit: Boolean,
         unitStyle: String,
+        unitSeparator: String = " ",
     ): String {
         var value = bytesPerSecond / 1024f
         var scale = 1
@@ -903,7 +904,7 @@ internal object StatusBarIconRuntime {
             else -> String.format(Locale.getDefault(), "%.0f", value)
         }
         val label = if (showUnit) speedUnitLabel(unitStyle, scale) else ""
-        return if (label.isEmpty()) number else "$number $label"
+        return if (label.isEmpty()) number else "$number$unitSeparator$label"
     }
 
     /** 单位标签随数值自动换 K/M/G；只改标签写法，不改变 1024 进制换算。 */

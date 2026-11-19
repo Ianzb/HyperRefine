@@ -15,6 +15,9 @@
 
 ### 修复
 
+- **侧边音量条**：多应用音量入口的触区跟随打开动画中的实际绘制位置（[#88](https://github.com/Ianzb/HyperRefine/issues/88)）。合并同帧音量百分比刷新，减少拖动时的重复更新（[#87](https://github.com/Ianzb/HyperRefine/issues/87)）；悬浮百分比在低音量的浅色底上改用深色文字（[#84](https://github.com/Ianzb/HyperRefine/issues/84)）。
+- **静音／勿扰**：收起面板同时隐藏两个按钮时，使用系统无按钮区阴影尺寸（[#85](https://github.com/Ianzb/HyperRefine/issues/85)）；柔光玻璃底层与按钮使用同一圆角（[#86](https://github.com/Ianzb/HyperRefine/issues/86)）。
+- **控制中心柔光玻璃**：WLAN、移动数据和蓝牙详情逐项使用系统柔光玻璃，卡片保留独立四角和间距（[#89](https://github.com/Ianzb/HyperRefine/issues/89)）。
 - **网速 · 单行显示**（目标 `com.android.systemui`）：数字与单位紧贴显示，例如 `12.3KB/s`（[#82](https://github.com/Ianzb/HyperRefine/issues/82)）。
 - 修复手机端搜索条位置偏低的问题。搜索条与页面顶栏共用顶部安全区，状态栏和挖孔重叠的部分只计算一次。
 - **控制中心隐私指示 · 隐藏模式下闪现**（目标 `com.android.systemui`）：原生隐私容器会先把自己设为可见再播放淡入，而模块此前只在下一帧刷新显示模式，控制中心会闪一下再消失。现在 `onPromptInfoChanged` / `setPrivacyIcons` / `onAttachedToWindow` 回调后同步套用隐藏模式，再保留下一帧刷新做状态对账。

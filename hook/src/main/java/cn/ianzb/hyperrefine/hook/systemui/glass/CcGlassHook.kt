@@ -13,7 +13,7 @@ import cn.ianzb.hyperrefine.hook.xposed.Reflect
  *
  * 统一由总开关 [CcGlassKeys.MASTER] 控制。涉及：
  * - 亮度二级：大亮度条；三个圆形按钮改为非详情磁贴，走系统自带 SDF 玻璃（状态与动画由系统处理）
- * - WLAN / 移动数据 / 蓝牙详情：下方列表组与「更多设置」按钮（不改动顶部已连接设备卡片）
+ * - WLAN / 移动数据 / 蓝牙详情：独立卡片和分组列表项
  * - 控制中心音量 / 侧边音量：音量条、静音 / 勿扰圆按钮、定时滑块
  * - 播放器：设备卡片
  *
@@ -27,8 +27,15 @@ class CcGlassHook : BaseHook() {
     /** 已监听布局的列表容器（避免重复添加 `OnGlobalLayoutListener`）。 */
     private val observed = java.util.WeakHashMap<ViewGroup, Boolean>()
 
-    /** 已设置圆形轮廓的静音 / 勿扰按钮。 */
+    /** 已设置圆形轮廓的设备中心卡片。 */
     private val outlined = java.util.WeakHashMap<View, Boolean>()
+    private val ringerRadii = java.util.WeakHashMap<View, Int>()
+    private val bionicsDetailRows = java.util.WeakHashMap<View, Boolean>()
+    private val detailTopMargins = java.util.WeakHashMap<View, Pair<Int, Int>>()
+    private val pendingDetailLayouts = java.util.WeakHashMap<View, View.OnLayoutChangeListener>()
+    private val detailRows = java.util.WeakHashMap<View, java.lang.ref.WeakReference<Any>>()
+    private val refreshedDetailVisibility = java.util.WeakHashMap<View, Boolean>()
+    private var ringerResources: Class<*>? = null
 
     /**
      * 侧边音量已套玻璃的视图及其状态签名。
@@ -55,6 +62,7 @@ class CcGlassHook : BaseHook() {
         CcGlassApi.initSystem(systemCl)
         PluginLoader.register(key, systemCl) { pluginCl ->
             CcGlassApi.init(pluginCl)
+            ringerResources = Reflect.findClassIfExists(RINGER_RES_CLASS, pluginCl)
             hookSecondaryPanels(pluginCl)
             hookBrightnessTileDetailFlag(pluginCl)
             hookMoreButton(pluginCl)
@@ -70,7 +78,19 @@ class CcGlassHook : BaseHook() {
 
     private fun hookSecondaryPanels(pluginCl: ClassLoader) {
         val base = Reflect.findClassIfExists(SECONDARY_BASE, pluginCl) ?: return
-
+        base.declaredMethods.firstOrNull { it.name == "onAnimComplete" && it.parameterCount == 0 }?.let { method ->
+            runCatching {
+                HookHelper.hookAfter(method) { param ->
+                    val controller = param.thisObject ?: return@hookAfter
+                    if (!master() || controller.javaClass.simpleName != "DetailPanelController") return@hookAfter
+                    val root = call(controller, "getContent") as? View ?: return@hookAfter
+                    if (!root.isShown) return@hookAfter
+                    traverse(root) { row ->
+                        detailRows[row]?.get()?.let { applyDetailMaterial(row, it) }
+                    }
+                }
+            }.onFailure { HookHelper.log("$tag: hook detail animation completion failed", it) }
+        }
         base.declaredMethods
             .firstOrNull { it.name == "onSecondaryVisible" && it.parameterCount == 2 }
             ?.let { method ->
@@ -159,15 +179,35 @@ class CcGlassHook : BaseHook() {
         method.isAccessible = true
         runCatching {
             HookHelper.hookAfter(method) { param ->
-                if (!master()) return@hookAfter
                 val view = param.args.getOrNull(1) as? View ?: return@hookAfter
                 val index = param.args.getOrNull(0) as? Int
                 val adapter = param.thisObject ?: return@hookAfter
-                // 立即套一次（覆盖系统同一轮的实心色）；布局完成后再补一次（修正按 0 尺寸算出的参数）。
-                applyDetailGlass(view, index, adapter)
-                view.post { if (master()) runCatching { applyDetailGlass(view, index, adapter) } }
+                pendingDetailLayouts.remove(view)?.let(view::removeOnLayoutChangeListener)
+                detailRows.remove(view)
+                if (master()) applyDetailGlass(view, index, adapter) else applyDetailTopGap(view, 0)
             }
         }.onFailure { HookHelper.log("$tag: hook detail items failed", it) }
+        cls.declaredMethods.filter { it.name == "onBindViewHolder" && it.parameterCount == 3 }
+            .forEach { bind ->
+                runCatching {
+                    HookHelper.hookAfter(bind) { param ->
+                        if (!master()) return@hookAfter
+                        val holder = param.args.getOrNull(0) ?: return@hookAfter
+                        val row = runCatching { Reflect.getObjectField(holder, "itemView") }.getOrNull() as? View
+                            ?: return@hookAfter
+                        val binding = detailRows[row] ?: return@hookAfter
+                        row.post {
+                            if (detailRows[row] !== binding || !row.isAttachedToWindow || !master()) return@post
+                            binding.get()?.let { applyDetailMaterial(row, it) }
+                        }
+                    }
+                }.onFailure { HookHelper.log("$tag: hook detail bind completion failed", it) }
+            }
+    }
+
+    private fun isConnectionDetail(content: Any): Boolean {
+        val suffix = Reflect.callMethod(content, "getSuffix") as? String ?: return false
+        return suffix == "Wifi" || suffix == "Cellular" || suffix == "Bluetooth"
     }
 
     /**
@@ -216,34 +256,89 @@ class CcGlassHook : BaseHook() {
     }
 
     private fun applyDetailGlass(view: View, index: Int?, adapter: Any) {
-        // 顶部已连接设备卡片：保持系统默认背景，不套用柔光玻璃。
-        if (view.isSelected) return
         runCatching {
-            view.background = null
-            // 下方列表组：系统 blend 玻璃（由系统 `getBlendColorsArrayId` 提供色板）。
             val content = Reflect.getObjectField(adapter, "this\$0") ?: return
-            val arrayId = Reflect.callMethod(content, "getBlendColorsArrayId", false) as? Int ?: return
-            CcGlassApi.forceBlurGlass(view, view.resources.getIntArray(arrayId))
-            if (index != null) applyGroupOutline(adapter, index, view)
+            val groups = Reflect.getObjectField(adapter, "groupTypeMap") as? android.util.SparseIntArray ?: return
+            val groupType = index?.let { groups.get(it) } ?: return
+            val connectionDetail = isConnectionDetail(content)
+            if (connectionDetail && groupType in 1..4) {
+                prepareDetailCard(view, groupType, content)
+                detailRows[view] = java.lang.ref.WeakReference(content)
+                if (view.width > 0 && view.height > 0) {
+                    applyDetailMaterial(view, content)
+                } else {
+                    val listener = View.OnLayoutChangeListener { row, left, top, right, bottom, _, _, _, _ ->
+                        if (right > left && bottom > top) {
+                            pendingDetailLayouts.remove(row)?.let(row::removeOnLayoutChangeListener)
+                            if (master()) applyDetailMaterial(row, content)
+                        }
+                    }
+                    pendingDetailLayouts[view] = listener
+                    view.addOnLayoutChangeListener(listener)
+                }
+            } else {
+                applyDetailTopGap(view, 0)
+                if (bionicsDetailRows.remove(view) == true) CcGlassApi.clearBionicsStyle(view)
+                if (groupType in 1..4 && !view.isSelected) applyDetailBlend(view, content)
+            }
         }.onFailure { HookHelper.log("$tag: detail glass failed", it) }
     }
 
-    /** 复刻系统按「组内位置」设置 outline：首项上圆角、尾项下圆角、中间直角 → 整组一张圆角卡片。 */
-    private fun applyGroupOutline(adapter: Any, index: Int, view: View) {
+    private fun prepareDetailCard(view: View, groupType: Int, content: Any) {
+        // 绑定阶段设置间距，让 RecyclerView 在第一次测量时就预留空间。
+        val gap = if (groupType == 3 || groupType == 4) {
+            (4f * view.resources.displayMetrics.density + 0.5f).toInt()
+        } else 0
+        applyDetailTopGap(view, gap)
+        if (groupType == 1) return
+        val radius = Reflect.getObjectField(content, "universalCornerRadius") as? Float ?: return
+        view.outlineProvider = object : android.view.ViewOutlineProvider() {
+            override fun getOutline(v: View, outline: android.graphics.Outline) {
+                outline.setRoundRect(0, 0, v.width, v.height, radius)
+            }
+        }
+        view.clipToOutline = true
+    }
+
+    private fun applyDetailMaterial(view: View, content: Any) {
+        if (view.width <= 0 || view.height <= 0) return
         runCatching {
-            val content = Reflect.getObjectField(adapter, "this\$0") ?: return
-            val map = Reflect.getObjectField(content, "groupTypeMap") ?: return
-            val type = Reflect.callMethod(map, "get", index, 0) as? Int ?: 0
-            if (type == 0) return
-            val radius = Reflect.getObjectField(content, "universalCornerRadius") as? Float ?: return
-            val top = if (type == GROUP_SINGLE || type == GROUP_FIRST) radius else 0f
-            val bottom = if (type == GROUP_SINGLE || type == GROUP_LAST) radius else 0f
-            val cls = Reflect.findClass(OUTLINE_PROVIDER_CLASS, view.context.classLoader)
-            val provider = Reflect.newInstance(cls, top, top, bottom, bottom) as? android.view.ViewOutlineProvider
-                ?: return
-            view.outlineProvider = provider
-            view.clipToOutline = true
-        }.onFailure { HookHelper.log("$tag: group outline failed", it) }
+            if (CcGlassApi.applyDetailBionicsStyle(view, view.isSelected)) {
+                bionicsDetailRows[view] = true
+                refreshDetailVisibilityOnce(view)
+            } else {
+                if (bionicsDetailRows.remove(view) == true) CcGlassApi.clearBionicsStyle(view)
+                applyDetailBlend(view, content)
+            }
+        }.onFailure { HookHelper.log("$tag: detail glass failed", it) }
+    }
+
+    private fun refreshDetailVisibilityOnce(view: View) {
+        if (view.isSelected || !view.isAttachedToWindow || view.visibility != View.VISIBLE ||
+            refreshedDetailVisibility.put(view, true) == true
+        ) return
+        view.visibility = View.INVISIBLE
+        view.postOnAnimation {
+            view.postOnAnimation {
+                if (view.visibility == View.INVISIBLE) view.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    private fun applyDetailBlend(view: View, content: Any) {
+        val arrayId = Reflect.callMethod(content, "getBlendColorsArrayId", view.isSelected) as? Int ?: return
+        CcGlassApi.forceBlurGlass(view, view.resources.getIntArray(arrayId))
+    }
+
+    private fun applyDetailTopGap(view: View, gap: Int) {
+        val params = view.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        val previous = detailTopMargins[view]
+        val base = if (previous?.second == params.topMargin) previous.first else params.topMargin
+        val target = base + gap
+        if (gap == 0) detailTopMargins.remove(view) else detailTopMargins[view] = base to target
+        if (params.topMargin == target) return
+        params.topMargin = target
+        view.layoutParams = params
     }
 
     /** 详情面板补「更多设置」按钮玻璃（列表项由 [hookDetailItems] 处理）。 */
@@ -296,7 +391,7 @@ class CcGlassHook : BaseHook() {
                 clearSliderDarkBg(column)
             }
         }
-        glassRinger(root)
+        glassRinger(root, expanded = true, needDialog = false)
         byClass(root, setOf(TIMER_SEEK_BAR_NAME))
     }
 
@@ -330,7 +425,9 @@ class CcGlassHook : BaseHook() {
         }
         glassVolumeColumns(controller, signature)
         val ringer = call(controller, "getVolumeRingerModeLayout") as? View
-        glassRinger(ringer, signature)
+        val needDialog = runCatching { Reflect.getObjectField(controller, "mNeedShowDialog") }.getOrNull() as? Boolean
+            ?: return
+        glassRinger(ringer, expanded, needDialog, signature)
         byClass(ringer, setOf(TIMER_SEEK_BAR_NAME), signature)
     }
 
@@ -373,18 +470,28 @@ class CcGlassHook : BaseHook() {
         }.onFailure { HookHelper.log("$tag: hook ringer buttons failed", it) }
     }
 
-    private fun glassRinger(root: View?, signature: Long? = null) {
+    private fun glassRinger(root: View?, expanded: Boolean, needDialog: Boolean, signature: Long? = null) {
         val view = root ?: return
+        val resources = ringerResources ?: return
         traverse(view) { child ->
             if (idName(child) != "bg_blur") return@traverse
+            val radius = runCatching {
+                Reflect.callStaticMethod(resources, "getButtonRadius", child.context, expanded, needDialog) as? Int
+            }.getOrNull() ?: return@traverse
             traverse(child) { inner ->
                 if (idName(inner) == "miui_standard_btn" && inner.background != null) {
                     inner.background = null
                 }
             }
-            if (outlined[child] != true) {
-                outlined[child] = true
-                makeCircular(child)
+            if (ringerRadii[child] != radius) {
+                ringerRadii[child] = radius
+                child.clipToOutline = true
+                child.outlineProvider = object : android.view.ViewOutlineProvider() {
+                    override fun getOutline(v: View, outline: android.graphics.Outline) {
+                        val maxRadius = minOf(v.width, v.height) / 2f
+                        outline.setRoundRect(0, 0, v.width, v.height, radius.toFloat().coerceIn(0f, maxRadius))
+                    }
+                }
             }
             if (child.background != null) child.background = null
             glass(child, signature)
@@ -580,18 +687,14 @@ class CcGlassHook : BaseHook() {
             "miui.systemui.controlcenter.widget.DetailPanelMoreButtonView"
         private const val SIDE_VOLUME_CONTROLLER =
             "com.android.systemui.miui.volume.VolumePanelViewController"
-        private const val OUTLINE_PROVIDER_CLASS =
-            "com.android.systemui.util.ViewUtils\$setCustomOutline\$1"
+        private const val RINGER_RES_CLASS =
+            "com.android.systemui.miui.volume.RingerButtonRes"
 
         /** 融合设备中心的圆形组件：每个设备 + 末尾「融合设备中心」入口。 */
         private val DEVICE_HOLDER_CLASSES = listOf(
             "miui.systemui.controlcenter.panel.main.devicecenter.devices.DeviceItemViewHolder",
             "miui.systemui.controlcenter.panel.main.devicecenter.devices.DetailViewHolder",
         )
-
-        private const val GROUP_SINGLE = 1
-        private const val GROUP_FIRST = 2
-        private const val GROUP_LAST = 3
 
         private val SLIDER_IDS = setOf("bionics_progress_bg", "progress_bg")
         private val SIDE_VOLUME_METHODS =

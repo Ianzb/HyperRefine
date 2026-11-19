@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Rect
+import android.graphics.Region
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -34,6 +36,7 @@ class AppVolumeEntryHook : BaseHook() {
 
     /** 每个 ringer 父容器对应的入口视图。 */
     private val entries = WeakHashMap<ViewGroup, View>()
+    private val dialogEntries = WeakHashMap<View, WeakReference<View>>()
     /** controller → 铃声按钮布局；只在仍 attach 时复用，避免持有已销毁的面板。 */
     private val ringerCache = WeakHashMap<Any, WeakReference<View>>()
     /** parent → 上次写入的官方按钮可见性签名，避免每次音量键都重复 setVisibility。 */
@@ -109,6 +112,8 @@ class AppVolumeEntryHook : BaseHook() {
             loadPlugin(pluginCl)
             hookAnimator(pluginCl)
             hookDialogControlCenter(pluginCl)
+            hookCollapsedTouchableRegion(pluginCl)
+            hookCollapsedShadow(pluginCl)
             hookRingerLayout(pluginCl)
             hookController(pluginCl)
             hookControllerControlCenter(pluginCl)
@@ -195,6 +200,80 @@ class AppVolumeEntryHook : BaseHook() {
             }
     }
 
+    private fun hookCollapsedTouchableRegion(pluginCl: ClassLoader) {
+        val dialogClass = Reflect.findClassIfExists(DIALOG_CLASS, pluginCl) ?: return
+        val method = dialogClass.declaredMethods.firstOrNull {
+            it.name == "onComputeInternalInsets" && it.parameterCount == 1
+        } ?: return
+        HookHelper.hookAfter(method) { param ->
+            val dialog = param.thisObject as? View ?: return@hookAfter
+            val info = param.args.getOrNull(0) ?: return@hookAfter
+            val region = runCatching { Reflect.getObjectField(info, "touchableRegion") as? Region }
+                .getOrNull() ?: return@hookAfter
+            // 原生在关闭时主动清空触区，此时不能重新纳入入口。
+            if (region.isEmpty || isControlCenterDialog(dialog) ||
+                runCatching { Reflect.callMethod(dialog, "isExpanded") }.getOrNull() != false
+            ) {
+                return@hookAfter
+            }
+            val entry = dialogEntries[dialog]?.get()?.takeIf { it.isShown && it.isClickable && it.alpha > 0f }
+                ?: return@hookAfter
+            val bounds = Rect()
+            if (!entry.getGlobalVisibleRect(bounds)) return@hookAfter
+            val location = IntArray(2)
+            entry.rootView.getLocationInWindow(location)
+            bounds.offset(location[0], location[1])
+            region.op(bounds, Region.Op.UNION)
+        }
+    }
+
+    private fun hookCollapsedShadow(pluginCl: ClassLoader) {
+        val cls = Reflect.findClassIfExists(MOTION_CLASS, pluginCl) ?: return
+        val resources = Reflect.findClassIfExists(DIALOG_RES_CLASS, pluginCl) ?: return
+        val method = cls.declaredMethods.firstOrNull {
+            it.name == "updateShadowState" && it.parameterCount == 0
+        } ?: return
+        HookHelper.hookAfter(method) { param ->
+            val motion = param.thisObject ?: return@hookAfter
+            runCatching { adjustCollapsedShadow(motion, resources) }
+                .onFailure { HookHelper.log("$tag: adjust collapsed shadow failed", it) }
+        }
+    }
+
+    private fun adjustCollapsedShadow(motion: Any, resources: Class<*>) {
+        if (!hideBothOfficialButtons() ||
+            Reflect.getObjectField(motion, "mExpanded") != false ||
+            Reflect.getObjectField(motion, "mNeedShowDialog") != true
+        ) return
+        val dialog = Reflect.getObjectField(motion, "mVolumeView") as? View ?: return
+        if (isControlCenterDialog(dialog)) return
+        val dnd = findDndRoot(dialog) ?: return
+        val parent = dnd.parent as? ViewGroup ?: return
+        val ringer = findRingerSibling(parent)
+        if (hiddenButtonRoots[dnd] != true || hiddenButtonRoots[ringer] != true) return
+        val shadow = Reflect.getObjectField(motion, "mShadowView") as? View ?: return
+        val params = shadow.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        val content = Reflect.getObjectField(motion, "mExpandBgView") as? View ?: return
+        val contentParams = content.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        val dual = Reflect.callMethod(motion, "isDualVolume") as? Boolean ?: return
+        val context = shadow.context
+        val drawable = Reflect.callStaticMethod(resources, "getShadowResource", false, dual, false) as? Int
+            ?: return
+        val height = Reflect.callStaticMethod(resources, "getShadowHeight", context, false, false, contentParams.height, dual) as? Int
+            ?: return
+        val top = Reflect.callStaticMethod(resources, "getShadowMarginTop", context, dialog.top, false, false, contentParams.topMargin, dual) as? Int
+            ?: return
+        shadow.setBackgroundResource(drawable)
+        if (params.height != height || params.topMargin != top) {
+            params.height = height
+            params.topMargin = top
+            shadow.layoutParams = params
+        }
+    }
+
+    private fun hideBothOfficialButtons(): Boolean =
+        HookPrefs.getBoolean(AppVolumeKeys.HIDE_RINGER, false) && HookPrefs.getBoolean(AppVolumeKeys.HIDE_DND, false)
+
     private fun removeEntry(root: View) {
         // 控制中心二级面板与侧边面板复用同一套官方组件；切到二级面板时模块入口
         // 和已经展开的多应用面板都必须收起，不能只隐藏入口按钮。
@@ -259,6 +338,7 @@ class AppVolumeEntryHook : BaseHook() {
             inflated
         }
         entry.visibility = View.VISIBLE
+        if (dialog != null) dialogEntries[dialog] = WeakReference(entry)
         copyOfficialMaterial(entry, dnd)
         // RingerButtonHelper 可能在 attach 后再次写入 bg_blur，布局完成后再对齐一次。
         entry.post { if (entry.isAttachedToWindow) copyOfficialMaterial(entry, dnd) }
@@ -857,7 +937,8 @@ class AppVolumeEntryHook : BaseHook() {
         var signature = if (expanded) 1L else 0L
         if (hideRinger) signature = signature or 2L
         if (hideDnd) signature = signature or 4L
-        if (officialVisibilityState[parent] == signature) return
+        val previousSignature = officialVisibilityState[parent]
+        if (previousSignature == signature) return
         val ringer = findRingerSibling(parent)
         applyOfficialButtonVisibility(ringer, hideRinger)
         applyOfficialButtonVisibility(dnd, hideDnd)
@@ -865,6 +946,12 @@ class AppVolumeEntryHook : BaseHook() {
             if (hideRinger || hideDnd) View.GONE else View.VISIBLE
         applyBothHiddenSpacing(parent, hideRinger && hideDnd, expanded)
         officialVisibilityState[parent] = signature
+        if (!expanded && (hideRinger && hideDnd || previousSignature == 6L)) {
+            val dialog = findVolumeDialog(parent) ?: return
+            runCatching {
+                Reflect.getObjectField(dialog, "mMotion")?.let { Reflect.callMethod(it, "updateShadowState") }
+            }.onFailure { HookHelper.log("$tag: refresh shadow failed", it) }
+        }
     }
 
     /**
@@ -1282,6 +1369,10 @@ class AppVolumeEntryHook : BaseHook() {
             "com.android.systemui.miui.volume.VolumeShowHideAnimator"
         private const val DIALOG_CLASS =
             "com.android.systemui.miui.volume.MiuiVolumeDialogView"
+        private const val MOTION_CLASS =
+            "com.android.systemui.miui.volume.MiuiVolumeDialogMotion"
+        private const val DIALOG_RES_CLASS =
+            "com.android.systemui.miui.volume.MiuiVolumeDialogRes"
         private const val OUTER_CLASS =
             "com.android.systemui.miui.volume.MiuiRingerModeLayout"
         private const val SEEK_BAR_CLASS =

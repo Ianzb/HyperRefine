@@ -35,6 +35,7 @@ object CcGlassApi {
     private var styleInstance: Any? = null
     private var setBackgroundStyleMethod: Method? = null
     private var setViewBlurModeMethod: Method? = null
+    private var setGlassSdfSizeMethod: Method? = null
 
     private var systemSetViewBlurMode: Method? = null
     private var systemSetBlendColorsNew: Method? = null
@@ -64,6 +65,9 @@ object CcGlassApi {
                 styleInstance = Reflect.getStaticObjectField(styleCl, "INSTANCE")
                 setBackgroundStyleMethod = styleCl.declaredMethods
                     .firstOrNull { it.name == "setMiBackgroundStyle" && it.parameterCount == 3 }
+                    ?.also { it.isAccessible = true }
+                setGlassSdfSizeMethod = styleCl.declaredMethods
+                    .firstOrNull { it.name == "setMiGlassSdfMaxSizeCompat" && it.parameterCount == 3 }
                     ?.also { it.isAccessible = true }
             }
             Reflect.findClassIfExists(BLUR_COMPAT_CLASS, pluginCl)?.let { blurCl ->
@@ -139,6 +143,50 @@ object CcGlassApi {
             HookHelper.log("CcGlass: applyStyle ${view.javaClass.simpleName} failed", it)
             false
         }
+    }
+
+    fun canApplyDetailBionicsStyle(): Boolean {
+        if (setViewBlurModeMethod == null) return false
+        return detailMaterialMode() == "Bionics"
+    }
+
+    fun detailMaterialMode(): String? {
+        val style = setBackgroundStyleMethod ?: return null
+        val mode = runCatching { Reflect.callStaticMethod(style.declaringClass, "getMaterialMode") }.getOrNull()
+        return mode?.javaClass?.simpleName
+    }
+
+    fun applyDetailBionicsStyle(view: View, selected: Boolean): Boolean {
+        if (!canApplyDetailBionicsStyle()) return false
+        val token = bionics(if (selected) "ACTIVATED_GLASS_TOKEN" else "DEFAULT_GLASS_TOKEN") ?: return false
+        // Native panels size their SDF targets before the first glass frame. Detail rows
+        // are created by the host RecyclerView and are absent from the plugin's target list.
+        runCatching { setGlassSdfSizeMethod?.invoke(null, view, view.width.toFloat(), view.height.toFloat()) }
+            .onFailure { HookHelper.log("CcGlass: set detail SDF size failed", it) }
+        if (!selected) {
+            val outline = view.outlineProvider
+            val clipToOutline = view.clipToOutline
+            // Keep the media token's native blur-enhancement state. The list still owns its outline.
+            view.background = null
+            val applied = try {
+                apply(view, "MediaItemToken")
+            } finally {
+                view.outlineProvider = outline
+                view.clipToOutline = clipToOutline
+            }
+            if (!applied && !applyStyle(view, token)) return false
+        } else {
+            if (!applyStyle(view, token)) return false
+            view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
+        view.invalidateOutline()
+        view.invalidate()
+        return true
+    }
+
+    fun clearBionicsStyle(view: View) {
+        val style = setBackgroundStyleMethod ?: return
+        Reflect.callStaticMethod(style.declaringClass, "clearBionicsMaterial", view)
     }
 
     /** 按 getter 名取材质 token（带缓存）。 */

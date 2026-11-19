@@ -110,6 +110,7 @@ object PercentText {
         icon: View?,
         iconColorRes: Int? = null,
         highlightColor: Int,
+        lowVolumeColor: Int? = null,
     ) {
         val text = percentText(value, max)
         if (tv.text.toString() != text) tv.text = text
@@ -122,7 +123,9 @@ object PercentText {
         val typeface = typefaceFor(weightFor(pref))
         if (tv.typeface !== typeface) tv.typeface = typeface
 
-        val color = textColor(pref, value, max, icon, iconColorRes, highlightColor)
+        // The floating side-volume pill is light for nonzero levels below the icon's color threshold.
+        val color = lowVolumeColor?.takeIf { value > 0 && max > 0 && value.toFloat() / max < HIGHLIGHT_RATIO }
+            ?: textColor(pref, value, max, icon, iconColorRes, highlightColor)
         if (tv.currentTextColor != color) tv.setTextColor(color)
     }
 

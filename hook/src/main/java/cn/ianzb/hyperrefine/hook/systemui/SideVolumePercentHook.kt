@@ -12,22 +12,17 @@ import cn.ianzb.hyperrefine.hook.xposed.Reflect
  *
  * 目标：`com.android.systemui.miui.volume.VolumePanelViewController` / `VolumeColumn`（插件内）
  * - `updateVolumeColumnSliderH` / `updateSuperVolumeView` 之后写入百分比文本并维护可见性
- * - `showVolumePanelH` / `initPanelView` 之后刷新一次（首次弹出未改音量时也能显示）
- * - 应用「长按展开、隐藏三个点」交互
+ * - 打开、初始化及切换展开状态时刷新，拖动期间每帧最多刷新一次
  *
  * 位置开关（`side_volume_inside`）：
  * - 关闭：收起态在音量区域上方悬浮显示（`miui_super_volume_collapsed`）；
  * - 开启：改为音量条内部上方显示（`miui_super_volume_expanded`）。
  *
- * 交互开关（`side_volume_longpress`，默认关闭）：长按音量条展开音量面板，并隐藏三个点按钮。
- *
- * 注意：`VolumeColumn.initColumn` 会把自身的拖拽监听
- * `VolumeColumn.onTouchListener` 通过 `view.setOnTouchListener(...)` 设在音量栏根视图上。
- * 直接 `setOnTouchListener` 会覆盖它导致拖动进度卡住，因此这里用包装器**保留并转调**原监听。
  */
 class SideVolumePercentHook : BaseHook() {
 
     override val key: String = KEY
+    private val pendingUpdates = java.util.WeakHashMap<View, Boolean>()
 
     override fun init() {
         val systemCl = target.classLoader ?: return
@@ -40,33 +35,29 @@ class SideVolumePercentHook : BaseHook() {
             HookHelper.log("$tag: $CONTROLLER_CLASS found (plugin CL)")
             runCatching {
                 controller.declaredMethods
-                    .filter { it.name == "updateVolumeColumnSliderH" || it.name == "updateSuperVolumeView" }
+                    .filter { it.name in UPDATE_METHODS }
                     .forEach { method ->
                         HookHelper.hookAfter(method) { param ->
                             val thiz = param.thisObject ?: return@hookAfter
-                            update(thiz, param.args.getOrNull(0))
-                        }
-                    }
-                // 首次弹出时系统在展示后才异步补列 / 数值，立即 + 延迟各刷新一次。
-                controller.declaredMethods
-                    .filter { it.name == "showVolumePanelH" || it.name == "initPanelView" }
-                    .forEach { method ->
-                        HookHelper.hookAfter(method) { param ->
-                            val thiz = param.thisObject ?: return@hookAfter
-                            update(thiz, null)
-                            val view = runCatching { Reflect.getObjectField(thiz, "mVolumeView") }.getOrNull() as? View
-                            view?.post { update(thiz, null) }
-                            view?.postDelayed({ update(thiz, null) }, 150L)
-                            view?.postDelayed({ update(thiz, null) }, 400L)
+                            scheduleUpdate(thiz)
                         }
                     }
             }.onFailure { HookHelper.log("$tag: hook failed", it) }
         }
     }
 
-    private fun update(controller: Any, columnArg: Any?) {
-        // 交互监听只在面板展示 / 初始化时安装一次，避免拖动逐帧重复反射。
+    private fun scheduleUpdate(controller: Any) {
         if (!HookPrefs.getBoolean(KEY, false)) return
+        val view = runCatching { Reflect.getObjectField(controller, "mVolumeView") }.getOrNull() as? View ?: return
+        if (pendingUpdates.put(view, true) == true) return
+        // 原生拖动可在同一帧触发两个回调，合并后再读取最终状态。
+        view.postOnAnimation {
+            pendingUpdates.remove(view)
+            if (view.isAttachedToWindow && HookPrefs.getBoolean(KEY, false)) update(controller)
+        }
+    }
+
+    private fun update(controller: Any) {
         runCatching {
             val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") }.getOrNull() as? Boolean ?: false
             val inside = HookPrefs.getBoolean(INSIDE_KEY, false)
@@ -75,42 +66,43 @@ class SideVolumePercentHook : BaseHook() {
                 HookHelper.log("$tag: inside=$inside, expanded=$expanded")
             }
 
-            // 收集相关音量栏：传入栏 + mColumns + temp 栏，逐个用各自的真实数值写入，避免动画中途停住。
-            val columns = buildList {
-                columnArg?.let { add(it) }
-                (runCatching { Reflect.getObjectField(controller, "mColumns") }.getOrNull() as? List<*>)
-                    ?.forEach { c -> c?.let { add(it) } }
-                if (!expanded) {
-                    runCatching { Reflect.getObjectField(controller, "mTempColumn") }.getOrNull()?.let { add(it) }
-                }
-            }.distinctBy { System.identityHashCode(it) }
-            if (columns.isEmpty()) return@runCatching
+            val columns = (Reflect.getObjectField(controller, "mColumns") as? List<*>).orEmpty()
+            val temp = if (expanded) null else Reflect.getObjectField(controller, "mTempColumn")
 
             val showColumn = expanded || inside
-            columns.forEach { c ->
+            fun updateColumn(c: Any) {
                 val text = runCatching { Reflect.callMethod(c, "getSuperVolume") }.getOrNull() as? TextView
-                    ?: return@forEach
-                text.setVisible(showColumn)
-                if (showColumn) {
-                    val (value, max) = valueOf(c) ?: return@forEach
-                    val icon = runCatching { Reflect.callMethod(c, "getIcon") }.getOrNull() as? View
-                    val iconColorRes = runCatching { Reflect.callMethod(c, "getIconColorRes") }.getOrNull() as? Int
-                    PercentText.show(text, value, max, PREF, icon, iconColorRes, HIGHLIGHT_COLOR)
-                    PercentText.applyVerticalPosition(text, PREF)
+                    ?: return
+                val columnView = Reflect.callMethod(c, "getView") as? View ?: return
+                if (!showColumn || columnView.visibility != View.VISIBLE) {
+                    text.setVisible(false)
+                    return
                 }
+                val (value, max) = valueOf(c) ?: return
+                val icon = runCatching { Reflect.callMethod(c, "getIcon") }.getOrNull() as? View
+                val iconColorRes = runCatching { Reflect.callMethod(c, "getIconColorRes") }.getOrNull() as? Int
+                PercentText.show(text, value, max, PREF, icon, iconColorRes, HIGHLIGHT_COLOR)
+                PercentText.applyVerticalPosition(text, PREF)
             }
+            columns.forEach { if (it != null) updateColumn(it) }
+            if (temp != null && columns.none { it === temp }) updateColumn(temp)
 
             // 悬浮文本（`miui_super_volume_collapsed`）：收起态且未开启「条内显示」时显示（仅当前激活流）。
-            val activeStream = runCatching { Reflect.getObjectField(controller, "mActiveStream") }.getOrNull() as? Int ?: -2
-            val activeColumn = columnArg
-                ?: columns.firstOrNull { runCatching { Reflect.callMethod(it, "getStream") }.getOrNull() == activeStream }
             val panelText = runCatching { Reflect.getObjectField(controller, "mSuperVolume") }.getOrNull() as? TextView
             val panelBg = runCatching { Reflect.getObjectField(controller, "mSuperVolumeBg") }.getOrNull() as? View
-            val pair = if (!inside && !expanded) activeColumn?.let { valueOf(it) } else null
+            val pair = if (!inside && !expanded) {
+                val tempVisible = Reflect.getObjectField(controller, "mShouldTempBeVisible") == true &&
+                    temp != null && (Reflect.callMethod(temp, "getView") as? View)?.visibility == View.VISIBLE
+                val active = if (tempVisible) temp else Reflect.callMethod(controller, "getActiveColumn")
+                active?.let(::valueOf)
+            } else null
             panelBg?.setVisible(pair != null)
             if (panelText != null) {
                 if (pair != null) {
-                    PercentText.show(panelText, pair.first, pair.second, PREF, null, null, HIGHLIGHT_COLOR)
+                    PercentText.show(
+                        panelText, pair.first, pair.second, PREF, null, null, HIGHLIGHT_COLOR,
+                        lowVolumeColor = 0xFF344054.toInt(),
+                    )
                     PercentText.applyVerticalPosition(panelText, PREF)
                 } else {
                     panelText.setVisible(false)
@@ -141,6 +133,9 @@ class SideVolumePercentHook : BaseHook() {
 
         /** 兜底高值喇叭图标蓝色。 */
         val HIGHLIGHT_COLOR: Int = 0xFF3482FF.toInt()
+        private val UPDATE_METHODS = setOf(
+            "updateVolumeColumnSliderH", "updateSuperVolumeView", "showVolumePanelH", "initPanelView", "updateExpandedH",
+        )
 
         private var lastInside: Boolean? = null
     }

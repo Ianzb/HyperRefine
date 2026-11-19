@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.hook.sogou.SogouImeKeys
 import cn.ianzb.hyperrefine.hook.voiceassist.VoiceAssistImeKeys
 import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
@@ -21,17 +22,14 @@ import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import cn.ianzb.hyperrefine.xposed.XposedServiceManager
 
 /**
- * 「输入法」二级页：收纳已验证可用的输入法适配。
- *
- * 搜狗输入法的玻璃材质适配尚未达到预期，暂时移到「实验性功能」，
- * 本页只保留超级小爱输入法。
+ * 实验性功能下的「输入法」页，收纳超级小爱与搜狗输入法适配。
  */
 class ImeActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.ime_title
 
     override val topBarActions: (@Composable () -> Unit)? = {
-        QuickActionsAction(listOf(VoiceAssistImeKeys.PKG_VOICE_ASSIST_IME))
+        QuickActionsAction(listOf(VoiceAssistImeKeys.PKG_VOICE_ASSIST_IME, SogouImeKeys.PKG_SOGOU_IME))
     }
 
     @Composable
@@ -58,6 +56,14 @@ class ImeActivity : BaseSubPageActivity() {
                 featureSpec(KEY_VOICE_ASSIST_IME_MATERIAL_OPACITY),
             ),
         )
+        val sogouSection = HookSection(
+            titleRes = R.string.sogou_ime_title,
+            specs = listOf(
+                featureSpec(KEY_SOGOU_IME_GLASS),
+                featureSpec(KEY_SOGOU_IME_BLUR_RADIUS),
+                featureSpec(KEY_SOGOU_IME_CORNER_RADIUS),
+            ),
+        )
 
         val listState = rememberLazyListState()
         SearchLandingLazyColumn(
@@ -78,10 +84,12 @@ class ImeActivity : BaseSubPageActivity() {
                 ),
             contentPadding = contentPadding,
         ) {
-            searchSectionItem(voiceSection) {
-                HookSectionCard(voiceSection) {
-                    voiceSection.specs.forEach { spec ->
-                        HookOptionView(spec = spec)
+            listOf(voiceSection, sogouSection).forEach { section ->
+                searchSectionItem(section) {
+                    HookSectionCard(section) {
+                        section.specs.forEach { spec ->
+                            HookOptionView(spec = spec)
+                        }
                     }
                 }
             }

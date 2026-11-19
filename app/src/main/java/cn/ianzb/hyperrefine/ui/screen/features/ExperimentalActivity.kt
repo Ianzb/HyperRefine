@@ -10,7 +10,6 @@ import androidx.compose.ui.platform.LocalContext
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.experimental.packageinstaller.InstallerExperiment
 import cn.ianzb.hyperrefine.hook.phrase.PhraseReorderKeys
-import cn.ianzb.hyperrefine.hook.sogou.SogouImeKeys
 import cn.ianzb.hyperrefine.hook.weather.WeatherKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
@@ -36,7 +35,6 @@ class ExperimentalActivity : BaseSubPageActivity() {
             QuickActionsAction(
                 listOf(
                     WeatherKeys.TARGET_PACKAGE,
-                    SogouImeKeys.PKG_SOGOU_IME,
                     PhraseReorderKeys.PKG_PHRASE,
                 ),
             )
@@ -51,6 +49,12 @@ class ExperimentalActivity : BaseSubPageActivity() {
         val scrollBehavior = LocalSubPageScrollBehavior.current
         val sections = listOf(
             HookSection(
+                specs = listOf(
+                    featureSpec(KEY_ASSISTANT),
+                    featureSpec(KEY_IME),
+                ),
+            ),
+            HookSection(
                 titleRes = R.string.section_weather,
                 specs = listOf(
                     featureSpec(KEY_WEATHER),
@@ -60,14 +64,6 @@ class ExperimentalActivity : BaseSubPageActivity() {
                 titleRes = R.string.phrase_reorder_section,
                 specs = listOf(
                     featureSpec(KEY_PHRASE_REORDER),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.sogou_ime_title,
-                specs = listOf(
-                    featureSpec(KEY_SOGOU_IME_GLASS),
-                    featureSpec(KEY_SOGOU_IME_BLUR_RADIUS),
-                    featureSpec(KEY_SOGOU_IME_CORNER_RADIUS),
                 ),
             ),
         )
@@ -97,8 +93,10 @@ class ExperimentalActivity : BaseSubPageActivity() {
                             HookOptionView(
                                 spec = spec,
                                 onArrowClick = {
-                                    if (spec.key == KEY_WEATHER) {
-                                        context.startActivity(Intent(context, WeatherActivity::class.java))
+                                    when (spec.key) {
+                                        KEY_ASSISTANT -> context.startActivity(Intent(context, AssistantActivity::class.java))
+                                        KEY_IME -> context.startActivity(Intent(context, ImeActivity::class.java))
+                                        KEY_WEATHER -> context.startActivity(Intent(context, WeatherActivity::class.java))
                                     }
                                 },
                             )

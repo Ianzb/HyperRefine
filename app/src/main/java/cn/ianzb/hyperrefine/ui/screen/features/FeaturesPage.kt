@@ -67,11 +67,9 @@ fun FeaturesPageView(
                 specs = listOf(
                     specByKey(specs, KEY_SYSTEM_UI),
                     specByKey(specs, KEY_APP_BEAUTIFY),
-                    specByKey(specs, KEY_IME),
                     specByKey(specs, KEY_DEVICE_CONNECT),
                     specByKey(specs, KEY_SECURITY_CENTER),
                     specByKey(specs, KEY_VOICE_ASSIST),
-                    specByKey(specs, KEY_ASSISTANT),
                     specByKey(specs, KEY_PASSKEY),
                     specByKey(specs, KEY_BROWSER),
                     specByKey(specs, KEY_EXPERIMENTAL),
@@ -213,14 +211,6 @@ fun FeaturesPageView(
                 ),
             ),
             HookSubPage(
-                titleRes = R.string.ime_title,
-                specs = listOf(
-                    specByKey(specs, KEY_VOICE_ASSIST_IME_GLOBAL_MATERIAL),
-                    specByKey(specs, KEY_VOICE_ASSIST_IME_MATERIAL_OPACITY),
-                ),
-                onOpen = { key -> context.startActivity(Intent(context, ImeActivity::class.java).withSearchTarget(key)) },
-            ),
-            HookSubPage(
                 titleRes = R.string.device_connect,
                 specs = deviceConnectSpecs(specs),
                 onOpen = { key -> context.startActivity(Intent(context, DeviceConnectActivity::class.java).withSearchTarget(key)) },
@@ -236,11 +226,6 @@ fun FeaturesPageView(
                 onOpen = { key -> context.startActivity(Intent(context, VoiceAssistActivity::class.java).withSearchTarget(key)) },
             ),
             HookSubPage(
-                titleRes = R.string.feature_assistant,
-                specs = assistantSpecs(specs),
-                onOpen = { key -> context.startActivity(Intent(context, AssistantActivity::class.java).withSearchTarget(key)) },
-            ),
-            HookSubPage(
                 titleRes = R.string.section_passkey,
                 specs = passkeySpecs(specs),
                 onOpen = { key -> context.startActivity(Intent(context, PasskeyActivity::class.java).withSearchTarget(key)) },
@@ -254,14 +239,29 @@ fun FeaturesPageView(
                 titleRes = R.string.section_experimental,
                 specs = listOf(
                     specByKey(specs, KEY_WEATHER),
-                    specByKey(specs, KEY_SOGOU_IME_GLASS),
-                    specByKey(specs, KEY_SOGOU_IME_BLUR_RADIUS),
-                    specByKey(specs, KEY_SOGOU_IME_CORNER_RADIUS),
+                    specByKey(specs, KEY_ASSISTANT),
+                    specByKey(specs, KEY_IME),
                     specByKey(specs, KEY_PHRASE_REORDER),
                     InstallerExperiment.entrySpec(),
                 ),
                 onOpen = { key -> context.startActivity(Intent(context, ExperimentalActivity::class.java).withSearchTarget(key)) },
                 subPages = listOf(
+                    HookSubPage(
+                        titleRes = R.string.feature_assistant,
+                        specs = assistantSpecs(specs),
+                        onOpen = { key -> context.startActivity(Intent(context, AssistantActivity::class.java).withSearchTarget(key)) },
+                    ),
+                    HookSubPage(
+                        titleRes = R.string.ime_title,
+                        specs = listOf(
+                            specByKey(specs, KEY_VOICE_ASSIST_IME_GLOBAL_MATERIAL),
+                            specByKey(specs, KEY_VOICE_ASSIST_IME_MATERIAL_OPACITY),
+                            specByKey(specs, KEY_SOGOU_IME_GLASS),
+                            specByKey(specs, KEY_SOGOU_IME_BLUR_RADIUS),
+                            specByKey(specs, KEY_SOGOU_IME_CORNER_RADIUS),
+                        ),
+                        onOpen = { key -> context.startActivity(Intent(context, ImeActivity::class.java).withSearchTarget(key)) },
+                    ),
                     HookSubPage(
                         titleRes = R.string.feature_weather,
                         specs = weatherSpecs(specs),
@@ -279,16 +279,12 @@ fun FeaturesPageView(
                 context.startActivity(Intent(context, SystemUiActivity::class.java).withSearchTarget(searchTarget))
             KEY_APP_BEAUTIFY ->
                 context.startActivity(Intent(context, AppBeautifyActivity::class.java).withSearchTarget(searchTarget))
-            KEY_IME ->
-                context.startActivity(Intent(context, ImeActivity::class.java).withSearchTarget(searchTarget))
             KEY_SECURITY_CENTER ->
                 context.startActivity(Intent(context, SecurityCenterActivity::class.java).withSearchTarget(searchTarget))
             KEY_DEVICE_CONNECT ->
                 context.startActivity(Intent(context, DeviceConnectActivity::class.java).withSearchTarget(searchTarget))
             KEY_VOICE_ASSIST ->
                 context.startActivity(Intent(context, VoiceAssistActivity::class.java).withSearchTarget(searchTarget))
-            KEY_ASSISTANT ->
-                context.startActivity(Intent(context, AssistantActivity::class.java).withSearchTarget(searchTarget))
             KEY_PASSKEY ->
                 context.startActivity(Intent(context, PasskeyActivity::class.java).withSearchTarget(searchTarget))
             KEY_BROWSER ->

@@ -6,7 +6,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.captionBar
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -117,7 +123,7 @@ fun AppTopAppBar(
         isContentScrolled = contentScrolled,
         // 背景带固定在 y=0（覆盖状态栏），前景内容自己让出状态栏高度。
         contentModifier = Modifier
-            .statusBarsPadding()
+            .windowInsetsPadding(appTopBarSafeInsets())
             .windowInsetsPadding(AppPageContentWindowInsets)
             .padding(start = pageStartInset),
         backdrop = if (glass) backdrop else null,
@@ -237,3 +243,10 @@ private fun BackNavigationButton(
  */
 internal fun isGlassTopBarAvailable(): Boolean =
     isRuntimeShaderSupported() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+
+@Composable
+internal fun appTopBarSafeInsets(): WindowInsets =
+    WindowInsets.systemBars
+        .union(WindowInsets.captionBar)
+        .union(WindowInsets.displayCutout)
+        .only(WindowInsetsSides.Top)

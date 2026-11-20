@@ -35,8 +35,8 @@ android {
         applicationId = "cn.ianzb.hyperrefine"
         minSdk = 35
         targetSdk = 37
-        versionCode = 26
-        versionName = "1.15.1"
+        versionCode = 27
+        versionName = "1.16.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -118,6 +118,7 @@ dependencies {
     implementation(libs.miuix.glass.icons)
     implementation(libs.commonmark)
 }
+
 
 
 

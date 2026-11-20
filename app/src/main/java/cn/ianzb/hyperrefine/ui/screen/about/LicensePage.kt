@@ -81,10 +81,10 @@ private val licenseSections: List<LicenseSection> = listOf(
                 "https://developer.android.com/jetpack/androidx/releases/compose-material3",
             ),
             LibraryInfo(
-                "commonmark-java",
-                "0.30.0",
-                "BSD-2-Clause",
-                "https://github.com/commonmark/commonmark-java",
+                "Compose Material Icons Core",
+                "1.7.8",
+                "Apache-2.0",
+                "https://developer.android.com/jetpack/androidx/releases/compose-material",
             ),
             LibraryInfo(
                 "commonmark-java",

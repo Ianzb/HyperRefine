@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.ui.icons.CheckCircleOutlineIcon
+import cn.ianzb.hyperrefine.ui.icons.ErrorOutlineIcon
+import cn.ianzb.hyperrefine.ui.icons.RemoveCircleOutlineIcon
 import cn.ianzb.hyperrefine.ui.component.AppSectionCard
 import cn.ianzb.hyperrefine.prefs.OptionRegistry
 import cn.ianzb.hyperrefine.prefs.OptionType
@@ -45,10 +48,6 @@ import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.glass.Error
-import top.yukonga.miuix.kmp.icon.glass.Prohibit
-import top.yukonga.miuix.kmp.icon.glass.Ok
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
@@ -124,9 +123,9 @@ fun HomePageView(
             }
             // 未激活 = 叉号；已激活但无 Root = 圈中横线；正常 = 对号。
             val statusIcon: ImageVector = when {
-                !activated -> MiuixIcons.Glass.Error
-                rootMissing -> MiuixIcons.Glass.Prohibit
-                else -> MiuixIcons.Glass.Ok
+                !activated -> ErrorOutlineIcon
+                rootMissing -> RemoveCircleOutlineIcon
+                else -> CheckCircleOutlineIcon
             }
 
             val openScopeList = {

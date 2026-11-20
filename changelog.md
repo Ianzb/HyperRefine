@@ -20,6 +20,8 @@
 
 ### 修复
 
+- **主页状态卡片**：恢复圆形轮廓状态图标，分别表示模块未激活、缺少 Root 和正常运行。
+
 - **侧边音量条**：多应用音量入口的触区跟随打开动画中的实际绘制位置（[#88](https://github.com/Ianzb/HyperRefine/issues/88)）。合并同帧音量百分比刷新，减少拖动时的重复更新（[#87](https://github.com/Ianzb/HyperRefine/issues/87)）；悬浮百分比在低音量的浅色底上改用深色文字（[#84](https://github.com/Ianzb/HyperRefine/issues/84)）。
 - **静音／勿扰**：收起面板同时隐藏两个按钮时，使用系统无按钮区阴影尺寸（[#85](https://github.com/Ianzb/HyperRefine/issues/85)）；柔光玻璃底层与按钮使用同一圆角（[#86](https://github.com/Ianzb/HyperRefine/issues/86)）。
 - **控制中心柔光玻璃**：WLAN、移动数据和蓝牙详情逐项使用系统柔光玻璃，卡片保留独立四角和间距（[#89](https://github.com/Ianzb/HyperRefine/issues/89)）。

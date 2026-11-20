@@ -12,6 +12,7 @@ composeBom = "2026.09.00"
 
 # OS4 玻璃组件（miuix-glass / miuix-material / miuix-glass-icons 自 0.9.5-beta01 起已上架 Maven Central）
 miuix = "0.9.5-beta02"
+materialIcons = "1.7.8"
 
 libxposed = "102.0.0"
 dexkit = "2.3.0"
@@ -46,6 +47,7 @@ miuix-navigation = { group = "top.yukonga.miuix.kmp", name = "miuix-nav-android"
 miuix-material = { group = "top.yukonga.miuix.kmp", name = "miuix-material-android", version.ref = "miuix" }
 miuix-glass = { group = "top.yukonga.miuix.kmp", name = "miuix-glass-android", version.ref = "miuix" }
 miuix-glass-icons = { group = "top.yukonga.miuix.kmp", name = "miuix-glass-icons-android", version.ref = "miuix" }
+material-icons = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "materialIcons" }
 
 
 libxposed-api = { group = "io.github.libxposed", name = "api", version.ref = "libxposed" }

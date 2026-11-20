@@ -427,16 +427,14 @@ private fun MainScreen(
         }
     }
 
-    val railTitleObstruction: () -> Dp = remember(useRail, sidebarState) {
-        // GlassTopAppBar takes a Dp during composition. Publish only the settled
-        // capsule obstruction and keep continuous sidebar movement in layout.
-        val obstruction = derivedStateOf(structuralEqualityPolicy()) {
-            if (useRail && !sidebarState.expanded && sidebarState.progress <= 0f &&
-                sidebarState.collapsedWidth > 0.dp
-            ) sidebarState.collapsedStart else Dp.Unspecified
+    val railTitleObstruction: () -> Dp = remember(useRail, sidebarState, sidebarInset) {
+        {
+            if (useRail && !sidebarState.expanded && sidebarState.collapsedWidth > 0.dp) {
+                (sidebarState.collapsedStart - sidebarInset()).coerceAtLeast(0.dp)
+            } else {
+                Dp.Unspecified
+            }
         }
-        val readObstruction: () -> Dp = { obstruction.value }
-        readObstruction
     }
     CompositionLocalProvider(
         LocalAppSearchState provides searchState,

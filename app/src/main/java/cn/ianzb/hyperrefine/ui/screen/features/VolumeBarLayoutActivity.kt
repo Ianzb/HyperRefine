@@ -26,87 +26,99 @@ class VolumeBarLayoutActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.volume_bar_layout_title
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui")) }
+    override val topBarActions: @Composable () -> Unit = VolumeBarLayoutActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        VolumeBarLayoutContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val VolumeBarLayoutActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.android.systemui")) }
+
+@Composable
+internal fun VolumeBarLayoutContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val sections = listOf(
+        HookSection(
+            titleRes = R.string.volume_bar_panel_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.PANEL_BG),
+                featureSpec(VolumeBarKeys.PANEL_PAD_VERTICAL),
+                featureSpec(VolumeBarKeys.PANEL_PAD_HORIZONTAL),
+            ),
+        ),
+        HookSection(
+            titleRes = R.string.volume_bar_size_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.BAR_SIZE),
+                featureSpec(VolumeBarKeys.BAR_HEIGHT),
+                featureSpec(VolumeBarKeys.BAR_WIDTH),
+            ),
+        ),
+        HookSection(
+            titleRes = R.string.volume_bar_button_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.BUTTON_STYLE),
+                featureSpec(VolumeBarKeys.BUTTON_WIDTH),
+                featureSpec(VolumeBarKeys.BUTTON_HEIGHT),
+                featureSpec(VolumeBarKeys.BUTTON_RADIUS),
+            ),
+        ),
+        HookSection(
+            titleRes = R.string.volume_bar_spacing_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.SPACING),
+                featureSpec(VolumeBarKeys.COLUMN_SPACING),
+            ),
+        ),
+        HookSection(
+            titleRes = R.string.side_volume_pos_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.SIDE_POS),
+                featureSpec(VolumeBarKeys.SIDE_POS_PORTRAIT),
+                featureSpec(VolumeBarKeys.SIDE_POS_LANDSCAPE),
+            ),
+        ),
+        HookSection(
+            titleRes = R.string.volume_bar_l2_pos_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.L2_POS),
+                featureSpec(VolumeBarKeys.L2_POS_PORTRAIT),
+                featureSpec(VolumeBarKeys.L2_POS_LANDSCAPE),
+            ),
+        ),
+        HookSection(
+            titleRes = R.string.volume_bar_auto_balance_section,
+            specs = listOf(
+                featureSpec(VolumeBarKeys.AUTO_BALANCE_PORTRAIT),
+                featureSpec(VolumeBarKeys.AUTO_BALANCE_LANDSCAPE),
+            ),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = contentPadding,
     ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val sections = listOf(
-            HookSection(
-                titleRes = R.string.volume_bar_panel_section,
-                specs = listOf(
-                    featureSpec(VolumeBarKeys.PANEL_BG),
-                    featureSpec(VolumeBarKeys.PANEL_PAD_VERTICAL),
-                    featureSpec(VolumeBarKeys.PANEL_PAD_HORIZONTAL),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.volume_bar_size_section,
-                specs = listOf(
-                    featureSpec(VolumeBarKeys.BAR_SIZE),
-                    featureSpec(VolumeBarKeys.BAR_HEIGHT),
-                    featureSpec(VolumeBarKeys.BAR_WIDTH),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.volume_bar_spacing_section,
-                specs = listOf(
-                    featureSpec(VolumeBarKeys.SPACING),
-                    featureSpec(VolumeBarKeys.COLUMN_SPACING),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.side_volume_pos_section,
-                specs = listOf(
-                    featureSpec(VolumeBarKeys.SIDE_POS),
-                    featureSpec(VolumeBarKeys.SIDE_POS_PORTRAIT),
-                    featureSpec(VolumeBarKeys.SIDE_POS_LANDSCAPE),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.volume_bar_l2_pos_section,
-                specs = listOf(
-                    featureSpec(VolumeBarKeys.L2_POS),
-                    featureSpec(VolumeBarKeys.L2_POS_PORTRAIT),
-                    featureSpec(VolumeBarKeys.L2_POS_LANDSCAPE),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.volume_bar_auto_balance_section,
-                specs = listOf(
-                    featureSpec(VolumeBarKeys.AUTO_BALANCE_PORTRAIT),
-                    featureSpec(VolumeBarKeys.AUTO_BALANCE_LANDSCAPE),
-                ),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            sections.forEach { section ->
-                searchSectionItem(section) {
-                    HookSectionCard(section) {
-                        section.specs.forEach { HookOptionView(it) }
-                    }
+        sections.forEach { section ->
+            searchSectionItem(section) {
+                HookSectionCard(section) {
+                    section.specs.forEach { HookOptionView(it) }
                 }
             }
         }

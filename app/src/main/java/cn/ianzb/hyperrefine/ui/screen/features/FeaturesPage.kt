@@ -1,7 +1,9 @@
 package cn.ianzb.hyperrefine.ui.screen.features
 
 import android.content.Context
-import android.content.Intent
+import cn.ianzb.hyperrefine.ui.screen.subpage.AppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.LocalOpenAppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.openAppSubPage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -44,7 +46,6 @@ import cn.ianzb.hyperrefine.ui.component.pref.HookOptionsPage
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
 import cn.ianzb.hyperrefine.ui.component.pref.HookSubPage
 import cn.ianzb.hyperrefine.ui.component.pref.FIRST_SEARCH_SECTION
-import cn.ianzb.hyperrefine.ui.component.pref.withSearchTarget
 
 /**
  * 功能页：模块全部功能入口（系统界面 → 控制中心 / 侧边音量条；安全服务 → 快充加速通知）。
@@ -59,6 +60,7 @@ fun FeaturesPageView(
     onSearchKeyHandled: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val openInHost = LocalOpenAppSubPage.current
     val specs = remember { featureSpecs() }
     // 一级入口是一个扁平列表（不套小标题）：系统类目标在前，跨应用功能集在后。
     val sections = remember(specs) {
@@ -78,7 +80,7 @@ fun FeaturesPageView(
         )
     }
     // 每个一级入口都是二级页；通过嵌套 subPages 让搜索直达多级功能。
-    val subPages = remember(specs) {
+    val subPages = remember(specs, context, openInHost) {
         listOf(
             HookSubPage(
                 titleRes = R.string.feature_system_ui,
@@ -99,7 +101,7 @@ fun FeaturesPageView(
                     specByKey(specs, KEY_DARK_MODE),
                     specByKey(specs, KEY_WINDOW_MANAGER),
                 ),
-                onOpen = { key -> context.startActivity(Intent(context, SystemUiActivity::class.java).withSearchTarget(key)) },
+                onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.SystemUi, key) },
                 subPages = listOf(
                     HookSubPage(
                         titleRes = R.string.sb_title,
@@ -110,73 +112,73 @@ fun FeaturesPageView(
                             } else {
                                 StatusBarIconRegistry.MOBILE
                             }
-                            openDetail(context, component, key)
+                            openDetail(context, openInHost, component, key)
                         },
                     ),
                     HookSubPage(
                         titleRes = R.string.notifications_title,
                         specs = notificationSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, NotificationsActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Notifications, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.feature_glass,
                         specs = glassSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, GlassActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Glass, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.cc_radius_title,
                         specs = cornerRadiusSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, CornerRadiusActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.CornerRadius, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.appearance_cc_brightness,
                         specs = locationSpecs(specs, PercentLocation.CC_BRIGHTNESS),
-                        onOpen = { key -> context.startActivity(percentStyleIntent(context, PercentLocation.CC_BRIGHTNESS).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.CcBrightness, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.section_device_center,
                         specs = deviceCenterSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, DeviceCenterActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.DeviceCenter, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.network_section,
                         specs = networkSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, NetworkActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Network, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.appearance_cc_volume,
                         specs = locationSpecs(specs, PercentLocation.CC_VOLUME),
-                        onOpen = { key -> context.startActivity(percentStyleIntent(context, PercentLocation.CC_VOLUME).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.CcVolume, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.appearance_side_volume,
                         specs = locationSpecs(specs, PercentLocation.SIDE_VOLUME),
-                        onOpen = { key -> context.startActivity(percentStyleIntent(context, PercentLocation.SIDE_VOLUME).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.SideVolume, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.app_volume_section,
                         specs = appVolumeSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, AppVolumeActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.AppVolume, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.volume_bar_layout_title,
                         specs = volumeBarLayoutSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, VolumeBarLayoutActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.VolumeBarLayout, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.aod_section,
                         specs = aodSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, AodActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Aod, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.section_wallpaper,
                         specs = wallpaperSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, WallpaperActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Wallpaper, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.section_dark_mode,
                         specs = listOf(specByKey(specs, KEY_DARK_MODE_SCHEDULE)),
-                        onOpen = { key -> context.startActivity(Intent(context, DarkModeActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.DarkMode, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.feature_window_manager,
@@ -192,7 +194,7 @@ fun FeaturesPageView(
                             specByKey(specs, SplitScreenKeys.DISABLE_CORNER_FREEFORM),
                             specByKey(specs, SplitScreenKeys.FREEFORM_FREE_RATIO),
                         ),
-                        onOpen = { key -> context.startActivity(Intent(context, WindowManagerActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.WindowManager, key) },
                     ),
                 ),
             ),
@@ -201,39 +203,39 @@ fun FeaturesPageView(
                 specs = listOf(
                     specByKey(specs, KEY_TOP_BAR_BLUR),
                 ),
-                onOpen = { key -> context.startActivity(Intent(context, AppBeautifyActivity::class.java).withSearchTarget(key)) },
+                onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.AppBeautify, key) },
                 subPages = listOf(
                     HookSubPage(
                         titleRes = R.string.feature_top_bar_blur,
                         specs = topBarSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, TopBarBlurActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.TopBarBlur, key) },
                     ),
                 ),
             ),
             HookSubPage(
                 titleRes = R.string.device_connect,
                 specs = deviceConnectSpecs(specs),
-                onOpen = { key -> context.startActivity(Intent(context, DeviceConnectActivity::class.java).withSearchTarget(key)) },
+                onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.DeviceConnect, key) },
             ),
             HookSubPage(
                 titleRes = R.string.section_security_center,
                 specs = securityCenterSpecs(specs),
-                onOpen = { key -> context.startActivity(Intent(context, SecurityCenterActivity::class.java).withSearchTarget(key)) },
+                onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.SecurityCenter, key) },
             ),
             HookSubPage(
                 titleRes = R.string.section_voice_assist,
                 specs = listOf(specByKey(specs, KEY_SR_ANIMATION_RADIUS)),
-                onOpen = { key -> context.startActivity(Intent(context, VoiceAssistActivity::class.java).withSearchTarget(key)) },
+                onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.VoiceAssist, key) },
             ),
             HookSubPage(
                 titleRes = R.string.section_passkey,
                 specs = passkeySpecs(specs),
-                onOpen = { key -> context.startActivity(Intent(context, PasskeyActivity::class.java).withSearchTarget(key)) },
+                onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Passkey, key) },
             ),
             HookSubPage(
                 titleRes = R.string.section_browser,
                 specs = browserSpecs(specs),
-                onOpen = { key -> context.startActivity(Intent(context, BrowserActivity::class.java).withSearchTarget(key)) },
+                onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Browser, key) },
             ),
             HookSubPage(
                 titleRes = R.string.section_experimental,
@@ -244,12 +246,12 @@ fun FeaturesPageView(
                     specByKey(specs, KEY_PHRASE_REORDER),
                     InstallerExperiment.entrySpec(),
                 ),
-                onOpen = { key -> context.startActivity(Intent(context, ExperimentalActivity::class.java).withSearchTarget(key)) },
+                onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Experimental, key) },
                 subPages = listOf(
                     HookSubPage(
                         titleRes = R.string.feature_assistant,
                         specs = assistantSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, AssistantActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Assistant, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.ime_title,
@@ -260,14 +262,14 @@ fun FeaturesPageView(
                             specByKey(specs, KEY_SOGOU_IME_BLUR_RADIUS),
                             specByKey(specs, KEY_SOGOU_IME_CORNER_RADIUS),
                         ),
-                        onOpen = { key -> context.startActivity(Intent(context, ImeActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Ime, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.feature_weather,
                         specs = weatherSpecs(specs),
-                        onOpen = { key -> context.startActivity(Intent(context, WeatherActivity::class.java).withSearchTarget(key)) },
+                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Weather, key) },
                     ),
-                    InstallerExperiment.searchPage(context),
+                    InstallerExperiment.searchPage(context, openInHost),
                 ),
             ),
         )
@@ -276,23 +278,23 @@ fun FeaturesPageView(
     fun openEntry(spec: OptionSpec, searchTarget: String? = null) {
         when (spec.key) {
             KEY_SYSTEM_UI ->
-                context.startActivity(Intent(context, SystemUiActivity::class.java).withSearchTarget(searchTarget))
+                openAppSubPage(context, openInHost, AppSubPage.SystemUi, searchTarget)
             KEY_APP_BEAUTIFY ->
-                context.startActivity(Intent(context, AppBeautifyActivity::class.java).withSearchTarget(searchTarget))
+                openAppSubPage(context, openInHost, AppSubPage.AppBeautify, searchTarget)
             KEY_SECURITY_CENTER ->
-                context.startActivity(Intent(context, SecurityCenterActivity::class.java).withSearchTarget(searchTarget))
+                openAppSubPage(context, openInHost, AppSubPage.SecurityCenter, searchTarget)
             KEY_DEVICE_CONNECT ->
-                context.startActivity(Intent(context, DeviceConnectActivity::class.java).withSearchTarget(searchTarget))
+                openAppSubPage(context, openInHost, AppSubPage.DeviceConnect, searchTarget)
             KEY_VOICE_ASSIST ->
-                context.startActivity(Intent(context, VoiceAssistActivity::class.java).withSearchTarget(searchTarget))
+                openAppSubPage(context, openInHost, AppSubPage.VoiceAssist, searchTarget)
             KEY_PASSKEY ->
-                context.startActivity(Intent(context, PasskeyActivity::class.java).withSearchTarget(searchTarget))
+                openAppSubPage(context, openInHost, AppSubPage.Passkey, searchTarget)
             KEY_BROWSER ->
-                context.startActivity(Intent(context, BrowserActivity::class.java).withSearchTarget(searchTarget))
+                openAppSubPage(context, openInHost, AppSubPage.Browser, searchTarget)
             KEY_EXPERIMENTAL ->
-                context.startActivity(Intent(context, ExperimentalActivity::class.java).withSearchTarget(searchTarget))
+                openAppSubPage(context, openInHost, AppSubPage.Experimental, searchTarget)
             KEY_WEATHER ->
-                context.startActivity(Intent(context, WeatherActivity::class.java).withSearchTarget(searchTarget))
+                openAppSubPage(context, openInHost, AppSubPage.Weather, searchTarget)
         }
     }
 
@@ -379,10 +381,6 @@ const val KEY_FAST_CHARGE_ENTER = "security_center_fast_charge_enter_notify"
 const val KEY_FAST_CHARGE_EXIT = "security_center_fast_charge_exit_notify"
 const val SIDE_INSIDE_KEY = "side_volume_inside"
 const val SIDE_LONGPRESS_KEY = AppVolumeKeys.SIDE_LONGPRESS
-
-fun percentStyleIntent(context: Context, location: String): Intent =
-    Intent(context, PercentStyleActivity::class.java)
-        .putExtra(PercentStyleActivity.EXTRA_LOCATION, location)
 
 /** 位置标识：与配置键前缀一致。 */
 object PercentLocation {
@@ -528,6 +526,10 @@ private fun volumeBarLayoutSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, VolumeBarKeys.BAR_SIZE),
         specByKey(specs, VolumeBarKeys.BAR_HEIGHT),
         specByKey(specs, VolumeBarKeys.BAR_WIDTH),
+        specByKey(specs, VolumeBarKeys.BUTTON_STYLE),
+        specByKey(specs, VolumeBarKeys.BUTTON_WIDTH),
+        specByKey(specs, VolumeBarKeys.BUTTON_HEIGHT),
+        specByKey(specs, VolumeBarKeys.BUTTON_RADIUS),
         specByKey(specs, VolumeBarKeys.SPACING),
         specByKey(specs, VolumeBarKeys.COLUMN_SPACING),
         specByKey(specs, VolumeBarKeys.SIDE_POS),
@@ -1993,6 +1995,55 @@ private fun buildVolumeBarSpecs(systemUi: List<String>): List<OptionSpec> = list
         sliderValueLabelRes = R.string.volume_bar_width,
         targetPackages = systemUi,
         dependsOn = VolumeBarKeys.BAR_SIZE,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.BUTTON_STYLE,
+        type = OptionType.SWITCH,
+        titleRes = R.string.volume_bar_button_style,
+        summaryRes = R.string.volume_bar_button_style_summary,
+        targetPackages = systemUi,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.BUTTON_WIDTH,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_button_width,
+        defaultFloat = VolumeBarKeys.DEFAULT_BUTTON_WIDTH,
+        sliderMin = 24f,
+        sliderMax = 140f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.cc_radius_unit,
+        sliderValueLabelRes = R.string.volume_bar_button_width,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.BUTTON_STYLE,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.BUTTON_HEIGHT,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_button_height,
+        defaultFloat = VolumeBarKeys.DEFAULT_BUTTON_HEIGHT,
+        sliderMin = 24f,
+        sliderMax = 100f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.cc_radius_unit,
+        sliderValueLabelRes = R.string.volume_bar_button_height,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.BUTTON_STYLE,
+    ),
+    OptionSpec(
+        key = VolumeBarKeys.BUTTON_RADIUS,
+        type = OptionType.SLIDER,
+        titleRes = R.string.volume_bar_button_radius,
+        defaultFloat = VolumeBarKeys.DEFAULT_BUTTON_RADIUS,
+        sliderMin = 0f,
+        sliderMax = 50f,
+        sliderStep = 1f,
+        sliderDecimals = 0,
+        sliderUnitRes = R.string.cc_radius_unit,
+        sliderValueLabelRes = R.string.volume_bar_button_radius,
+        targetPackages = systemUi,
+        dependsOn = VolumeBarKeys.BUTTON_STYLE,
     ),
     OptionSpec(
         key = VolumeBarKeys.SPACING,

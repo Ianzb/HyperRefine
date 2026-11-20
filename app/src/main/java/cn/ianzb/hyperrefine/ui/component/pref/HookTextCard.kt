@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,9 +21,9 @@ import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.ui.component.AppDialog
 import cn.ianzb.hyperrefine.ui.component.AppDialogButton
 import cn.ianzb.hyperrefine.ui.component.AppDialogButtonRow
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.glass.GlassTextField
 import top.yukonga.miuix.kmp.preference.SwitchPreference
+import cn.ianzb.hyperrefine.ui.component.AppArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 
@@ -62,7 +64,7 @@ fun HookTextCard(
                 enabled = enabled,
             )
         }
-        ArrowPreference(
+        AppArrowPreference(
             title = stringResource(spec.titleRes),
             summary = value.ifEmpty { spec.defaultString }.ifEmpty { emptyHint },
             onClick = { if (enabled && masterEnabled) showDialog = true },
@@ -81,7 +83,7 @@ private fun TextValueDialog(
     onDismiss: () -> Unit,
 ) {
     val current = ConfigState.string(spec.key, spec.defaultString).ifEmpty { spec.defaultString }
-    var input by remember { mutableStateOf(current) }
+    val input = rememberTextFieldState(current)
 
     AppDialog(
         show = true,
@@ -111,11 +113,10 @@ private fun TextValueDialog(
                 )
             }
             Spacer(Modifier.padding(top = 8.dp))
-            TextField(
-                value = input,
-                onValueChange = { input = it },
+            GlassTextField(
+                state = input,
                 label = stringResource(R.string.hook_text_placeholder),
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 modifier = Modifier.fillMaxWidth(),
             )
             AppDialogButtonRow {
@@ -135,7 +136,7 @@ private fun TextValueDialog(
                 AppDialogButton(
                     text = stringResource(R.string.action_confirm),
                     onClick = {
-                        ConfigState.set(spec.key, input)
+                        ConfigState.set(spec.key, input.text.toString())
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f),

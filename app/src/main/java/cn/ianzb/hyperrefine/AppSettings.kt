@@ -39,7 +39,9 @@ enum class RailStyle(val value: Int) {
     val isEnabled: Boolean get() = this != None
 
     companion object {
-        fun fromValue(value: Int): RailStyle = entries.firstOrNull { it.value == value } ?: Top
+        val Default = Left
+
+        fun fromValue(value: Int): RailStyle = entries.firstOrNull { it.value == value } ?: Default
     }
 }
 
@@ -47,7 +49,7 @@ enum class RailStyle(val value: Int) {
 data class AppSettings(
     val themeMode: String = "System",
     val bottomBarStyle: BottomBarStyle = BottomBarStyle.HyperOS,
-    val railStyle: RailStyle = RailStyle.Top,
+    val railStyle: RailStyle = RailStyle.Default,
     val isBlurEnabled: Boolean = true,
     val checkUpdateOnLaunch: Boolean = true,
     val language: String = "",
@@ -91,7 +93,7 @@ data class AppSettings(
                         ).value,
                     )
                 ),
-                railStyle = RailStyle.fromValue(obj.optInt("railStyle", RailStyle.Top.value)),
+                railStyle = RailStyle.fromValue(obj.optInt("railStyle", RailStyle.Default.value)),
                 isBlurEnabled = obj.optBoolean("isBlurEnabled", true),
                 checkUpdateOnLaunch = obj.optBoolean("checkUpdateOnLaunch", true),
                 language = obj.optString("language", ""),
@@ -114,7 +116,7 @@ data class AppSettings(
                         ).value,
                     )
                 ),
-                railStyle = RailStyle.fromValue(prefs.getInt(KEY_RAIL_STYLE, RailStyle.Top.value)),
+                railStyle = RailStyle.fromValue(prefs.getInt(KEY_RAIL_STYLE, RailStyle.Default.value)),
                 isBlurEnabled = prefs.getBoolean(KEY_BLUR_ENABLED, true),
                 checkUpdateOnLaunch = prefs.getBoolean(KEY_CHECK_UPDATE_ON_LAUNCH, true),
                 language = LocaleHelper.getSavedLanguage(context).code,

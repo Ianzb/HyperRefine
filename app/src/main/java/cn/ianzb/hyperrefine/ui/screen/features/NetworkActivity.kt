@@ -23,44 +23,47 @@ class NetworkActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.network_section
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui")) }
+    override val topBarActions: @Composable () -> Unit = NetworkActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val networkSection = HookSection(
-            titleRes = R.string.network_section,
-            specs = listOf(
-                featureSpec(KEY_FIVE_G),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(networkSection) {
-                HookSectionCard(networkSection) {
-                    networkSection.specs.forEach { HookOptionView(it) }
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        NetworkContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val NetworkActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.android.systemui")) }
+
+@Composable
+internal fun NetworkContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val networkSection = HookSection(
+        titleRes = R.string.network_section,
+        specs = listOf(
+            featureSpec(KEY_FIVE_G),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(networkSection) {
+            HookSectionCard(networkSection) {
+                networkSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

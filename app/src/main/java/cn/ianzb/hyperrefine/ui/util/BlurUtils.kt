@@ -18,13 +18,16 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.collectLatest
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurBlendMode
@@ -77,7 +80,7 @@ val LocalPreferenceBackdrop: ProvidableCompositionLocal<LayerBackdrop?> = static
  * 页面内容自己通过该值让位。注意留白只作用于「内容」，页面背景/渐变仍铺满全宽，
  * 这样侧栏玻璃采样到的是连续的全宽内容，而不是被裁窄后的平色区域（m02678）。
  */
-val LocalAppPageStartInset: ProvidableCompositionLocal<Dp> = staticCompositionLocalOf { 0.dp }
+val LocalAppPageStartInset: ProvidableCompositionLocal<() -> Dp> = staticCompositionLocalOf { { 0.dp } }
 
 /**
  * 把 [LocalAppPageStartInset] 应用到内容容器的起始边。
@@ -85,9 +88,22 @@ val LocalAppPageStartInset: ProvidableCompositionLocal<Dp> = staticCompositionLo
  * 只给滚动容器/内容列使用，不要加到页面根布局或背景图层上。
  */
 @Composable
-fun Modifier.pageStartInset(): Modifier {
+fun Modifier.pageStartInset(): Modifier = padding(PaddingValues(0.dp).withPageStartInset())
+
+/** 在测量阶段随侧栏让出起始边距。 */
+@Composable
+internal fun PaddingValues.withPageStartInset(): PaddingValues {
+    val base = this
     val inset = LocalAppPageStartInset.current
-    return if (inset == 0.dp) this else this.padding(start = inset)
+    return remember(base, inset) {
+        object : PaddingValues by base {
+            override fun calculateLeftPadding(layoutDirection: LayoutDirection): Dp =
+                base.calculateLeftPadding(layoutDirection) + if (layoutDirection == LayoutDirection.Ltr) inset() else 0.dp
+
+            override fun calculateRightPadding(layoutDirection: LayoutDirection): Dp =
+                base.calculateRightPadding(layoutDirection) + if (layoutDirection == LayoutDirection.Rtl) inset() else 0.dp
+        }
+    }
 }
 
 /**
@@ -170,16 +186,25 @@ fun Modifier.pageScrollModifiers(
     contentState: LazyListState? = null,
 ): Modifier {
     val scrollGate = LocalSubPageScrollGate.current
+    val state = topAppBarScrollBehavior.state
     if (scrollGate != null && contentState != null) {
-        LaunchedEffect(scrollGate, contentState) {
+        LaunchedEffect(scrollGate, contentState, state) {
+            fun canClassify() = !contentState.isScrollInProgress &&
+                state.heightOffset == 0f && state.overscrollOffset == 0f
+            fun canScroll() = contentState.canScrollBackward || contentState.canScrollForward
             snapshotFlow {
-                contentState.canScrollBackward || contentState.canScrollForward
-            }.collect { scrollable -> scrollGate.contentScrollable = scrollable }
+                if (canClassify()) canScroll() else null
+            }.collectLatest { scrollable ->
+                if (scrollable == null) return@collectLatest
+                // Title collapse changes the viewport. Classify only after the expanded
+                // layout has settled so a near-full list cannot switch owners mid-gesture.
+                withFrameNanos { }
+                if (canClassify()) scrollGate.contentScrollable = canScroll()
+            }
         }
     }
 
     // 弹性回弹位移交给顶栏：带区透明度 / 模糊 / 胶囊材质都由 overscrollOffset 驱动。
-    val state = topAppBarScrollBehavior.state
     val onOffsetChanged: (Float) -> Unit = remember(state, scrollGate) {
         { offset ->
             state.overscrollOffset = offset
@@ -187,7 +212,7 @@ fun Modifier.pageScrollModifiers(
             // 这里按同一段回弹位移同步折叠量：大标题随内容上移淡出、松手后随回弹复位，
             // 不会出现「大标题压在已经上移的卡片上」。长页面不会走到这里（回弹时已折叠到位）。
             if (scrollGate != null && !scrollGate.contentScrollable) {
-                state.heightOffset = offset
+                state.heightOffset = offset.coerceAtMost(0f)
             }
         }
     }
@@ -208,7 +233,6 @@ fun pageContentPadding(
     extraEnd: Dp = 0.dp,
     extraBottom: Dp = 0.dp,
 ): PaddingValues {
-    val startInset = LocalAppPageStartInset.current
     val topPadding = innerPadding.calculateTopPadding() + extraTop
     val bottomPadding = if (isWideScreen) {
         outerPadding.calculateBottomPadding() + extraBottom +
@@ -217,14 +241,14 @@ fun pageContentPadding(
     } else {
         outerPadding.calculateBottomPadding() + extraBottom
     }
-    return remember(topPadding, bottomPadding, extraStart, extraEnd, startInset) {
+    return remember(topPadding, bottomPadding, extraStart, extraEnd) {
         PaddingValues(
             top = topPadding,
-            start = extraStart + startInset,
+            start = extraStart,
             end = extraEnd,
             bottom = bottomPadding,
         )
-    }
+    }.withPageStartInset()
 }
 
 @Composable

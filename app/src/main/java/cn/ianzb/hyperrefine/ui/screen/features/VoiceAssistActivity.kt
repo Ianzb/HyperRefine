@@ -23,52 +23,55 @@ class VoiceAssistActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.section_voice_assist
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.miui.voiceassist")) }
+    override val topBarActions: @Composable () -> Unit = VoiceAssistActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        VoiceAssistContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val VoiceAssistActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.miui.voiceassist")) }
+
+@Composable
+internal fun VoiceAssistContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val section = HookSection(
+        titleRes = R.string.section_screen_recognition,
+        specs = listOf(
+            featureSpec(KEY_SR_ANIMATION_RADIUS),
+        ),
+    )
+    val wakeupSection = HookSection(
+        titleRes = R.string.section_voice_assist_wakeup,
+        specs = listOf(
+            featureSpec(KEY_LONG_PRESS_HOME_INTENT_BALL),
+            featureSpec(KEY_DOUBLE_CLICK_CHAT_FULL_EFFECT),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = contentPadding,
     ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val section = HookSection(
-            titleRes = R.string.section_screen_recognition,
-            specs = listOf(
-                featureSpec(KEY_SR_ANIMATION_RADIUS),
-            ),
-        )
-        val wakeupSection = HookSection(
-            titleRes = R.string.section_voice_assist_wakeup,
-            specs = listOf(
-                featureSpec(KEY_LONG_PRESS_HOME_INTENT_BALL),
-                featureSpec(KEY_DOUBLE_CLICK_CHAT_FULL_EFFECT),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            listOf(section, wakeupSection).forEach { sec ->
-                searchSectionItem(sec) {
-                    HookSectionCard(sec) {
-                        sec.specs.forEach { HookOptionView(it) }
-                    }
+        listOf(section, wakeupSection).forEach { sec ->
+            searchSectionItem(sec) {
+                HookSectionCard(sec) {
+                    sec.specs.forEach { HookOptionView(it) }
                 }
             }
         }

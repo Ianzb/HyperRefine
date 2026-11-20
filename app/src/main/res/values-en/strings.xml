@@ -27,6 +27,7 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_confirm">Confirm</string>
     <string name="search_hint">Search features</string>
+    <string name="search_clear">Clear search</string>
     <string name="search_empty">No matching feature found</string>
     <string name="package_search_hint">Search app names or packages</string>
     <string name="package_search_empty">No matching apps</string>
@@ -50,6 +51,8 @@
     <string name="settings_interface">Interface</string>
     <string name="settings_language">Language</string>
     <string name="settings_update">Update</string>
+    <string name="current_changelog">View Current Changelog</string>
+    <string name="current_changelog_unavailable">No changelog is available for this version.</string>
     <string name="settings_data">Data Management</string>
     <string name="settings_module">Module</string>
     <string name="theme_mode">Theme Mode</string>
@@ -83,22 +86,17 @@
     <string name="hook_status_waiting">Waiting</string>
     <string name="hook_status_unavailable">Unavailable</string>
     <string name="module_scope">Scope</string>
-    <string name="module_scope_count">Apps in scope: %d</string>
+    <string name="module_scope_count">%d apps authorized</string>
     <string name="module_scope_request">Request Scope for All Target Apps</string>
-    <string name="module_scope_request_summary">Request scope for the target apps of all features</string>
     <string name="module_scope_request_success">Scope request submitted</string>
     <string name="module_scope_request_failed">Scope request failed: %s</string>
     <string name="module_clear_dexkit">Clear DexKit Cache</string>
-    <string name="module_clear_dexkit_summary">Delete the DexKit cache files for all apps in scope</string>
     <string name="module_clear_dexkit_success">DexKit cache cleared</string>
     <string name="module_clear_dexkit_failed">Failed to clear the cache. Check permissions and scope.</string>
 
     <!-- Module: safe mode -->
     <string name="safe_mode_active_title">Module safe mode is active</string>
-    <string name="safe_mode_active_summary">Hooks for %d app(s) were automatically disabled. You can restore them individually.</string>
     <string name="safe_mode_manage">Safe Mode</string>
-    <string name="safe_mode_manage_summary_none">Tap to set safe mode per app</string>
-    <string name="safe_mode_manage_summary_active">Apps with hooks disabled: %d · tap to manage</string>
     <string name="safe_mode_declaration">Safe mode is the module\'s protection mechanism: if a target app crashes repeatedly shortly after loading hooks, its hooks are skipped automatically to avoid boot loops. You can also toggle safe mode per hooked app here — on skips all hooks for that app, off restores them and clears the crash counter.</string>
     <string name="safe_mode_crash_count">Crashes: %d</string>
 
@@ -282,6 +280,12 @@
     <string name="volume_bar_l2_pos_portrait">Portrait position</string>
     <string name="volume_bar_l2_pos_landscape">Landscape position</string>
     <string name="volume_bar_l2_pos_percent_summary" formatted="false">100% touches the screen top, 0% touches the screen bottom</string>
+    <string name="volume_bar_button_section">Side volume footer buttons</string>
+    <string name="volume_bar_button_style">Customize footer buttons</string>
+    <string name="volume_bar_button_style_summary">Apply the same settings to the collapsed panel’s Silent, Do Not Disturb, and Multi-App Volume buttons</string>
+    <string name="volume_bar_button_width">Button width</string>
+    <string name="volume_bar_button_height">Button height</string>
+    <string name="volume_bar_button_radius">Button corner radius</string>
     <string name="volume_bar_auto_balance_section">Balance vertical position</string>
     <string name="volume_bar_auto_balance_portrait">Portrait</string>
     <string name="volume_bar_auto_balance_landscape">Landscape</string>
@@ -498,11 +502,10 @@
     <!-- About -->
     <string name="about">About</string>
     <string name="about_source_code">Source Code</string>
-    <string name="about_source_code_summary">https://github.com/Ianzb/HyperRefine</string>
     <string name="about_telegram">Telegram Group</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.8.0</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.8.1</string>
     <string name="license_agpl">GNU AGPL v3.0</string>
     <string name="license_agpl_summary">View full license text</string>
     <string name="third_party_licenses_title">Third Party Licenses &amp; Credits</string>
@@ -775,8 +778,6 @@
     <string name="sb_category_battery">Battery</string>
     <string name="sb_category_devices">Devices</string>
     <string name="sb_category_status">Status</string>
-    <string name="current_changelog">View Current Changelog</string>
-    <string name="current_changelog_unavailable">No changelog is available for this version.</string>
     <string name="bottom_bar_style">Bottom Bar Style</string>
     <string name="bottom_bar_style_hyperos">Floating</string>
     <string name="bottom_bar_style_ios">Glass</string>

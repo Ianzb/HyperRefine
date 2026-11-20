@@ -19,6 +19,7 @@ import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
 import java.lang.ref.WeakReference
 import java.util.WeakHashMap
+import kotlin.math.roundToInt
 
 /**
  * 侧边音量条「多应用音量」入口。
@@ -71,6 +72,8 @@ class AppVolumeEntryHook : BaseHook() {
     /** 「自动显示」重试中由本流程刷新入口状态，避免入口变化再次触发自动展开（递归）。 */
     private var autoRefreshing = false
 
+    private val footerStyle = VolumeFooterButtonStyle()
+
     // 插件资源 / 类（loadPlugin 时解析）
     private var idDnd = 0
     private var idRinger = 0
@@ -114,7 +117,8 @@ class AppVolumeEntryHook : BaseHook() {
             hookDialogControlCenter(pluginCl)
             hookCollapsedTouchableRegion(pluginCl)
             hookCollapsedShadow(pluginCl)
-            hookRingerLayout(pluginCl)
+            hookRingerLayout()
+            hookFooterMaterialRefresh(pluginCl)
             hookController(pluginCl)
             hookControllerControlCenter(pluginCl)
             hookSeekBarAnim(pluginCl)
@@ -310,6 +314,13 @@ class AppVolumeEntryHook : BaseHook() {
             ?: findDndRoot(volumeView)
             ?: return
         val parent = dnd.parent as? ViewGroup ?: return
+        if (!HookPrefs.getBoolean(key, false) &&
+            !HookPrefs.getBoolean(AppVolumeKeys.HIDE_RINGER, false) &&
+            !HookPrefs.getBoolean(AppVolumeKeys.HIDE_DND, false)
+        ) {
+            applyOfficialVisibility(parent, dnd)
+            return
+        }
         val existing = entryOf(parent) ?: findEntry(parent)?.also { entries[parent] = it }
         val entry = existing ?: run {
             val dndIndex = parent.indexOfChild(dnd)
@@ -341,7 +352,15 @@ class AppVolumeEntryHook : BaseHook() {
         if (dialog != null) dialogEntries[dialog] = WeakReference(entry)
         copyOfficialMaterial(entry, dnd)
         // RingerButtonHelper 可能在 attach 后再次写入 bg_blur，布局完成后再对齐一次。
-        entry.post { if (entry.isAttachedToWindow) copyOfficialMaterial(entry, dnd) }
+        entry.post {
+            if (entry.isAttachedToWindow) {
+                copyOfficialMaterial(entry, dnd)
+                (ancestorOfType(entry, outerClass) as? View)?.let { outer ->
+                    runCatching { applyFooterStyle(outer) }
+                        .onFailure { HookHelper.log("$tag: apply entry footer style failed", it) }
+                }
+            }
+        }
         findTaggedChild(parent, TAG_DIVIDER)?.visibility = View.VISIBLE
         joinAnimator(animator, entry)
         officialVisibilityState.remove(parent)
@@ -429,7 +448,7 @@ class AppVolumeEntryHook : BaseHook() {
 
     // ---------------- 跟随官方展开 / 收起状态 ----------------
 
-    private fun hookRingerLayout(pluginCl: ClassLoader) {
+    private fun hookRingerLayout() {
         val cls = outerClass ?: return
         val methods = setOf(
             "init",
@@ -442,21 +461,81 @@ class AppVolumeEntryHook : BaseHook() {
             method.isAccessible = true
             runCatching {
                 HookHelper.hookAfter(method) { param ->
-                    val outer = param.thisObject ?: return@hookAfter
-                    val helper = helpers[outer] ?: return@hookAfter
+                    val outer = param.thisObject as? View ?: return@hookAfter
+                    val helper = helpers[outer]
                     runCatching {
-                        when (method.name) {
-                            "updateExpandedH" -> helperOnExpanded(
-                                helper,
-                                param.args.getOrNull(0) as? Boolean ?: false,
-                                false,
-                            )
-                            "prepareCollapsedBlurForShowAnimation" -> helperOnExpanded(helper, false, true)
+                        if (helper != null) {
+                            when (method.name) {
+                                "updateExpandedH" -> helperOnExpanded(
+                                    helper,
+                                    param.args.getOrNull(0) as? Boolean ?: false,
+                                    false,
+                                )
+                                "prepareCollapsedBlurForShowAnimation" -> helperOnExpanded(helper, false, true)
+                            }
+                            helperUpdateState(helper)
                         }
-                        helperUpdateState(helper)
+                        applyFooterStyle(outer)
                     }.onFailure { HookHelper.log("$tag: update entry helper failed", it) }
                 }
             }.onFailure { HookHelper.log("$tag: hook ${method.name} failed", it) }
+        }
+    }
+
+    /** Keep the official blur outline and drawable in sync when the helper refreshes its material. */
+    private fun hookFooterMaterialRefresh(pluginCl: ClassLoader) {
+        val resources = Reflect.findClassIfExists(
+            "com.android.systemui.miui.volume.RingerButtonRes", pluginCl,
+        )
+        val boolean = Boolean::class.javaPrimitiveType!!
+        val radius = resources?.let {
+            runCatching {
+                it.getDeclaredMethod("getButtonRadius", Context::class.java, boolean, boolean)
+            }.getOrNull()
+        }
+        if (radius != null) {
+            HookHelper.hookAfter(radius) { param ->
+                if (param.args.getOrNull(1) != false || param.args.getOrNull(2) != true) return@hookAfter
+                val context = param.args.getOrNull(0) as? Context ?: return@hookAfter
+                val style = footerStyle.read(context) ?: return@hookAfter
+                param.setResultValue(style.radius.roundToInt())
+            }
+        }
+        helperClass?.declaredMethods?.filter {
+            (it.name == "updateState" && it.parameterCount == 0) ||
+                (it.name == "setBlurViewBg" && it.parameterCount == 1)
+        }?.forEach { method ->
+            runCatching {
+                method.isAccessible = true
+                HookHelper.hookAfter(method) { param ->
+                    if (!HookPrefs.getBoolean(VolumeBarKeys.BUTTON_STYLE, false)) return@hookAfter
+                    val helper = param.thisObject ?: return@hookAfter
+                    runCatching {
+                        val outer = Reflect.getObjectField(helper, "this\$0") as? View ?: return@runCatching
+                        applyFooterStyle(outer)
+                    }.onFailure { HookHelper.log("$tag: refresh footer material failed", it) }
+                }
+            }.onFailure { HookHelper.log("$tag: hook ${method.name} failed", it) }
+        }
+    }
+
+    private fun applyFooterStyle(outer: View) {
+        resolveResources(outer.context)
+        val dnd = findDndRoot(outer) ?: return
+        val parent = dnd.parent as? ViewGroup ?: return
+        val ringer = findRingerSibling(parent)?.takeUnless { it === dnd } ?: return
+        val helper = Reflect.getObjectField(outer, "mRingerHelper") ?: return
+        val dialog = findVolumeDialog(outer) ?: return
+        val collapsed = Reflect.getObjectField(helper, "mExpanded") == false &&
+            Reflect.getObjectField(outer, "mNeedShowDialog") == true &&
+            !isControlCenterDialog(dialog) &&
+            !(isControlCenterController(lastController) && controllerOwnsView(lastController, outer))
+        val style = if (collapsed) footerStyle.read(outer.context) else null
+        for (root in listOfNotNull(ringer, dnd, entryOf(parent))) {
+            val background = findBlurView(root) ?: continue
+            val contentId = resolveId(root.context, "miui_standard_btn")
+            val content = if (contentId != 0) background.findViewById<View>(contentId) else null
+            footerStyle.apply(root, background, content, style)
         }
     }
 

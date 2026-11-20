@@ -27,6 +27,7 @@ androidComponents.onVariants { variant ->
 android {
     namespace = "cn.ianzb.hyperrefine"
     compileSdk {
+        // miuix 0.9.5 的 AAR 要求 compileSdk 至少为 Android 37.2。
         version = release(37) { minorApiLevel = 2 }
     }
 
@@ -70,8 +71,9 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // miuix-nav 的 inline 路由 API 使用 JVM 21 字节码。
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     buildFeatures {
         compose = true
@@ -114,7 +116,6 @@ dependencies {
     implementation(libs.miuix.material)
     implementation(libs.miuix.glass)
     implementation(libs.miuix.glass.icons)
-    implementation(libs.material.icons)
     implementation(libs.commonmark)
 }
 

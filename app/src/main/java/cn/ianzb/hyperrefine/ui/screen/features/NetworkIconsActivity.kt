@@ -1,7 +1,6 @@
 package cn.ianzb.hyperrefine.ui.screen.features
 
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -32,6 +31,10 @@ import androidx.compose.ui.zIndex
 import cn.ianzb.hyperrefine.AppSettings
 import cn.ianzb.hyperrefine.LocaleHelper
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.ui.screen.subpage.AppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.OpenAppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.LocalOpenAppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.openAppSubPage
 import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconComponent
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconKeys
@@ -47,7 +50,6 @@ import cn.ianzb.hyperrefine.ui.component.pref.rememberEffectiveDeviceType
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
 import cn.ianzb.hyperrefine.ui.component.pref.HookSectionCard
 import cn.ianzb.hyperrefine.ui.component.pref.HookSubPage
-import cn.ianzb.hyperrefine.ui.component.pref.withSearchTarget
 import cn.ianzb.hyperrefine.ui.component.pref.HookSwitchCard
 import cn.ianzb.hyperrefine.ui.component.statusbar.StatusBarIconRow
 import cn.ianzb.hyperrefine.ui.component.statusbar.componentTitleRes
@@ -85,34 +87,41 @@ class NetworkIconsActivity : ComponentActivity() {
 
         setContent {
             AppTheme(themeMode = themeMode) {
-                val context = LocalContext.current
-                val subPages = remember(context) { detailSubPages(context) }
-                var dragging by remember { mutableStateOf(false) }
-                HookOptionsPage(
-                    title = stringResource(R.string.sb_icon_title),
-                    sections = emptyList(),
-                    subPages = subPages,
-                    isBlurEnabled = settings.isBlurEnabled,
-                    topContent = {
-                        NetworkIconsContent(
-                            onDragStateChange = { dragging = it },
-                        )
-                    },
-                    onBack = { finish() },
-                    userScrollEnabled = !dragging,
-                    showSearch = false,
-                    topBarActions = {
-                        QuickActionsAction(listOf(StatusBarKeys.TARGET))
-                    },
-                )
+                NetworkIconsPage(settings.isBlurEnabled, onBack = { finish() })
             }
         }
     }
 }
 
 @Composable
+internal fun NetworkIconsPage(isBlurEnabled: Boolean, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val openInHost = LocalOpenAppSubPage.current
+    val subPages = remember(context, openInHost) { detailSubPages(context, openInHost) }
+    var dragging by remember { mutableStateOf(false) }
+    HookOptionsPage(
+        title = stringResource(R.string.sb_icon_title),
+        sections = emptyList(),
+        subPages = subPages,
+        isBlurEnabled = isBlurEnabled,
+        topContent = {
+            NetworkIconsContent(
+                onDragStateChange = { dragging = it },
+            )
+        },
+        onBack = onBack,
+        userScrollEnabled = !dragging,
+        showSearch = false,
+        topBarActions = {
+            QuickActionsAction(listOf(StatusBarKeys.TARGET))
+        },
+    )
+}
+
+@Composable
 private fun NetworkIconsContent(onDragStateChange: (Boolean) -> Unit) {
     val context = LocalContext.current
+    val openInHost = LocalOpenAppSubPage.current
     val enabled = ConfigState.bool(StatusBarIconKeys.ENABLED, false)
     val deviceType = rememberEffectiveDeviceType()
     val supportsPadClock = deviceType == DeviceType.PAD || deviceType == DeviceType.FOLD
@@ -146,7 +155,7 @@ private fun NetworkIconsContent(onDragStateChange: (Boolean) -> Unit) {
                         component = component,
                         enabled = enabled,
                         onOpen = {
-                            if (enabled) openDetail(context, component.id)
+                            if (enabled) openDetail(context, openInHost, component.id)
                             else toast(context, R.string.sb_icon_disabled)
                         },
                     )
@@ -159,7 +168,7 @@ private fun NetworkIconsContent(onDragStateChange: (Boolean) -> Unit) {
                 enabled = enabled,
                 onDragStateChange = onDragStateChange,
                 onOpen = { id ->
-                    if (enabled) openDetail(context, id)
+                    if (enabled) openDetail(context, openInHost, id)
                     else toast(context, R.string.sb_icon_disabled)
                 },
             )
@@ -167,23 +176,18 @@ private fun NetworkIconsContent(onDragStateChange: (Boolean) -> Unit) {
     }
 }
 
-private fun detailSubPages(context: Context): List<HookSubPage> =
+private fun detailSubPages(context: Context, openInHost: OpenAppSubPage?): List<HookSubPage> =
     (StatusBarIconRegistry.left + StatusBarIconRegistry.right).map { component ->
         HookSubPage(
             titleRes = componentTitleRes(component.id),
             specs = emptyList(),
-            onOpen = { openDetail(context, component.id) },
+            onOpen = { openDetail(context, openInHost, component.id) },
         )
     }
 
-internal fun openDetail(context: Context, id: String, searchTarget: String? = null) {
-    context.startActivity(
-        Intent(context, IconSettingsActivity::class.java)
-            .putExtra(IconSettingsActivity.EXTRA_COMPONENT, id)
-            .withSearchTarget(searchTarget),
-    )
+internal fun openDetail(context: Context, openInHost: OpenAppSubPage?, id: String, searchTarget: String? = null) {
+    openAppSubPage(context, openInHost, AppSubPage.IconSettings, searchTarget, argument = id)
 }
-
 private fun toast(context: Context, res: Int) {
     Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
 }

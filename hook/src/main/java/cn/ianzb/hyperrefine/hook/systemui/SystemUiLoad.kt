@@ -76,7 +76,8 @@ class SystemUiLoad : BaseLoad() {
             AppVolumeEntryHook(),
             HookPrefs.getBoolean(AppVolumeKeys.ENTRY, false) ||
                 HookPrefs.getBoolean(AppVolumeKeys.HIDE_RINGER, false) ||
-                HookPrefs.getBoolean(AppVolumeKeys.HIDE_DND, false),
+                HookPrefs.getBoolean(AppVolumeKeys.HIDE_DND, false) ||
+                HookPrefs.getBoolean(VolumeBarKeys.BUTTON_STYLE, false),
         )
         initHook(VolumeBarSizeHook(), HookPrefs.getBoolean(VolumeBarKeys.BAR_SIZE, false))
         initHook(SideVolumePositionHook(), HookPrefs.getBoolean(VolumeBarKeys.SIDE_POS, false))

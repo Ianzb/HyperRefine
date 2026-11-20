@@ -27,64 +27,67 @@ class WindowManagerActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.feature_window_manager
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui")) }
+    override val topBarActions: @Composable () -> Unit = WindowManagerActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        WindowManagerContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val WindowManagerActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.android.systemui")) }
+
+@Composable
+internal fun WindowManagerContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val splitSection = HookSection(
+        titleRes = R.string.section_split_screen,
+        specs = listOf(
+            featureSpec(SplitScreenKeys.UNLOCK_DIRECTION),
+            featureSpec(SplitScreenKeys.MULTIPLE_SPLIT_CUSTOM),
+            featureSpec(SplitScreenKeys.MULTIPLE_SPLIT_MAX_STAGES),
+            featureSpec(SplitScreenKeys.MULTIPLE_SPLIT_FREE_RATIO),
+            featureSpec(SplitScreenKeys.SINGLE_SPLIT_FREE_RATIO),
+            featureSpec(SplitScreenKeys.SPLIT_FREE_RATIO_GLOBAL),
+            featureSpec(SplitScreenKeys.SPLIT_RATIO_MEMORY),
+            featureSpec(SplitScreenKeys.SPLIT_PEEK_TRANSITION),
+            featureSpec(SplitScreenKeys.CAPTION_BOTH_DIRECTIONS),
+        ),
+    )
+    val freeformSection = HookSection(
+        titleRes = R.string.section_freeform_window,
+        specs = listOf(
+            featureSpec(SplitScreenKeys.DISABLE_CORNER_FREEFORM),
+            featureSpec(SplitScreenKeys.FREEFORM_FREE_RATIO),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = contentPadding,
     ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val splitSection = HookSection(
-            titleRes = R.string.section_split_screen,
-            specs = listOf(
-                featureSpec(SplitScreenKeys.UNLOCK_DIRECTION),
-                featureSpec(SplitScreenKeys.MULTIPLE_SPLIT_CUSTOM),
-                featureSpec(SplitScreenKeys.MULTIPLE_SPLIT_MAX_STAGES),
-                featureSpec(SplitScreenKeys.MULTIPLE_SPLIT_FREE_RATIO),
-                featureSpec(SplitScreenKeys.SINGLE_SPLIT_FREE_RATIO),
-                featureSpec(SplitScreenKeys.SPLIT_FREE_RATIO_GLOBAL),
-                featureSpec(SplitScreenKeys.SPLIT_RATIO_MEMORY),
-                featureSpec(SplitScreenKeys.SPLIT_PEEK_TRANSITION),
-                featureSpec(SplitScreenKeys.CAPTION_BOTH_DIRECTIONS),
-            ),
-        )
-        val freeformSection = HookSection(
-            titleRes = R.string.section_freeform_window,
-            specs = listOf(
-                featureSpec(SplitScreenKeys.DISABLE_CORNER_FREEFORM),
-                featureSpec(SplitScreenKeys.FREEFORM_FREE_RATIO),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(splitSection) {
-                HookSectionCard(splitSection) {
-                    splitSection.specs.forEach { HookOptionView(it) }
-                }
+        searchSectionItem(splitSection) {
+            HookSectionCard(splitSection) {
+                splitSection.specs.forEach { HookOptionView(it) }
             }
-            searchSectionItem(freeformSection) {
-                HookSectionCard(freeformSection) {
-                    freeformSection.specs.forEach { HookOptionView(it) }
-                }
+        }
+        searchSectionItem(freeformSection) {
+            HookSectionCard(freeformSection) {
+                freeformSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

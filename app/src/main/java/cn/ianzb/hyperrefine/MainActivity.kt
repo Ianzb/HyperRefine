@@ -1,7 +1,6 @@
 package cn.ianzb.hyperrefine
 
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -12,24 +11,32 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +49,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.ui.component.UpdateDialog
 import cn.ianzb.hyperrefine.ui.component.LocalAppTopBarCompact
+import cn.ianzb.hyperrefine.ui.component.LocalAppTopBarCenterObstructionStart
 import cn.ianzb.hyperrefine.ui.component.LocalAppTopBarTitleAlpha
 import cn.ianzb.hyperrefine.ui.component.liquid.IosLiquidGlassNavigationBar
 import cn.ianzb.hyperrefine.ui.component.search.AppSearchOverlay
@@ -52,19 +60,28 @@ import cn.ianzb.hyperrefine.ui.screen.about.AboutPageContent
 import cn.ianzb.hyperrefine.ui.screen.features.FeaturesPageView
 import cn.ianzb.hyperrefine.ui.screen.home.HomePageView
 import cn.ianzb.hyperrefine.ui.screen.settings.SettingsPageView
+import cn.ianzb.hyperrefine.ui.screen.subpage.AppPageRoute
+import cn.ianzb.hyperrefine.ui.screen.subpage.AppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.AppSubPageContent
+import cn.ianzb.hyperrefine.ui.screen.subpage.LocalOpenAppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.OpenAppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.rememberAppPageBackStack
+import cn.ianzb.hyperrefine.ui.screen.subpage.rememberOpenAppSubPage
 import cn.ianzb.hyperrefine.ui.theme.AppTheme
 import cn.ianzb.hyperrefine.ui.util.LocalAppPageStartInset
 import cn.ianzb.hyperrefine.ui.util.applyWindowBackground
 import cn.ianzb.hyperrefine.ui.util.pagerSwipeOverride
-import cn.ianzb.hyperrefine.ui.util.LocalPreferenceBackdrop
-import cn.ianzb.hyperrefine.ui.util.rememberBlurBackdrop
+import cn.ianzb.hyperrefine.ui.util.pageStartInset
+import cn.ianzb.hyperrefine.ui.util.rememberTopBarBackdrop
 import cn.ianzb.hyperrefine.ui.util.shouldShowSplitPane
+import kotlin.math.abs
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.glass.GlassIconButton
 import top.yukonga.miuix.kmp.glass.GlassNavigationBar
 import top.yukonga.miuix.kmp.glass.GlassNavigationBarDefaults
@@ -78,6 +95,7 @@ import top.yukonga.miuix.kmp.icon.glass.Info
 import top.yukonga.miuix.kmp.icon.glass.ListView
 import top.yukonga.miuix.kmp.icon.glass.Search
 import top.yukonga.miuix.kmp.icon.glass.SettingsOutline
+import top.yukonga.miuix.kmp.nav.core.NavDisplay
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PagerGestureNestedScrollConnection
@@ -202,17 +220,17 @@ class MainActivity : ComponentActivity() {
                             persistState()
                         },
                         onCheckUpdate = { checkUpdate() },
-                    ) {
-                        updateInfo?.let { info ->
-                            UpdateDialog(
-                                info = info,
-                                onDismissRequest = { updateInfo = null },
-                                onConfirm = {
-                                    updateInfo = null
-                                    runCatching { uriHandler.openUri(info.releaseUrl) }
-                                },
-                            )
-                        }
+                    )
+
+                    updateInfo?.let { info ->
+                        UpdateDialog(
+                            info = info,
+                            onDismissRequest = { updateInfo = null },
+                            onConfirm = {
+                                updateInfo = null
+                                runCatching { uriHandler.openUri(info.releaseUrl) }
+                            },
+                        )
                     }
                 }
             }
@@ -236,11 +254,25 @@ private fun MainScreen(
     onCheckUpdateOnLaunchChange: (Boolean) -> Unit,
     onHideLauncherIconChange: (Boolean) -> Unit,
     onCheckUpdate: () -> Unit,
-    overlay: @Composable () -> Unit,
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val pagerState = rememberPagerState(pageCount = { 4 })
-    var selectedIndex by remember { mutableIntStateOf(0) }
+    var selectedIndex by rememberSaveable { mutableIntStateOf(pagerState.currentPage) }
+    val backStack = rememberAppPageBackStack()
+    val isSubPage = backStack.size > 1
+    val closeSubPage: () -> Unit = { if (backStack.size > 1) backStack.removeLastOrNull() }
+    val openSubPage: OpenAppSubPage = remember(backStack) {
+        { route ->
+            if (backStack.lastOrNull() != route) {
+                val parents = generateSequence(route.page.parent) { it.parent }.toList().asReversed()
+                val sharedDepth = backStack.drop(1).zip(parents).takeWhile { (entry, parent) ->
+                    (entry as? AppPageRoute.SubPage)?.page == parent
+                }.size
+                while (backStack.size > sharedDepth + 1) backStack.removeLastOrNull()
+                parents.drop(sharedDepth).forEach { backStack.add(AppPageRoute.SubPage(it)) }
+                backStack.add(route)
+            }
+        }
+    }
     var isNavigating by remember { mutableStateOf(false) }
     var navJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var homeRefreshKey by remember { mutableIntStateOf(0) }
@@ -269,7 +301,11 @@ private fun MainScreen(
     // 全局搜索：状态挂在导航容器上，底栏搜索按钮与各主页面顶栏搜索按钮共用同一份状态。
     val searchState = remember { AppSearchState() }
     var pendingFeatureSearchKey by remember { mutableStateOf<String?>(null) }
-    val backdrop = if (isBlurEnabled) rememberBlurBackdrop() else null
+    val backdrop = rememberLayerBackdrop {
+        drawRect(surfaceColor)
+        drawContent()
+    }
+    val blurActive = isBlurEnabled
 
     val isWideScreen = shouldShowSplitPane()
     // 宽屏且用户未关闭侧边导航栏时才走官方 GlassNavigationRail；
@@ -281,23 +317,31 @@ private fun MainScreen(
     LaunchedEffect(expandSidebar) {
         sidebarState.expanded = expandSidebar
     }
-    // 内容让位的宽度：与 demo 的 overlayStart 完全一致 —— 侧栏宽度乘以形变进度，
-    // 形变过程中逐帧跟随，因此内容与面板始终严丝合缝，不会出现面板先展开、内容后让位的遮挡。
-    // progress 每帧变化，这里在组合期读取，形变期间会逐帧触发本函数重组以重算 padding。
-    // 侧栏被关掉（或窄屏改用底部悬浮栏）时必须归零：GlassNavigationRail 不再参与组合，
-    // 它的 state 会停留在原来的展开进度上，若继续沿用就会让页面整体右移出一条空白。
-    val sidebarInset: Dp =
-        if (useRail) {
-            (GlassNavigationRailDefaults.Margin + GlassNavigationRailDefaults.ExpandedWidth) *
-                sidebarState.progress
-        } else {
-            0.dp
+    val sidebarWidth = GlassNavigationRailDefaults.Margin + GlassNavigationRailDefaults.ExpandedWidth
+    val railProgress: () -> Float = remember(useRail, sidebarState) {
+        { if (useRail) sidebarState.progress else 1f }
+    }
+    // 进度由页面的测量和绘制阶段读取，避免形变时逐帧重新组合整个导航宿主。
+    val sidebarInset: () -> Dp = remember(useRail, sidebarState, sidebarWidth) {
+        { if (useRail) sidebarWidth * sidebarState.progress else 0.dp }
+    }
+    val searchTopPadding: () -> Dp = remember(useRail, sidebarState) {
+        {
+            if (useRail) {
+                (GlassNavigationRailDefaults.CollapsedTop + GlassNavigationRailDefaults.CollapsedHeight + 4.dp) *
+                    (1f - sidebarState.progress)
+            } else {
+                0.dp
+            }
         }
+    }
     val railItems = items.mapIndexed { index, label ->
         GlassNavigationItem(icon = icons[index], label = label)
     }
 
     val onItemSelected: (Int) -> Unit = select@{ index ->
+        searchState.close()
+        while (backStack.size > 1) closeSubPage()
         if (index == selectedIndex) return@select
         homeRefreshKey++
         navJob?.cancel()
@@ -318,144 +362,196 @@ private fun MainScreen(
         }
     }
 
-    // 宽屏侧栏是覆盖层：留白不能加在 Pager 上（那会让页面整体被裁窄，侧栏背后只剩平色，
-    // 玻璃只采样到「最右边一小条内容」）。改为通过 LocalAppPageStartInset 下发给每个页面，
-    // 由页面自身的内容列/顶栏让位；页面背景与渐变仍铺满全宽，侧栏背后因此始终是连续的全宽
-    // 内容，滑动时经过的也是相邻页的空白带而不是它的卡片（对齐 demo 的 overlayStart 语义）。
     val pagerContent: @Composable (Dp) -> Unit = { navBarHeight ->
-        Box(
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 1,
+            contentPadding = PaddingValues(0.dp),
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
-                .background(surfaceColor)
-        ) {
-            CompositionLocalProvider(
-                // 顶栏采样的是「页面内容」图层，必须由各页面自己提供（见 rememberTopBarBackdrop），
-                // 这里传应用级 backdrop 会让顶栏所在的图层包含顶栏自身，触发 RenderNode 无限递归。
-                // 侧栏占位留给页面自己消费；Pager 保持全宽，玻璃才能采样到连续背景。
-                LocalAppPageStartInset provides sidebarInset,
-            ) {
-                HorizontalPager(
-                    state = pagerState,
-                    beyondViewportPageCount = 1,
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        // Cross-Axis 拦截 + 子组件（滑条）手势放行：见 PagerSwipeOverride.kt
-                        .pagerSwipeOverride(pagerState = pagerState),
-                    userScrollEnabled = false,
-                    pageNestedScrollConnection = PagerGestureNestedScrollConnection,
-                ) { page ->
-                    when (page) {
-                        0 -> HomePageView(
-                            isBlurEnabled = isBlurEnabled,
-                            refreshKey = homeRefreshKey,
-                            extraBottomPadding = navBarHeight,
-                            onOpenFeatures = { onItemSelected(1) },
-                        )
-                        1 -> FeaturesPageView(
-                            isBlurEnabled = isBlurEnabled,
-                            extraBottomPadding = navBarHeight,
-                            pendingSearchKey = pendingFeatureSearchKey,
-                            onSearchKeyHandled = { pendingFeatureSearchKey = null },
-                        )
-                        2 -> SettingsPageView(
-                            currentMode = themeMode,
-                            onModeChange = onThemeModeChange,
-                            bottomBarStyle = bottomBarStyle,
-                            onBottomBarStyleChange = onBottomBarStyleChange,
-                            railStyle = railStyle,
-                            onRailStyleChange = onRailStyleChange,
-                            isBlurEnabled = isBlurEnabled,
-                            onBlurEnabledChange = onBlurEnabledChange,
-                            checkUpdateOnLaunch = checkUpdateOnLaunch,
-                            onCheckUpdateOnLaunchChange = onCheckUpdateOnLaunchChange,
-                            hideLauncherIcon = hideLauncherIcon,
-                            onHideLauncherIconChange = onHideLauncherIconChange,
-                            onCheckUpdate = onCheckUpdate,
-                            isCheckingUpdate = isCheckingUpdate,
-                            extraBottomPadding = navBarHeight,
-                        )
-                        3 -> AboutPageContent(
-                            openLicensePage = {
-                                context.startActivity(Intent(context, LicenseActivity::class.java))
-                            },
-                            isBlurEnabled = isBlurEnabled,
-                            extraBottomPadding = navBarHeight,
-                        )
-                    }
+                // Cross-Axis 拦截 + 子组件（滑条）手势放行：见 PagerSwipeOverride.kt
+                .pagerSwipeOverride(pagerState = pagerState),
+            userScrollEnabled = false,
+            pageNestedScrollConnection = PagerGestureNestedScrollConnection,
+        ) { page ->
+            val pageVisible = remember(backStack, pagerState, page) {
+                {
+                    backStack.size == 1 &&
+                        abs(page - pagerState.currentPage - pagerState.currentPageOffsetFraction) < 1f
                 }
             }
-        }
-    }
-
-    CompositionLocalProvider(LocalAppSearchState provides searchState) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (useRail) {
-                // 宽屏且侧栏开启：按 miuix example 的 PersistentGlassNavigationRail 做法，把官方
-                // GlassNavigationRail 作为全屏 overlay 叠在内容层之上——它自身 fillMaxSize()，
-                // 并负责折叠胶囊（顶部水平居中）⇄ 展开面板（贴左 GlassNavigationRailDefaults.Margin）
-                // 的形变与系统栏 insets。
-                val navigationBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                Box(modifier = Modifier.fillMaxSize()) {
-                    CompositionLocalProvider(
-                        // 折叠胶囊占据顶部中央，页面顶栏标题随之淡出、展开时再浮现（demo 的 chromeTitleAlpha）。
-                        LocalAppTopBarTitleAlpha provides sidebarState.progress,
-                        // 宽屏不用大标题（对应 demo 的 expandable = !isWideScreen），否则大标题会顶到胶囊上。
-                        LocalAppTopBarCompact provides true,
-                    ) {
-                        pagerContent(navigationBarBottom)
-                    }
-                    GlassNavigationRail(
-                        items = railItems,
-                        selectedIndex = selectedIndex,
-                        onSelect = onItemSelected,
-                        // 直接复用包裹页面内容的 backdrop 图层：侧栏才能真正模糊到底下的页面内容。
-                        backdrop = backdrop,
-                        state = sidebarState,
+            val pageProgress = rememberVisibleRailProgress(railProgress, pageVisible)
+            val pageInset: () -> Dp = remember(useRail, sidebarWidth, pageProgress) {
+                { if (useRail) sidebarWidth * pageProgress() else 0.dp }
+            }
+            CompositionLocalProvider(
+                LocalAppPageStartInset provides pageInset,
+                LocalAppTopBarTitleAlpha provides pageProgress,
+            ) {
+                when (page) {
+                    0 -> HomePageView(
+                        isBlurEnabled = isBlurEnabled,
+                        refreshKey = homeRefreshKey,
+                        extraBottomPadding = navBarHeight,
+                        onOpenFeatures = { onItemSelected(1) },
+                    )
+                    1 -> FeaturesPageView(
+                        isBlurEnabled = isBlurEnabled,
+                        extraBottomPadding = navBarHeight,
+                        pendingSearchKey = pendingFeatureSearchKey,
+                        onSearchKeyHandled = { pendingFeatureSearchKey = null },
+                    )
+                    2 -> SettingsPageView(
+                        currentMode = themeMode,
+                        onModeChange = onThemeModeChange,
+                        bottomBarStyle = bottomBarStyle,
+                        onBottomBarStyleChange = onBottomBarStyleChange,
+                        railStyle = railStyle,
+                        onRailStyleChange = onRailStyleChange,
+                        isBlurEnabled = isBlurEnabled,
+                        onBlurEnabledChange = onBlurEnabledChange,
+                        checkUpdateOnLaunch = checkUpdateOnLaunch,
+                        onCheckUpdateOnLaunchChange = onCheckUpdateOnLaunchChange,
+                        hideLauncherIcon = hideLauncherIcon,
+                        onHideLauncherIconChange = onHideLauncherIconChange,
+                        onCheckUpdate = onCheckUpdate,
+                        isCheckingUpdate = isCheckingUpdate,
+                        extraBottomPadding = navBarHeight,
+                    )
+                    3 -> AboutPageContent(
+                        openLicensePage = rememberOpenAppSubPage(AppSubPage.Licenses),
+                        isBlurEnabled = isBlurEnabled,
                     )
                 }
-            } else {
-                Scaffold(
-                    bottomBar = {
-                        BottomNavigationBar(
-                            style = bottomBarStyle,
-                            items = items,
-                            icons = icons,
-                            selectedIndex = selectedIndex,
-                            backdrop = backdrop,
-                            onItemSelected = onItemSelected,
-                            // 底栏搜索入口只在功能页出现（功能项都在那一页，其它页面用顶栏入口）。
-                            onSearchClick = if (selectedIndex == 1) searchState::open else null,
-                        )
-                    }
-                ) { globalPadding ->
-                    pagerContent(globalPadding.calculateBottomPadding())
-                }
-            }
-
-            // 搜索界面放在导航容器最后：绘制顺序因此在悬浮底栏 / 宽屏侧栏之上
-            // （与 miuix 示例 GlassPage 的搜索层级一致），遮住底栏并独占输入。
-            AppSearchOverlay(
-                expanded = searchState.expanded,
-                onDismissRequest = { searchState.close() },
-                label = stringResource(R.string.search_hint),
-            ) { query ->
-                AppSearchResults(
-                    query = query,
-                    onPick = { key ->
-                        searchState.close()
-                        pendingFeatureSearchKey = key
-                        onItemSelected(1)
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            CompositionLocalProvider(LocalPreferenceBackdrop provides backdrop) {
-                overlay()
             }
         }
     }
+
+    val railTitleObstruction: () -> Dp = remember(useRail, sidebarState) {
+        // GlassTopAppBar takes a Dp during composition. Publish only the settled
+        // capsule obstruction and keep continuous sidebar movement in layout.
+        val obstruction = derivedStateOf(structuralEqualityPolicy()) {
+            if (useRail && !sidebarState.expanded && sidebarState.progress <= 0f &&
+                sidebarState.collapsedWidth > 0.dp
+            ) sidebarState.collapsedStart else Dp.Unspecified
+        }
+        val readObstruction: () -> Dp = { obstruction.value }
+        readObstruction
+    }
+    CompositionLocalProvider(
+        LocalAppSearchState provides searchState,
+        LocalOpenAppSubPage provides openSubPage,
+        LocalAppPageStartInset provides sidebarInset,
+        LocalAppTopBarCompact provides useRail,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // 宽屏把搜索一起录入侧栏 backdrop，侧栏本身仍在采样层外。
+            Box(
+                modifier = Modifier.fillMaxSize()
+                    .then(if (useRail && blurActive) Modifier.layerBackdrop(backdrop) else Modifier),
+            ) {
+                Scaffold(
+                    bottomBar = {
+                        if (!useRail && !isSubPage) {
+                            BottomNavigationBar(
+                                style = bottomBarStyle,
+                                items = items,
+                                icons = icons,
+                                selectedIndex = selectedIndex,
+                                backdrop = backdrop,
+                                blurActive = blurActive,
+                                onItemSelected = onItemSelected,
+                                onSearchClick = if (selectedIndex == 1) searchState::open else null,
+                            )
+                        }
+                    },
+                ) { globalPadding ->
+                    val navigationBarHeight = if (useRail) {
+                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                    } else {
+                        globalPadding.calculateBottomPadding()
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(if (!useRail && blurActive) Modifier.layerBackdrop(backdrop) else Modifier)
+                            .background(surfaceColor),
+                    ) {
+                        NavDisplay(backStack = backStack, onBack = closeSubPage) {
+                            entry<AppPageRoute.Main> {
+                                pagerContent(navigationBarHeight)
+                            }
+                            entry<AppPageRoute.SubPage> { route ->
+                                val pageVisible = remember(backStack, route) {
+                                    { backStack.lastOrNull() == route }
+                                }
+                                val progress = rememberVisibleRailProgress(railProgress, pageVisible)
+                                val inset: () -> Dp = remember(useRail, sidebarWidth, progress) {
+                                    { if (useRail) sidebarWidth * progress() else 0.dp }
+                                }
+                                CompositionLocalProvider(
+                                    LocalAppPageStartInset provides inset,
+                                    LocalAppTopBarCenterObstructionStart provides railTitleObstruction,
+                                ) {
+                                    AppSubPageContent(route.page, isBlurEnabled, closeSubPage, route.searchTarget, route.argument)
+                                }
+                            }
+                        }
+                    }
+                }
+                val searchListState = rememberLazyListState()
+                AppSearchOverlay(
+                    expanded = searchState.expanded,
+                    onDismissRequest = { searchState.close() },
+                    label = stringResource(R.string.search_hint),
+                    blurEnabled = blurActive,
+                    searchTopPadding = searchTopPadding,
+                    scrollOffset = { searchListState.firstVisibleItemScrollOffset.toFloat() },
+                ) { query ->
+                    LaunchedEffect(query) { searchListState.scrollToItem(0) }
+                    AppSearchResults(
+                        query = query,
+                        listState = searchListState,
+                        searchTopPadding = searchTopPadding,
+                        onPick = { key ->
+                            pendingFeatureSearchKey = key
+                            onItemSelected(1)
+                        },
+                        modifier = Modifier.windowInsetsPadding(
+                            WindowInsets.displayCutout.union(WindowInsets.navigationBars)
+                                .only(WindowInsetsSides.Horizontal),
+                        ).pageStartInset(),
+                    )
+                }
+            }
+            if (useRail) {
+                GlassNavigationRail(
+                    items = railItems,
+                    selectedIndex = selectedIndex,
+                    onSelect = onItemSelected,
+                    backdrop = if (blurActive) backdrop else null,
+                    state = sidebarState,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberVisibleRailProgress(
+    progress: () -> Float,
+    isVisible: () -> Boolean,
+): () -> Float = remember(progress, isVisible) {
+    val visible = derivedStateOf(structuralEqualityPolicy(), isVisible)
+    var lastVisibleProgress: Float? = null
+    val readProgress: () -> Float = {
+        if (visible.value || lastVisibleProgress == null) {
+            progress().also { lastVisibleProgress = it }
+        } else {
+            checkNotNull(lastVisibleProgress)
+        }
+    }
+    readProgress
 }
 
 /** 玻璃底栏收敛后的胶囊宽度（miuix 示例 4 个 tab 的实测值，本项目同为 4 个 tab）。 */
@@ -482,7 +578,8 @@ private fun BottomNavigationBar(
     items: List<String>,
     icons: List<ImageVector>,
     selectedIndex: Int,
-    backdrop: LayerBackdrop?,
+    backdrop: LayerBackdrop,
+    blurActive: Boolean,
     onItemSelected: (Int) -> Unit,
     onSearchClick: (() -> Unit)? = null,
 ) {
@@ -507,13 +604,13 @@ private fun BottomNavigationBar(
                     items = glassItems,
                     selectedIndex = selectedIndex,
                     onSelect = onItemSelected,
-                    backdrop = backdrop,
+                    backdrop = if (blurActive) backdrop else null,
                     // 搜索按钮是胶囊之外独立的一颗玻璃圆钮（与 demo 的 trailingAction 一致）。
                     trailingAction = onSearchClick?.let { openSearch ->
                         {
                             GlassIconButton(
                                 onClick = openSearch,
-                                backdrop = backdrop,
+                                backdrop = if (blurActive) backdrop else null,
                                 size = GlassNavigationBarDefaults.Height,
                                 material = GlassNavigationBarDefaults.material(),
                             ) {
@@ -544,9 +641,13 @@ private fun BottomNavigationBar(
                     icons = icons,
                     selectedIndex = selectedIndex,
                     onItemClick = onItemSelected,
-                    backdrop = backdrop,
-                    isBlurActive = backdrop != null,
+                    backdrop = if (blurActive) backdrop else null,
+                    isBlurActive = blurActive,
                     modifier = Modifier
+                        .windowInsetsPadding(
+                            WindowInsets.displayCutout.union(WindowInsets.navigationBars)
+                                .only(WindowInsetsSides.Horizontal),
+                        )
                         .padding(horizontal = 24.dp)
                         .glassNavigationBarWidth(items.size, trailingActionWidth = 0.dp),
                 )

@@ -26,44 +26,47 @@ class WeatherActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.feature_weather
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf(WeatherKeys.TARGET_PACKAGE)) }
+    override val topBarActions: @Composable () -> Unit = WeatherActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val section = HookSection(
-            titleRes = R.string.section_weather,
-            specs = listOf(
-                featureSpec(WeatherKeys.ADVANCED),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(section) {
-                HookSectionCard(section) {
-                    section.specs.forEach { HookOptionView(it) }
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        WeatherContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val WeatherActions: @Composable () -> Unit = { QuickActionsAction(listOf(WeatherKeys.TARGET_PACKAGE)) }
+
+@Composable
+internal fun WeatherContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val section = HookSection(
+        titleRes = R.string.section_weather,
+        specs = listOf(
+            featureSpec(WeatherKeys.ADVANCED),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(section) {
+            HookSectionCard(section) {
+                section.specs.forEach { HookOptionView(it) }
             }
         }
     }

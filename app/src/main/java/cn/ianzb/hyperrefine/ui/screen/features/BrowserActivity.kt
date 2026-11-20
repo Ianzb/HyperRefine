@@ -27,7 +27,15 @@ class BrowserActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.section_browser
 
-    override val topBarActions: (@Composable () -> Unit)? = {
+    override val topBarActions: @Composable () -> Unit = BrowserActions
+
+    @Composable
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        BrowserContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val BrowserActions: @Composable () -> Unit = {
         QuickActionsAction(
             listOf(
                 BrowserKeys.PKG_MISHARE,
@@ -41,61 +49,57 @@ class BrowserActivity : BaseSubPageActivity() {
         )
     }
 
-    @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val general = remember {
-            HookSection(
-                titleRes = R.string.browser_section_general,
-                specs = listOf(
-                    featureSpec(BrowserKeys.MASTER),
-                    featureSpec(BrowserKeys.INTENT_INTERCEPT),
-                    featureSpec(BrowserKeys.FAKE_INSTALLED),
-                    featureSpec(BrowserKeys.PENDING_INTENT),
-                ),
-            )
-        }
-        val scenarios = remember {
-            HookSection(
-                titleRes = R.string.browser_section_scenarios,
-                specs = listOf(
-                    featureSpec(BrowserKeys.NOTIFICATION_ICON),
-                    featureSpec(BrowserKeys.MISHARE),
-                    featureSpec(BrowserKeys.VOICE_ASSIST),
-                    featureSpec(BrowserKeys.COPY_DIRECT),
-                    featureSpec(BrowserKeys.ROUTER_SETTINGS),
-                ),
-            )
-        }
+@Composable
+internal fun BrowserContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val general = remember {
+        HookSection(
+            titleRes = R.string.browser_section_general,
+            specs = listOf(
+                featureSpec(BrowserKeys.MASTER),
+                featureSpec(BrowserKeys.INTENT_INTERCEPT),
+                featureSpec(BrowserKeys.FAKE_INSTALLED),
+                featureSpec(BrowserKeys.PENDING_INTENT),
+            ),
+        )
+    }
+    val scenarios = remember {
+        HookSection(
+            titleRes = R.string.browser_section_scenarios,
+            specs = listOf(
+                featureSpec(BrowserKeys.NOTIFICATION_ICON),
+                featureSpec(BrowserKeys.MISHARE),
+                featureSpec(BrowserKeys.VOICE_ASSIST),
+                featureSpec(BrowserKeys.COPY_DIRECT),
+                featureSpec(BrowserKeys.ROUTER_SETTINGS),
+            ),
+        )
+    }
 
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(general) {
-                HookSectionCard(general) { general.specs.forEach { HookOptionView(it) } }
-            }
-            searchSectionItem(scenarios) {
-                HookSectionCard(scenarios) { scenarios.specs.forEach { HookOptionView(it) } }
-            }
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(general) {
+            HookSectionCard(general) { general.specs.forEach { HookOptionView(it) } }
+        }
+        searchSectionItem(scenarios) {
+            HookSectionCard(scenarios) { scenarios.specs.forEach { HookOptionView(it) } }
         }
     }
 }

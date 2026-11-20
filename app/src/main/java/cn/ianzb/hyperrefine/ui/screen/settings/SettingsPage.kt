@@ -1,7 +1,6 @@
 package cn.ianzb.hyperrefine.ui.screen.settings
 
 import android.app.Activity
-import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -33,12 +32,14 @@ import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.prefs.ConfigBackup
 import cn.ianzb.hyperrefine.prefs.ConfigState
 import cn.ianzb.hyperrefine.prefs.OptionRegistry
-import cn.ianzb.hyperrefine.ui.screen.safemode.SafeModeActivity
+import cn.ianzb.hyperrefine.ui.screen.subpage.AppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.rememberOpenAppSubPage
 import cn.ianzb.hyperrefine.BottomBarStyle
 import cn.ianzb.hyperrefine.RailStyle
 import cn.ianzb.hyperrefine.UpdateChecker
 import cn.ianzb.hyperrefine.ui.component.AppLazyPage
 import cn.ianzb.hyperrefine.ui.component.CurrentChangelogDialog
+import cn.ianzb.hyperrefine.ui.component.AppSectionCard
 import cn.ianzb.hyperrefine.ui.util.LocalPreferenceBackdrop
 import cn.ianzb.hyperrefine.xposed.RootHelper
 import cn.ianzb.hyperrefine.xposed.SafeModeReader
@@ -49,7 +50,7 @@ import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.glass.GlassDropdownPreference
-import top.yukonga.miuix.kmp.preference.ArrowPreference
+import cn.ianzb.hyperrefine.ui.component.AppArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -76,6 +77,7 @@ fun SettingsPageView(
     extraBottomPadding: Dp = 0.dp,
 ) {
     val context = LocalContext.current
+    val openSafeMode = rememberOpenAppSubPage(AppSubPage.SafeMode)
     val resources = LocalResources.current
     val activity = context as? Activity
     val scope = rememberCoroutineScope()
@@ -176,30 +178,15 @@ fun SettingsPageView(
                     if (safeModePackages.isNotEmpty()) {
                         BasicComponent(
                             title = stringResource(R.string.safe_mode_active_title),
-                            summary = stringResource(
-                                R.string.safe_mode_active_summary,
-                                safeModePackages.size,
-                            ),
                         )
                     }
-                    ArrowPreference(
+                    AppArrowPreference(
                         title = stringResource(R.string.safe_mode_manage),
-                        summary = if (safeModePackages.isEmpty()) {
-                            stringResource(R.string.safe_mode_manage_summary_none)
-                        } else {
-                            stringResource(
-                                R.string.safe_mode_manage_summary_active,
-                                safeModePackages.size,
-                            )
-                        },
-                        onClick = {
-                            context.startActivity(Intent(context, SafeModeActivity::class.java))
-                        },
+                        onClick = openSafeMode,
                     )
 
-                    ArrowPreference(
+                    AppArrowPreference(
                         title = stringResource(R.string.module_scope_request),
-                        summary = stringResource(R.string.module_scope_request_summary),
                         onClick = {
                             val packages = OptionRegistry.all()
                                 .flatMap { it.targetPackages }
@@ -214,9 +201,8 @@ fun SettingsPageView(
                             }
                         },
                     )
-                    ArrowPreference(
+                    AppArrowPreference(
                         title = stringResource(R.string.module_clear_dexkit),
-                        summary = stringResource(R.string.module_clear_dexkit_summary),
                         onClick = {
                             val targets = XposedServiceManager.scope
                             scope.launch {
@@ -235,89 +221,87 @@ fun SettingsPageView(
                 }
 
                 AppSectionCard(title = stringResource(R.string.settings_interface)) {
-                    Column {
-                        val modes = listOf(
-                            stringResource(R.string.theme_system),
-                            stringResource(R.string.theme_light),
-                            stringResource(R.string.theme_dark),
-                            stringResource(R.string.theme_monet_system),
-                            stringResource(R.string.theme_monet_light),
-                            stringResource(R.string.theme_monet_dark)
-                        )
-                        val modesEnum = listOf(
-                            ColorSchemeMode.System,
-                            ColorSchemeMode.Light,
-                            ColorSchemeMode.Dark,
-                            ColorSchemeMode.MonetSystem,
-                            ColorSchemeMode.MonetLight,
-                            ColorSchemeMode.MonetDark
-                        )
-                        val currentIndex = modesEnum.indexOf(currentMode).takeIf { it >= 0 } ?: 0
+                    val modes = listOf(
+                        stringResource(R.string.theme_system),
+                        stringResource(R.string.theme_light),
+                        stringResource(R.string.theme_dark),
+                        stringResource(R.string.theme_monet_system),
+                        stringResource(R.string.theme_monet_light),
+                        stringResource(R.string.theme_monet_dark)
+                    )
+                    val modesEnum = listOf(
+                        ColorSchemeMode.System,
+                        ColorSchemeMode.Light,
+                        ColorSchemeMode.Dark,
+                        ColorSchemeMode.MonetSystem,
+                        ColorSchemeMode.MonetLight,
+                        ColorSchemeMode.MonetDark
+                    )
+                    val currentIndex = modesEnum.indexOf(currentMode).takeIf { it >= 0 } ?: 0
 
-                        GlassDropdownPreference(
-                            title = stringResource(R.string.theme_mode),
-                            items = modes,
-                            selectedIndex = currentIndex,
-                            onSelectedIndexChange = { onModeChange(modesEnum[it]) },
-                            backdrop = LocalPreferenceBackdrop.current,
-                            renderInRootScaffold = true,
-                        )
+                    GlassDropdownPreference(
+                        title = stringResource(R.string.theme_mode),
+                        items = modes,
+                        selectedIndex = currentIndex,
+                        onSelectedIndexChange = { onModeChange(modesEnum[it]) },
+                        backdrop = LocalPreferenceBackdrop.current,
+                        renderInRootScaffold = true,
+                    )
 
-                        // 底栏样式与侧栏样式各自独立：平板可以「左侧面板侧栏 + iOS 底栏」这类组合，
-                        // 窄屏只用到底栏样式（侧栏不生效）。
-                        val bottomBarStyles = listOf(
-                            stringResource(R.string.bottom_bar_style_hyperos),
-                            stringResource(R.string.bottom_bar_style_ios)
-                        )
-                        val bottomBarStyleValues = BottomBarStyle.entries
+                    // 底栏样式与侧栏样式各自独立：平板可以「左侧面板侧栏 + iOS 底栏」这类组合，
+                    // 窄屏只用到底栏样式（侧栏不生效）。
+                    val bottomBarStyles = listOf(
+                        stringResource(R.string.bottom_bar_style_hyperos),
+                        stringResource(R.string.bottom_bar_style_ios)
+                    )
+                    val bottomBarStyleValues = BottomBarStyle.entries
 
-                        GlassDropdownPreference(
-                            title = stringResource(R.string.bottom_bar_style),
-                            summary = stringResource(R.string.bottom_bar_style_summary),
-                            items = bottomBarStyles,
-                            selectedIndex = bottomBarStyleValues.indexOf(bottomBarStyle)
-                                .takeIf { it >= 0 } ?: 0,
-                            onSelectedIndexChange = {
-                                onBottomBarStyleChange(bottomBarStyleValues[it])
-                            },
-                            backdrop = LocalPreferenceBackdrop.current,
-                            renderInRootScaffold = true,
-                        )
+                    GlassDropdownPreference(
+                        title = stringResource(R.string.bottom_bar_style),
+                        summary = stringResource(R.string.bottom_bar_style_summary),
+                        items = bottomBarStyles,
+                        selectedIndex = bottomBarStyleValues.indexOf(bottomBarStyle)
+                            .takeIf { it >= 0 } ?: 0,
+                        onSelectedIndexChange = {
+                            onBottomBarStyleChange(bottomBarStyleValues[it])
+                        },
+                        backdrop = LocalPreferenceBackdrop.current,
+                        renderInRootScaffold = true,
+                    )
 
-                        val railStyles = listOf(
-                            stringResource(R.string.rail_style_none),
-                            stringResource(R.string.rail_style_top),
-                            stringResource(R.string.rail_style_left)
-                        )
-                        val railStyleValues = RailStyle.entries
+                    val railStyles = listOf(
+                        stringResource(R.string.rail_style_none),
+                        stringResource(R.string.rail_style_top),
+                        stringResource(R.string.rail_style_left)
+                    )
+                    val railStyleValues = RailStyle.entries
 
-                        GlassDropdownPreference(
-                            title = stringResource(R.string.rail_style),
-                            summary = stringResource(R.string.rail_style_summary),
-                            items = railStyles,
-                            selectedIndex = railStyleValues.indexOf(railStyle)
-                                .takeIf { it >= 0 } ?: 0,
-                            onSelectedIndexChange = {
-                                onRailStyleChange(railStyleValues[it])
-                            },
-                            backdrop = LocalPreferenceBackdrop.current,
-                            renderInRootScaffold = true,
-                        )
+                    GlassDropdownPreference(
+                        title = stringResource(R.string.rail_style),
+                        summary = stringResource(R.string.rail_style_summary),
+                        items = railStyles,
+                        selectedIndex = railStyleValues.indexOf(railStyle)
+                            .takeIf { it >= 0 } ?: 0,
+                        onSelectedIndexChange = {
+                            onRailStyleChange(railStyleValues[it])
+                        },
+                        backdrop = LocalPreferenceBackdrop.current,
+                        renderInRootScaffold = true,
+                    )
 
-                        SwitchPreference(
-                            title = stringResource(R.string.blur_enabled),
-                            summary = stringResource(R.string.blur_enabled_summary),
-                            checked = isBlurEnabled,
-                            onCheckedChange = onBlurEnabledChange
-                        )
+                    SwitchPreference(
+                        title = stringResource(R.string.blur_enabled),
+                        summary = stringResource(R.string.blur_enabled_summary),
+                        checked = isBlurEnabled,
+                        onCheckedChange = onBlurEnabledChange
+                    )
 
-                        SwitchPreference(
-                            title = stringResource(R.string.hide_launcher_icon),
-                            summary = stringResource(R.string.hide_launcher_icon_summary),
-                            checked = hideLauncherIcon,
-                            onCheckedChange = onHideLauncherIconChange
-                        )
-                    }
+                    SwitchPreference(
+                        title = stringResource(R.string.hide_launcher_icon),
+                        summary = stringResource(R.string.hide_launcher_icon_summary),
+                        checked = hideLauncherIcon,
+                        onCheckedChange = onHideLauncherIconChange
+                    )
                 }
 
                 AppSectionCard(title = stringResource(R.string.settings_language)) {
@@ -349,28 +333,26 @@ fun SettingsPageView(
                 }
 
                 AppSectionCard(title = stringResource(R.string.settings_update)) {
-                    Column {
-                        SwitchPreference(
-                            title = stringResource(R.string.check_update_on_launch),
-                            summary = stringResource(R.string.check_update_on_launch_summary),
-                            checked = checkUpdateOnLaunch,
-                            onCheckedChange = onCheckUpdateOnLaunchChange,
-                        )
+                    SwitchPreference(
+                        title = stringResource(R.string.check_update_on_launch),
+                        summary = stringResource(R.string.check_update_on_launch_summary),
+                        checked = checkUpdateOnLaunch,
+                        onCheckedChange = onCheckUpdateOnLaunchChange,
+                    )
 
-                        ArrowPreference(
-                            title = stringResource(R.string.check_update),
-                            summary = if (isCheckingUpdate) {
-                                stringResource(R.string.check_update_checking)
-                            } else {
-                                stringResource(R.string.check_update_summary, appVersion)
-                            },
-                            onClick = onCheckUpdate,
-                        )
-                        ArrowPreference(
-                            title = stringResource(R.string.current_changelog),
-                            onClick = { showChangelog = true },
-                        )
-                    }
+                    AppArrowPreference(
+                        title = stringResource(R.string.check_update),
+                        summary = if (isCheckingUpdate) {
+                            stringResource(R.string.check_update_checking)
+                        } else {
+                            stringResource(R.string.check_update_summary, appVersion)
+                        },
+                        onClick = onCheckUpdate,
+                    )
+                    AppArrowPreference(
+                        title = stringResource(R.string.current_changelog),
+                        onClick = { showChangelog = true },
+                    )
                 }
                 if (showChangelog) {
                     val notes = remember(context, appVersion) {
@@ -384,21 +366,19 @@ fun SettingsPageView(
                 }
 
                 AppSectionCard(title = stringResource(R.string.settings_data)) {
-                    Column {
-                        ArrowPreference(
-                            title = stringResource(R.string.export_settings),
-                            summary = stringResource(R.string.export_settings_summary),
-                            onClick = {
-                                exportLauncher.launch("HyperRefine_settings.json")
-                            }
-                        )
+                    AppArrowPreference(
+                        title = stringResource(R.string.export_settings),
+                        summary = stringResource(R.string.export_settings_summary),
+                        onClick = {
+                            exportLauncher.launch("MiuixGuiTemplate_settings.json")
+                        }
+                    )
 
-                        ArrowPreference(
-                            title = stringResource(R.string.import_settings),
-                            summary = stringResource(R.string.import_settings_summary),
-                            onClick = { importLauncher.launch("application/json") }
-                        )
-                    }
+                    AppArrowPreference(
+                        title = stringResource(R.string.import_settings),
+                        summary = stringResource(R.string.import_settings_summary),
+                        onClick = { importLauncher.launch("application/json") }
+                    )
                 }
 
                 MiuixText(

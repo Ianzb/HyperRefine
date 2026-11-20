@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
@@ -17,15 +15,14 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import cn.ianzb.hyperrefine.ui.util.LocalPreferenceBackdrop
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.ui.component.search.rememberAppSearchOpen
-import cn.ianzb.hyperrefine.ui.util.LocalPreferenceBackdrop
 import cn.ianzb.hyperrefine.ui.util.PageBackdrop
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import cn.ianzb.hyperrefine.ui.util.pageStartInset
@@ -110,9 +107,7 @@ fun AppPageScaffold(
                             )
                         }
                     }
-                    CompositionLocalProvider(LocalPreferenceBackdrop provides topBarBackdrop) {
-                        actions()
-                    }
+                    CompositionLocalProvider(LocalPreferenceBackdrop provides topBarBackdrop) { actions() }
                 },
             )
         },
@@ -138,6 +133,7 @@ fun AppLazyPage(
     title: String,
     isBlurEnabled: Boolean,
     extraBottomPadding: Dp = 0.dp,
+    userScrollEnabled: Boolean = true,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     scrollBehavior: ScrollBehavior = MiuixScrollBehavior(),
@@ -145,7 +141,6 @@ fun AppLazyPage(
     topBarActions: @Composable RowScope.() -> Unit = {},
     topBarSearchAction: Boolean = false,
     contentWindowInsets: WindowInsets = AppPageContentWindowInsets,
-    userScrollEnabled: Boolean = true,
     content: LazyListScope.() -> Unit,
 ) {
     AppPageScaffold(
@@ -158,10 +153,9 @@ fun AppLazyPage(
         topBarSearchAction = topBarSearchAction,
         contentWindowInsets = contentWindowInsets,
     ) { innerPadding ->
-        val direction = LocalLayoutDirection.current
         LazyColumn(
-            state = listState,
             userScrollEnabled = userScrollEnabled,
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .pageStartInset()
@@ -171,9 +165,7 @@ fun AppLazyPage(
                     contentState = listState,
                 ),
             contentPadding = PaddingValues(
-                start = innerPadding.calculateStartPadding(direction),
                 top = innerPadding.calculateTopPadding(),
-                end = innerPadding.calculateEndPadding(direction),
                 bottom = innerPadding.calculateBottomPadding() + extraBottomPadding,
             ),
             content = content,

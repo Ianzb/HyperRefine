@@ -28,66 +28,70 @@ class CornerRadiusActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.cc_radius_title
 
-    override val topBarActions: (@Composable () -> Unit)? = {
+    override val topBarActions: @Composable () -> Unit = CornerRadiusActions
+
+    @Composable
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        CornerRadiusContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val CornerRadiusActions: @Composable () -> Unit = {
         QuickActionsAction(listOf("com.android.systemui", AppVolumeKeys.TARGET_PACKAGE))
     }
 
-    @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val masterSection = HookSection(
-            titleRes = R.string.cc_radius_section_master,
-            specs = listOf(
-                featureSpec(CcRadiusKeys.MASTER),
-                featureSpec(CcRadiusKeys.COMPONENT),
-                featureSpec(CcRadiusKeys.BACKGROUND),
-            ),
-        )
-        val componentSection = HookSection(
-            titleRes = R.string.cc_radius_section_component,
-            specs = CcRadiusKeys.COMPONENT_ITEMS.map { featureSpec(CcRadiusKeys.valueKey(it)) },
-        )
-        val backgroundSection = HookSection(
-            titleRes = R.string.cc_radius_section_background,
-            specs = CcRadiusKeys.BACKGROUND_ITEMS.map { featureSpec(CcRadiusKeys.valueKey(it)) },
-        )
+@Composable
+internal fun CornerRadiusContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val masterSection = HookSection(
+        titleRes = R.string.cc_radius_section_master,
+        specs = listOf(
+            featureSpec(CcRadiusKeys.MASTER),
+            featureSpec(CcRadiusKeys.COMPONENT),
+            featureSpec(CcRadiusKeys.BACKGROUND),
+        ),
+    )
+    val componentSection = HookSection(
+        titleRes = R.string.cc_radius_section_component,
+        specs = CcRadiusKeys.COMPONENT_ITEMS.map { featureSpec(CcRadiusKeys.valueKey(it)) },
+    )
+    val backgroundSection = HookSection(
+        titleRes = R.string.cc_radius_section_background,
+        specs = CcRadiusKeys.BACKGROUND_ITEMS.map { featureSpec(CcRadiusKeys.valueKey(it)) },
+    )
 
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(masterSection) {
-                HookSectionCard(masterSection) {
-                    masterSection.specs.forEach { HookOptionView(it) }
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(masterSection) {
+            HookSectionCard(masterSection) {
+                masterSection.specs.forEach { HookOptionView(it) }
             }
-            searchSectionItem(componentSection) {
-                HookSectionCard(componentSection) {
-                    componentSection.specs.forEach { HookOptionView(it) }
-                }
+        }
+        searchSectionItem(componentSection) {
+            HookSectionCard(componentSection) {
+                componentSection.specs.forEach { HookOptionView(it) }
             }
-            searchSectionItem(backgroundSection) {
-                HookSectionCard(backgroundSection) {
-                    backgroundSection.specs.forEach { HookOptionView(it) }
-                }
+        }
+        searchSectionItem(backgroundSection) {
+            HookSectionCard(backgroundSection) {
+                backgroundSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

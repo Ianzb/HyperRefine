@@ -1,6 +1,8 @@
 package cn.ianzb.hyperrefine.ui.screen.features
 
-import android.content.Intent
+import cn.ianzb.hyperrefine.ui.screen.subpage.AppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.LocalOpenAppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.openAppSubPage
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -30,8 +32,15 @@ class ExperimentalActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.section_experimental
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        {
+    override val topBarActions: @Composable () -> Unit = ExperimentalActions
+
+    @Composable
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        ExperimentalContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val ExperimentalActions: @Composable () -> Unit = {
             QuickActionsAction(
                 listOf(
                     WeatherKeys.TARGET_PACKAGE,
@@ -40,73 +49,70 @@ class ExperimentalActivity : BaseSubPageActivity() {
             )
         }
 
-    @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
+@Composable
+internal fun ExperimentalContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val context = LocalContext.current
+    val openInHost = LocalOpenAppSubPage.current
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val sections = listOf(
+        HookSection(
+            specs = listOf(
+                featureSpec(KEY_ASSISTANT),
+                featureSpec(KEY_IME),
+            ),
+        ),
+        HookSection(
+            titleRes = R.string.section_weather,
+            specs = listOf(
+                featureSpec(KEY_WEATHER),
+            ),
+        ),
+        HookSection(
+            titleRes = R.string.phrase_reorder_section,
+            specs = listOf(
+                featureSpec(KEY_PHRASE_REORDER),
+            ),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = contentPadding,
     ) {
-        val context = LocalContext.current
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val sections = listOf(
-            HookSection(
-                specs = listOf(
-                    featureSpec(KEY_ASSISTANT),
-                    featureSpec(KEY_IME),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.section_weather,
-                specs = listOf(
-                    featureSpec(KEY_WEATHER),
-                ),
-            ),
-            HookSection(
-                titleRes = R.string.phrase_reorder_section,
-                specs = listOf(
-                    featureSpec(KEY_PHRASE_REORDER),
-                ),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
+        sections.forEach { section ->
+            searchSectionItem(section) {
+                HookSectionCard(section) {
+                    section.specs.forEach { spec ->
+                        HookOptionView(
+                            spec = spec,
+                            onArrowClick = {
+                                when (spec.key) {
+                                    KEY_ASSISTANT -> openAppSubPage(context, openInHost, AppSubPage.Assistant, null)
+                                    KEY_IME -> openAppSubPage(context, openInHost, AppSubPage.Ime, null)
+                                    KEY_WEATHER -> openAppSubPage(context, openInHost, AppSubPage.Weather, null)
+                                }
+                            },
                         )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            sections.forEach { section ->
-                searchSectionItem(section) {
-                    HookSectionCard(section) {
-                        section.specs.forEach { spec ->
-                            HookOptionView(
-                                spec = spec,
-                                onArrowClick = {
-                                    when (spec.key) {
-                                        KEY_ASSISTANT -> context.startActivity(Intent(context, AssistantActivity::class.java))
-                                        KEY_IME -> context.startActivity(Intent(context, ImeActivity::class.java))
-                                        KEY_WEATHER -> context.startActivity(Intent(context, WeatherActivity::class.java))
-                                    }
-                                },
-                            )
-                        }
                     }
                 }
             }
-            searchSectionItem(HookSection(specs = listOf(InstallerExperiment.entrySpec()))) {
-                InstallerExperiment.EntryCard()
-            }
+        }
+        searchSectionItem(HookSection(specs = listOf(InstallerExperiment.entrySpec()))) {
+            InstallerExperiment.EntryCard()
         }
     }
 }

@@ -38,76 +38,77 @@ class PercentStyleActivity : BaseSubPageActivity() {
         intent?.getStringExtra(EXTRA_LOCATION) ?: PercentLocation.CC_VOLUME
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val location = location()
-        val masterKey = PercentLocation.masterKey(location)
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-
-        val interactionSection = if (location == PercentLocation.SIDE_VOLUME) {
-            HookSection(
-                titleRes = R.string.side_volume_interaction_section,
-                specs = listOf(
-                    featureSpec(SIDE_LONGPRESS_KEY),
-                    featureSpec(AppVolumeKeys.HIDE_RINGER),
-                    featureSpec(AppVolumeKeys.HIDE_DND),
-                ),
-            )
-        } else {
-            null
-        }
-        // 百分比相关选项统一放在一个卡片组（总开关 + 样式 + 显示位置）。
-        val percentSection = HookSection(
-            titleRes = R.string.percent_display_section,
-            specs = buildList {
-                add(featureSpec(masterKey))
-                add(featureSpec("${location}_font_size"))
-                add(featureSpec("${location}_font_weight"))
-                add(featureSpec("${location}_follow_icon"))
-                add(featureSpec(PercentLocation.positionKey(location)))
-                if (location == PercentLocation.SIDE_VOLUME) add(featureSpec(SIDE_INSIDE_KEY))
-            },
-        )
-
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            // 长按打开音量面板：始终显示且置于页面最前。
-            interactionSection?.let { section ->
-                searchSectionItem(section) {
-                    HookSectionCard(section) {
-                        section.specs.forEach { HookOptionView(it) }
-                    }
-                }
-            }
-            // 规范：依赖百分比总开关的样式项始终显示，未开启时禁用灰显（不隐藏）。
-            searchSectionItem(percentSection) {
-                HookSectionCard(percentSection) {
-                    percentSection.specs.forEach { HookOptionView(it) }
-                }
-            }
-        }
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        PercentStyleContent(location(), contentPadding)
     }
 
     companion object {
         const val EXTRA_LOCATION = "location"
+    }
+}
+
+@Composable
+internal fun PercentStyleContent(location: String, contentPadding: PaddingValues) {
+    val masterKey = PercentLocation.masterKey(location)
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+
+    val interactionSection = if (location == PercentLocation.SIDE_VOLUME) {
+        HookSection(
+            titleRes = R.string.side_volume_interaction_section,
+            specs = listOf(
+                featureSpec(SIDE_LONGPRESS_KEY),
+                featureSpec(AppVolumeKeys.HIDE_RINGER),
+                featureSpec(AppVolumeKeys.HIDE_DND),
+            ),
+        )
+    } else {
+        null
+    }
+    // 百分比相关选项统一放在一个卡片组（总开关 + 样式 + 显示位置）。
+    val percentSection = HookSection(
+        titleRes = R.string.percent_display_section,
+        specs = buildList {
+            add(featureSpec(masterKey))
+            add(featureSpec("${location}_font_size"))
+            add(featureSpec("${location}_font_weight"))
+            add(featureSpec("${location}_follow_icon"))
+            add(featureSpec(PercentLocation.positionKey(location)))
+            if (location == PercentLocation.SIDE_VOLUME) add(featureSpec(SIDE_INSIDE_KEY))
+        },
+    )
+
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        // 长按打开音量面板：始终显示且置于页面最前。
+        interactionSection?.let { section ->
+            searchSectionItem(section) {
+                HookSectionCard(section) {
+                    section.specs.forEach { HookOptionView(it) }
+                }
+            }
+        }
+        // 规范：依赖百分比总开关的样式项始终显示，未开启时禁用灰显（不隐藏）。
+        searchSectionItem(percentSection) {
+            HookSectionCard(percentSection) {
+                percentSection.specs.forEach { HookOptionView(it) }
+            }
+        }
     }
 }

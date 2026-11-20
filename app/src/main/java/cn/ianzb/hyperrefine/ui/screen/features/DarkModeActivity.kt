@@ -24,42 +24,45 @@ class DarkModeActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.section_dark_mode
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf(DarkModeScheduleKeys.TARGET)) }
+    override val topBarActions: @Composable () -> Unit = DarkModeActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val darkModeSection = HookSection(
-            titleRes = R.string.section_dark_mode,
-            specs = listOf(featureSpec(KEY_DARK_MODE_SCHEDULE)),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(darkModeSection) {
-                HookSectionCard(darkModeSection) {
-                    darkModeSection.specs.forEach { HookOptionView(it) }
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        DarkModeContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val DarkModeActions: @Composable () -> Unit = { QuickActionsAction(listOf(DarkModeScheduleKeys.TARGET)) }
+
+@Composable
+internal fun DarkModeContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val darkModeSection = HookSection(
+        titleRes = R.string.section_dark_mode,
+        specs = listOf(featureSpec(KEY_DARK_MODE_SCHEDULE)),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(darkModeSection) {
+            HookSectionCard(darkModeSection) {
+                darkModeSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

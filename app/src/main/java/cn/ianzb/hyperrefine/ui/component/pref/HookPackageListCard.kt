@@ -3,6 +3,8 @@ package cn.ianzb.hyperrefine.ui.component.pref
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,8 +19,8 @@ import cn.ianzb.hyperrefine.prefs.OptionSpec
 import cn.ianzb.hyperrefine.ui.component.AppDialog
 import cn.ianzb.hyperrefine.ui.component.AppDialogButton
 import cn.ianzb.hyperrefine.ui.component.AppDialogButtonRow
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.glass.GlassTextField
+import cn.ianzb.hyperrefine.ui.component.AppArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 
@@ -51,7 +53,7 @@ fun HookPackageListCard(
         stringResource(R.string.hook_package_list_count, packages.size)
     }
 
-    ArrowPreference(
+    AppArrowPreference(
         title = stringResource(spec.titleRes),
         summary = summary,
         onClick = { if (enabled) showDialog = true },
@@ -70,7 +72,7 @@ private fun PackageListDialog(
     onDismiss: () -> Unit,
 ) {
     val current = ConfigState.string(spec.key, spec.defaultString)
-    var input by remember { mutableStateOf(current) }
+    val input = rememberTextFieldState(current)
 
     AppDialog(
         show = true,
@@ -79,12 +81,10 @@ private fun PackageListDialog(
         onDismissRequest = onDismiss,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            TextField(
-                value = input,
-                onValueChange = { input = it },
+            GlassTextField(
+                state = input,
                 label = stringResource(R.string.hook_package_list_placeholder),
-                singleLine = false,
-                maxLines = 6,
+                lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 6),
                 modifier = Modifier.fillMaxWidth(),
             )
             MiuixText(
@@ -110,7 +110,7 @@ private fun PackageListDialog(
                 AppDialogButton(
                     text = stringResource(R.string.action_confirm),
                     onClick = {
-                        ConfigState.set(spec.key, input)
+                        ConfigState.set(spec.key, input.text.toString())
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f),

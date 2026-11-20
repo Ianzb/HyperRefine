@@ -26,50 +26,53 @@ class AppVolumeActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.app_volume_section
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui", AppVolumeKeys.TARGET_PACKAGE)) }
+    override val topBarActions: @Composable () -> Unit = AppVolumeActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val appVolumeSection = HookSection(
-            titleRes = R.string.app_volume_section,
-            specs = listOf(
-                featureSpec(AppVolumeKeys.ENTRY),
-                featureSpec(AppVolumeKeys.ENTRY_VISIBILITY),
-                featureSpec(AppVolumeKeys.HIDE_FLOAT),
-                featureSpec(AppVolumeKeys.AUTO_SHOW),
-                featureSpec(AppVolumeKeys.HEIGHT_AUTO),
-                featureSpec(AppVolumeKeys.HEIGHT_PERCENT),
-                featureSpec(AppVolumeKeys.HIDE_PANEL_BG),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(appVolumeSection) {
-                HookSectionCard(appVolumeSection) {
-                    appVolumeSection.specs.forEach { HookOptionView(it) }
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        AppVolumeContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val AppVolumeActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.android.systemui", AppVolumeKeys.TARGET_PACKAGE)) }
+
+@Composable
+internal fun AppVolumeContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val appVolumeSection = HookSection(
+        titleRes = R.string.app_volume_section,
+        specs = listOf(
+            featureSpec(AppVolumeKeys.ENTRY),
+            featureSpec(AppVolumeKeys.ENTRY_VISIBILITY),
+            featureSpec(AppVolumeKeys.HIDE_FLOAT),
+            featureSpec(AppVolumeKeys.AUTO_SHOW),
+            featureSpec(AppVolumeKeys.HEIGHT_AUTO),
+            featureSpec(AppVolumeKeys.HEIGHT_PERCENT),
+            featureSpec(AppVolumeKeys.HIDE_PANEL_BG),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(appVolumeSection) {
+            HookSectionCard(appVolumeSection) {
+                appVolumeSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

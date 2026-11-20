@@ -24,49 +24,52 @@ class DeviceCenterActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.section_device_center
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui", "com.milink.service", "com.xiaomi.smarthome")) }
+    override val topBarActions: @Composable () -> Unit = DeviceCenterActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val deviceSection = HookSection(
-            titleRes = R.string.section_device_center,
-            specs = listOf(
-                featureSpec(KEY_DEVICE_CENTER_FAST_LOAD),
-                featureSpec(KEY_DEVICE_CENTER_HIDE_MORE),
-                featureSpec(KEY_DEVICE_CENTER_SHRINK_HIT_AREA),
-                featureSpec(KEY_DEVICE_CENTER_CARD_GLASS),
-                featureSpec(ConnectKeys.SMART_HOME_CARD_ANIMATION),
-                featureSpec(KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(deviceSection) {
-                HookSectionCard(deviceSection) {
-                    deviceSection.specs.forEach { HookOptionView(it) }
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        DeviceCenterContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val DeviceCenterActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.android.systemui", "com.milink.service", "com.xiaomi.smarthome")) }
+
+@Composable
+internal fun DeviceCenterContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val deviceSection = HookSection(
+        titleRes = R.string.section_device_center,
+        specs = listOf(
+            featureSpec(KEY_DEVICE_CENTER_FAST_LOAD),
+            featureSpec(KEY_DEVICE_CENTER_HIDE_MORE),
+            featureSpec(KEY_DEVICE_CENTER_SHRINK_HIT_AREA),
+            featureSpec(KEY_DEVICE_CENTER_CARD_GLASS),
+            featureSpec(ConnectKeys.SMART_HOME_CARD_ANIMATION),
+            featureSpec(KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(deviceSection) {
+            HookSectionCard(deviceSection) {
+                deviceSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

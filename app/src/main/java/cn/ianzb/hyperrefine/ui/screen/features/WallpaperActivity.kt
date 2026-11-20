@@ -23,42 +23,45 @@ class WallpaperActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.section_wallpaper
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui")) }
+    override val topBarActions: @Composable () -> Unit = WallpaperActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val wallpaperSection = HookSection(
-            titleRes = R.string.section_wallpaper,
-            specs = wallpaperSpecs(featureSpecs()),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(wallpaperSection) {
-                HookSectionCard(wallpaperSection) {
-                    wallpaperSection.specs.forEach { HookOptionView(it) }
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        WallpaperContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val WallpaperActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.android.systemui")) }
+
+@Composable
+internal fun WallpaperContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val wallpaperSection = HookSection(
+        titleRes = R.string.section_wallpaper,
+        specs = wallpaperSpecs(featureSpecs()),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(wallpaperSection) {
+            HookSectionCard(wallpaperSection) {
+                wallpaperSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

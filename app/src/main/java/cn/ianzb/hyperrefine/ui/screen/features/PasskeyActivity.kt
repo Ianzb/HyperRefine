@@ -27,7 +27,15 @@ class PasskeyActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.section_passkey
 
-    override val topBarActions: (@Composable () -> Unit)? = {
+    override val topBarActions: @Composable () -> Unit = PasskeyActions
+
+    @Composable
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        PasskeyContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val PasskeyActions: @Composable () -> Unit = {
         QuickActionsAction(
             listOf(
                 PasskeyKeys.TARGET_SETTINGS,
@@ -37,60 +45,56 @@ class PasskeyActivity : BaseSubPageActivity() {
         )
     }
 
-    @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val routeSection = remember {
-            HookSection(
-                titleRes = R.string.passkey_section_route,
-                specs = listOf(
-                    featureSpec(PasskeyKeys.MASTER),
-                    featureSpec(PasskeyKeys.SYSTEM_SERVER),
-                ),
-            )
-        }
-        val appSection = remember {
-            HookSection(
-                titleRes = R.string.passkey_section_apps,
-                specs = listOf(
-                    featureSpec(PasskeyKeys.SETTINGS),
-                    featureSpec(PasskeyKeys.BLOCK_SECURITY_CENTER),
-                    featureSpec(PasskeyKeys.SCANNER),
-                ),
-            )
-        }
+@Composable
+internal fun PasskeyContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val routeSection = remember {
+        HookSection(
+            titleRes = R.string.passkey_section_route,
+            specs = listOf(
+                featureSpec(PasskeyKeys.MASTER),
+                featureSpec(PasskeyKeys.SYSTEM_SERVER),
+            ),
+        )
+    }
+    val appSection = remember {
+        HookSection(
+            titleRes = R.string.passkey_section_apps,
+            specs = listOf(
+                featureSpec(PasskeyKeys.SETTINGS),
+                featureSpec(PasskeyKeys.BLOCK_SECURITY_CENTER),
+                featureSpec(PasskeyKeys.SCANNER),
+            ),
+        )
+    }
 
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(routeSection) {
-                HookSectionCard(routeSection) {
-                    routeSection.specs.forEach { HookOptionView(it) }
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(routeSection) {
+            HookSectionCard(routeSection) {
+                routeSection.specs.forEach { HookOptionView(it) }
             }
-            searchSectionItem(appSection) {
-                HookSectionCard(appSection) {
-                    appSection.specs.forEach { HookOptionView(it) }
-                }
+        }
+        searchSectionItem(appSection) {
+            HookSectionCard(appSection) {
+                appSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

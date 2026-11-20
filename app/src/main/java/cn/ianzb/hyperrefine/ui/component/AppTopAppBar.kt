@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.captionBar
@@ -21,17 +20,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
-import cn.ianzb.hyperrefine.ui.util.LocalAppPageStartInset
+import cn.ianzb.hyperrefine.ui.util.pageStartInset
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -40,7 +37,7 @@ import top.yukonga.miuix.kmp.glass.GlassIconButton
 import top.yukonga.miuix.kmp.glass.GlassTopAppBar
 import top.yukonga.miuix.kmp.glass.GlassTopAppBarDefaults
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.glass.Back
 import top.yukonga.miuix.kmp.icon.glass.ChevronBackward
 import top.yukonga.miuix.kmp.material.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -79,9 +76,9 @@ fun AppTopAppBar(
     // 宿主（宽屏 + 侧边导航栏）会把这两个值打开：折叠胶囊占据标题位置时标题淡出，且不再展开大标题。
     val chromeAlpha = LocalAppTopBarTitleAlpha.current
     val compact = LocalAppTopBarCompact.current
-    val mergedTitleAlpha: () -> Float = { (titleAlpha() * chromeAlpha).coerceIn(0f, 1f) }
+    val mergedTitleAlpha: () -> Float = { (titleAlpha() * chromeAlpha()).coerceIn(0f, 1f) }
     // 宽屏侧边导航栏覆盖在页面上：顶栏前景内容（标题/按钮）让出侧栏宽度，背景带仍铺满全宽。
-    val pageStartInset = LocalAppPageStartInset.current
+    val centerObstructionStart = LocalAppTopBarCenterObstructionStart.current()
     val backButton: @Composable () -> Unit = {
         CompositionLocalProvider(LocalIsGlassTopBar provides glass) {
             if (onBack != null) {
@@ -122,10 +119,7 @@ fun AppTopAppBar(
         title = title,
         isContentScrolled = contentScrolled,
         // 背景带固定在 y=0（覆盖状态栏），前景内容自己让出状态栏高度。
-        contentModifier = Modifier
-            .windowInsetsPadding(appTopBarSafeInsets())
-            .windowInsetsPadding(AppPageContentWindowInsets)
-            .padding(start = pageStartInset),
+        contentModifier = Modifier.windowInsetsPadding(appTopBarSafeInsets()).pageStartInset(),
         backdrop = if (glass) backdrop else null,
         // 带区是否模糊完全跟随「背景模糊」开关（backdrop 为 null 即关闭）与着色器可用性。
         progressiveBlur = glass && backdrop != null,
@@ -136,10 +130,18 @@ fun AppTopAppBar(
         backgroundAlpha = { 1f },
         defaultWindowInsetsPadding = false,
         titleAlpha = mergedTitleAlpha,
+        centerObstructionStart = centerObstructionStart,
         navigationIcon = backButton,
         actions = scopedActions,
     )
 }
+
+@Composable
+internal fun appTopBarSafeInsets(): WindowInsets =
+    WindowInsets.systemBars
+        .union(WindowInsets.captionBar)
+        .union(WindowInsets.displayCutout)
+        .only(WindowInsetsSides.Top)
 
 /**
  * 二级页面顶栏（带返回按钮），其余与 [AppTopAppBar] 一致。
@@ -176,13 +178,15 @@ val LocalIsGlassTopBar: ProvidableCompositionLocal<Boolean> = staticCompositionL
  * 顶栏标题的额外透明度倍数：宽屏侧栏折叠时顶部胶囊占据标题位置，由宿主把该值降到 0 让标题淡出，
  * 展开成左侧面板后再浮现（对应 miuix example 的 `chromeTitleAlpha`）。
  */
-val LocalAppTopBarTitleAlpha: ProvidableCompositionLocal<Float> = staticCompositionLocalOf { 1f }
+val LocalAppTopBarTitleAlpha: ProvidableCompositionLocal<() -> Float> = staticCompositionLocalOf { { 1f } }
 
 /**
  * 顶栏是否使用紧凑形态（不展开大标题）：宽屏下由宿主设为 true，
  * 否则下移后的大标题会顶到顶部折叠胶囊上（对应 miuix example 的 `expandable = !isWideScreen`）。
  */
 val LocalAppTopBarCompact: ProvidableCompositionLocal<Boolean> = staticCompositionLocalOf { false }
+
+internal val LocalAppTopBarCenterObstructionStart = staticCompositionLocalOf { { Dp.Unspecified } }
 
 /**
  * 顶栏动作图标按钮：处于玻璃顶栏内时用 [GlassIconButton]（自动继承顶栏的 style/material/尺寸），
@@ -212,16 +216,13 @@ private fun BackNavigationButton(
     glass: Boolean,
     backdrop: LayerBackdrop? = null,
 ) {
-    val mirrored = LocalLayoutDirection.current == LayoutDirection.Rtl
     val tint = if (glass) MiuixTheme.colorScheme.onSurface else MiuixTheme.colorScheme.onBackground
     val content: @Composable () -> Unit = {
         Icon(
-            imageVector = if (glass) MiuixIcons.Glass.ChevronBackward else MiuixIcons.Back,
+            imageVector = if (glass) MiuixIcons.Glass.ChevronBackward else MiuixIcons.Glass.Back,
             contentDescription = stringResource(R.string.action_back),
             tint = tint,
-            modifier = Modifier
-                .size(if (glass) 28.dp else 24.dp)
-                .then(if (mirrored) Modifier.graphicsLayer { scaleX = -1f } else Modifier),
+            modifier = Modifier.size(if (glass) 28.dp else 24.dp),
         )
     }
     if (glass) {
@@ -243,10 +244,3 @@ private fun BackNavigationButton(
  */
 internal fun isGlassTopBarAvailable(): Boolean =
     isRuntimeShaderSupported() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-
-@Composable
-internal fun appTopBarSafeInsets(): WindowInsets =
-    WindowInsets.systemBars
-        .union(WindowInsets.captionBar)
-        .union(WindowInsets.displayCutout)
-        .only(WindowInsetsSides.Top)

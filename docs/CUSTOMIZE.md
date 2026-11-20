@@ -255,7 +255,7 @@ private val loads: List<BaseLoad> = listOf(
 
 ### 7.2 构建页面
 
-页面组件参数见 [`API.md`](API.md) §5，二级页模板见 §6。二次开发只调整：
+页面组件参数见 [`API.md`](API.md) §5，二级页模板见 §6。主导航内子页在 `AppSubPage` 和 `AppSubPageContent` 登记，由 `SubPageScaffold` 提供内容边距。独立入口可继续继承 `BaseSubPageActivity` 并登记到清单。二次开发只调整：
 
 - 父页 `HookOptionsPage(sections = ...)` 的分区与入口卡片；
 - 作为二级入口的卡片用总结性名词短语做 `titleRes`，描述性内容放二级页；

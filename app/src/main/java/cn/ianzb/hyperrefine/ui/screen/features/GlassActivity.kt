@@ -24,46 +24,49 @@ class GlassActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.feature_glass
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui", "com.milink.service", "com.xiaomi.smarthome")) }
+    override val topBarActions: @Composable () -> Unit = GlassActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        GlassContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val GlassActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.android.systemui", "com.milink.service", "com.xiaomi.smarthome")) }
+
+@Composable
+internal fun GlassContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val glassSection = HookSection(
+        titleRes = R.string.section_cc_glass,
+        specs = listOf(featureSpec(CcGlassKeys.MASTER)) + glassScenes.keys.map(::featureSpec),
+    )
+    val themeSection = HookSection(
+        specs = listOf(featureSpec(CcGlassKeys.THEME_MATERIAL)),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = contentPadding,
     ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val glassSection = HookSection(
-            titleRes = R.string.section_cc_glass,
-            specs = listOf(featureSpec(CcGlassKeys.MASTER)) + glassScenes.keys.map(::featureSpec),
-        )
-        val themeSection = HookSection(
-            specs = listOf(featureSpec(CcGlassKeys.THEME_MATERIAL)),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            listOf(glassSection, themeSection).forEach { section ->
-                searchSectionItem(section) {
-                    HookSectionCard(section) {
-                        section.specs.forEach { HookOptionView(it) }
-                    }
+        listOf(glassSection, themeSection).forEach { section ->
+            searchSectionItem(section) {
+                HookSectionCard(section) {
+                    section.specs.forEach { HookOptionView(it) }
                 }
             }
         }

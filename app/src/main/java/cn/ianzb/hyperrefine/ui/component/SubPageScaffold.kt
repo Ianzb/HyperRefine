@@ -1,12 +1,21 @@
 package cn.ianzb.hyperrefine.ui.component
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.captionBar
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalLayoutDirection
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollGate
 import cn.ianzb.hyperrefine.ui.util.SubPageScrollGate
+import cn.ianzb.hyperrefine.ui.util.withPageStartInset
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 
 /**
@@ -42,11 +51,21 @@ fun SubPageScaffold(
             topBarActions?.invoke()
         },
     ) { innerPadding ->
+        val direction = LocalLayoutDirection.current
+        val systemBottom = WindowInsets.navigationBars.union(WindowInsets.captionBar)
+            .asPaddingValues().calculateBottomPadding()
         CompositionLocalProvider(
             LocalSubPageScrollBehavior provides scrollBehavior,
             LocalSubPageScrollGate provides scrollGate,
         ) {
-            content(innerPadding)
+            content(
+                PaddingValues(
+                    start = innerPadding.calculateStartPadding(direction),
+                    top = innerPadding.calculateTopPadding(),
+                    end = innerPadding.calculateEndPadding(direction),
+                    bottom = maxOf(innerPadding.calculateBottomPadding(), systemBottom),
+                ).withPageStartInset(),
+            )
         }
     }
 }

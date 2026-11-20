@@ -28,60 +28,63 @@ class AssistantActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.feature_assistant
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf(AssistantKeys.TARGET_PACKAGE)) }
+    override val topBarActions: @Composable () -> Unit = AssistantActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        AssistantContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val AssistantActions: @Composable () -> Unit = { QuickActionsAction(listOf(AssistantKeys.TARGET_PACKAGE)) }
+
+@Composable
+internal fun AssistantContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val animSection = HookSection(
+        titleRes = R.string.assistant_section_anim,
+        specs = listOf(
+            featureSpec(AssistantKeys.MASK_ALPHA_ZERO),
+            featureSpec(AssistantKeys.FORCE_REVERSE_MERGE),
+            featureSpec(AssistantKeys.MASK_BUFFER),
+        ),
+    )
+    val openSection = HookSection(
+        titleRes = R.string.assistant_section_open_anim,
+        specs = listOf(
+            featureSpec(AssistantKeys.OPEN_ANIM),
+            featureSpec(AssistantKeys.RETURN_FLIGHT),
+        ),
+    )
+    val serverSection = HookSection(
+        titleRes = R.string.assistant_section_server,
+        specs = listOf(
+            featureSpec(AssistantKeys.REMOTE_ANIM_PERMISSION),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = contentPadding,
     ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val animSection = HookSection(
-            titleRes = R.string.assistant_section_anim,
-            specs = listOf(
-                featureSpec(AssistantKeys.MASK_ALPHA_ZERO),
-                featureSpec(AssistantKeys.FORCE_REVERSE_MERGE),
-                featureSpec(AssistantKeys.MASK_BUFFER),
-            ),
-        )
-        val openSection = HookSection(
-            titleRes = R.string.assistant_section_open_anim,
-            specs = listOf(
-                featureSpec(AssistantKeys.OPEN_ANIM),
-                featureSpec(AssistantKeys.RETURN_FLIGHT),
-            ),
-        )
-        val serverSection = HookSection(
-            titleRes = R.string.assistant_section_server,
-            specs = listOf(
-                featureSpec(AssistantKeys.REMOTE_ANIM_PERMISSION),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            listOf(animSection, openSection, serverSection).forEach { section ->
-                searchSectionItem(section) {
-                    HookSectionCard(section) {
-                        section.specs.forEach { HookOptionView(it) }
-                    }
+        listOf(animSection, openSection, serverSection).forEach { section ->
+            searchSectionItem(section) {
+                HookSectionCard(section) {
+                    section.specs.forEach { HookOptionView(it) }
                 }
             }
         }

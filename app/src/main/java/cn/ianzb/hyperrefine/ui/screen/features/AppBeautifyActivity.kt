@@ -1,6 +1,8 @@
 package cn.ianzb.hyperrefine.ui.screen.features
 
-import android.content.Intent
+import cn.ianzb.hyperrefine.ui.screen.subpage.AppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.LocalOpenAppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.openAppSubPage
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,47 +30,51 @@ class AppBeautifyActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.feature_app_beautify
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(MiuixAppLoad.MIUIX_PACKAGES) }
+    override val topBarActions: @Composable () -> Unit = AppBeautifyActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val context = LocalContext.current
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val blurSection = HookSection(
-            titleRes = R.string.section_app_blur,
-            specs = listOf(
-                featureSpec(KEY_TOP_BAR_BLUR),
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        AppBeautifyContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val AppBeautifyActions: @Composable () -> Unit = { QuickActionsAction(MiuixAppLoad.MIUIX_PACKAGES) }
+
+@Composable
+internal fun AppBeautifyContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val context = LocalContext.current
+    val openInHost = LocalOpenAppSubPage.current
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val blurSection = HookSection(
+        titleRes = R.string.section_app_blur,
+        specs = listOf(
+            featureSpec(KEY_TOP_BAR_BLUR),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
             ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(blurSection) {
-                HookSectionCard(blurSection) {
-                    blurSection.specs.forEach { spec ->
-                        HookOptionView(spec = spec) {
-                            context.startActivity(Intent(context, TopBarBlurActivity::class.java))
-                        }
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(blurSection) {
+            HookSectionCard(blurSection) {
+                blurSection.specs.forEach { spec ->
+                    HookOptionView(spec = spec) {
+                        openAppSubPage(context, openInHost, AppSubPage.TopBarBlur, null)
                     }
                 }
             }

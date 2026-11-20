@@ -1,6 +1,5 @@
 package cn.ianzb.hyperrefine.ui.screen.home
 
-import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,9 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import cn.ianzb.hyperrefine.ui.icons.CheckCircleOutlineIcon
-import cn.ianzb.hyperrefine.ui.icons.ErrorOutlineIcon
-import cn.ianzb.hyperrefine.ui.icons.RemoveCircleOutlineIcon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -36,8 +32,11 @@ import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.ui.component.AppSectionCard
 import cn.ianzb.hyperrefine.prefs.OptionRegistry
 import cn.ianzb.hyperrefine.prefs.OptionType
-import cn.ianzb.hyperrefine.ui.screen.scope.ScopeListActivity
+import cn.ianzb.hyperrefine.ui.screen.subpage.AppSubPage
+import cn.ianzb.hyperrefine.ui.screen.subpage.rememberOpenAppSubPage
+import cn.ianzb.hyperrefine.ui.util.pageStartInset
 import cn.ianzb.hyperrefine.ui.component.AppLazyPage
+import cn.ianzb.hyperrefine.ui.component.sectionCardPadding
 import cn.ianzb.hyperrefine.ui.util.isInDarkTheme
 import cn.ianzb.hyperrefine.ui.util.shouldShowSplitPane
 import cn.ianzb.hyperrefine.util.SystemVersionDetector
@@ -46,7 +45,10 @@ import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.glass.Error
+import top.yukonga.miuix.kmp.icon.glass.Prohibit
+import top.yukonga.miuix.kmp.icon.glass.Ok
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
@@ -74,7 +76,7 @@ fun HomePageView(
         extraBottomPadding = extraBottomPadding,
     ) {
         item {
-            val context = LocalContext.current
+            val openScopePage = rememberOpenAppSubPage(AppSubPage.Scope)
             val isWideScreen = shouldShowSplitPane()
             val darkTheme = isInDarkTheme()
             val dynamicColor = MiuixTheme.isDynamicColor
@@ -122,21 +124,21 @@ fun HomePageView(
             }
             // 未激活 = 叉号；已激活但无 Root = 圈中横线；正常 = 对号。
             val statusIcon: ImageVector = when {
-                !activated -> ErrorOutlineIcon
-                rootMissing -> RemoveCircleOutlineIcon
-                else -> CheckCircleOutlineIcon
+                !activated -> MiuixIcons.Glass.Error
+                rootMissing -> MiuixIcons.Glass.Prohibit
+                else -> MiuixIcons.Glass.Ok
             }
 
             val openScopeList = {
                 // 进入二级页面前先刷新作用域，避免页面内刷新打断打开动画。
                 XposedServiceManager.refreshScope()
-                context.startActivity(Intent(context, ScopeListActivity::class.java))
+                openScopePage()
             }
 
             val cardsModifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp)
-                .padding(bottom = 12.dp)
+                // 首页首组卡片：上方补 12.dp 与顶栏/大标题拉开距离，其余外边距走统一规范。
+                .sectionCardPadding(top = 12.dp)
                 .height(IntrinsicSize.Min)
 
             if (isWideScreen) {

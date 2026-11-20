@@ -205,11 +205,8 @@ private fun AboutContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    top = logoPadding.calculateTopPadding() + 52.dp,
-                    start = logoPadding.calculateLeftPadding(LayoutDirection.Ltr),
-                    end = logoPadding.calculateRightPadding(LayoutDirection.Ltr),
-                )
+                .padding(logoPadding)
+                .padding(top = 52.dp)
                 .onSizeChanged { size ->
                     with(density) { logoHeightDp = size.height.toDp() }
                 },
@@ -327,11 +324,11 @@ private fun AboutContent(
                     showTopAppBar = true,
                     topAppBarScrollBehavior = topAppBarScrollBehavior,
                 ),
-            contentPadding = PaddingValues(
-                top = scrollPadding.calculateTopPadding(),
-                start = scrollPadding.calculateLeftPadding(LayoutDirection.Ltr),
-                end = scrollPadding.calculateRightPadding(LayoutDirection.Ltr),
-            ),
+            contentPadding = remember(scrollPadding) {
+                object : PaddingValues by scrollPadding {
+                    override fun calculateBottomPadding() = 0.dp
+                }
+            },
         ) {
             item(key = "logoSpacer") {
                 Box(

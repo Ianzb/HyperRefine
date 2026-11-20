@@ -28,6 +28,15 @@ object VolumeBarKeys {
     /** 音量条宽度（dp，收起态）。 */
     const val BAR_WIDTH = "volume_bar_width"
 
+    const val BUTTON_STYLE = "volume_bar_button_style"
+    const val BUTTON_WIDTH = "volume_bar_button_width"
+    const val BUTTON_HEIGHT = "volume_bar_button_height"
+    const val BUTTON_RADIUS = "volume_bar_button_radius"
+
+    const val DEFAULT_BUTTON_WIDTH = 58f
+    const val DEFAULT_BUTTON_HEIGHT = 40f
+    const val DEFAULT_BUTTON_RADIUS = 20f
+
     /** 多应用音量条间距调节总开关。 */
     const val SPACING = "volume_bar_spacing"
 

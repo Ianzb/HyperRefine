@@ -36,71 +36,75 @@ class DeviceConnectActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.device_connect
 
-    override val topBarActions: (@Composable () -> Unit)? = {
+    override val topBarActions: @Composable () -> Unit = DeviceConnectActions
+
+    @Composable
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        DeviceConnectContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val DeviceConnectActions: @Composable () -> Unit = {
         OpenCrossDeviceSettingsAction()
         QuickActionsAction(listOf("com.milink.service", "com.xiaomi.mirror"))
     }
 
-    @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val featureSection = remember {
-            HookSection(
-                titleRes = R.string.section_connect_features,
-                specs = listOf(
-                    featureSpec(ConnectKeys.CROSS_DEVICE_NOTIFICATION),
-                    featureSpec(ConnectKeys.PORTRAIT_STREAMING),
-                    featureSpec(ConnectKeys.MILINK_MULTI_CHANNEL),
-                    featureSpec(ConnectKeys.DISCOVERY_FREQUENCY),
-                    featureSpec(ConnectKeys.CLIPBOARD_SYNC_BOOST),
-                ),
-            )
-        }
-        val mirrorSection = remember {
-            HookSection(
-                titleRes = R.string.section_mirror,
-                specs = listOf(
-                    featureSpec(MirrorKeys.FLOATING_WINDOW),
-                    featureSpec(MirrorKeys.FLOATING_RADIUS),
-                    featureSpec(MirrorKeys.HIDE_POLE),
-                    featureSpec(MirrorKeys.MINIMIZE_ON_SHADE),
-                    featureSpec(MirrorKeys.REFRESH_RATE),
-                    featureSpec(MirrorKeys.REFRESH_RATE_VALUE),
-                ),
-            )
-        }
+@Composable
+internal fun DeviceConnectContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val featureSection = remember {
+        HookSection(
+            titleRes = R.string.section_connect_features,
+            specs = listOf(
+                featureSpec(ConnectKeys.CROSS_DEVICE_NOTIFICATION),
+                featureSpec(ConnectKeys.PORTRAIT_STREAMING),
+                featureSpec(ConnectKeys.MILINK_MULTI_CHANNEL),
+                featureSpec(ConnectKeys.DISCOVERY_FREQUENCY),
+                featureSpec(ConnectKeys.CLIPBOARD_SYNC_BOOST),
+            ),
+        )
+    }
+    val mirrorSection = remember {
+        HookSection(
+            titleRes = R.string.section_mirror,
+            specs = listOf(
+                featureSpec(MirrorKeys.FLOATING_WINDOW),
+                featureSpec(MirrorKeys.FLOATING_RADIUS),
+                featureSpec(MirrorKeys.HIDE_POLE),
+                featureSpec(MirrorKeys.MINIMIZE_ON_SHADE),
+                featureSpec(MirrorKeys.REFRESH_RATE),
+                featureSpec(MirrorKeys.REFRESH_RATE_VALUE),
+            ),
+        )
+    }
 
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(featureSection) {
-                HookSectionCard(featureSection) {
-                    featureSection.specs.forEach { HookOptionView(it) }
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(featureSection) {
+            HookSectionCard(featureSection) {
+                featureSection.specs.forEach { HookOptionView(it) }
             }
-            searchSectionItem(mirrorSection) {
-                HookSectionCard(mirrorSection) {
-                    mirrorSection.specs.forEach { HookOptionView(it) }
-                }
+        }
+        searchSectionItem(mirrorSection) {
+            HookSectionCard(mirrorSection) {
+                mirrorSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

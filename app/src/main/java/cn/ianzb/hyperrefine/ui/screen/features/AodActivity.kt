@@ -23,47 +23,50 @@ class AodActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.aod_section
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui")) }
+    override val topBarActions: @Composable () -> Unit = AodActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val aodSection = HookSection(
-            titleRes = R.string.aod_section,
-            specs = listOf(
-                featureSpec(KEY_WALLPAPER_DIM_GLASS),
-                featureSpec(KEY_AOD_FULL),
-                featureSpec(KEY_AOD_BATTERY),
-                featureSpec(KEY_AOD_BOTTOM_ICONS),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(aodSection) {
-                HookSectionCard(aodSection) {
-                    aodSection.specs.forEach { HookOptionView(it) }
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        AodContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val AodActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.android.systemui")) }
+
+@Composable
+internal fun AodContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val aodSection = HookSection(
+        titleRes = R.string.aod_section,
+        specs = listOf(
+            featureSpec(KEY_WALLPAPER_DIM_GLASS),
+            featureSpec(KEY_AOD_FULL),
+            featureSpec(KEY_AOD_BATTERY),
+            featureSpec(KEY_AOD_BOTTOM_ICONS),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(aodSection) {
+            HookSectionCard(aodSection) {
+                aodSection.specs.forEach { HookOptionView(it) }
             }
         }
     }

@@ -1,10 +1,14 @@
 package cn.ianzb.hyperrefine.ui.component.search
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -12,11 +16,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.ui.component.appTopBarSafeInsets
 import cn.ianzb.hyperrefine.prefs.OptionRegistry
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.glass.GlassSearchOverlayDefaults
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
 
@@ -53,6 +60,8 @@ fun AppSearchResults(
     query: String,
     onPick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+    searchTopPadding: () -> Dp = { 0.dp },
 ) {
     val context = LocalContext.current
     if (query.isBlank()) return
@@ -77,18 +86,30 @@ fun AppSearchResults(
             .ifBlank { description }
         SearchResult(spec.key, title, summary, rank)
     }.sortedWith(compareBy<SearchResult> { it.rank }.thenBy { it.title })
-    if (results.isEmpty()) {
+    val resultsTop = appTopBarSafeInsets().asPaddingValues().calculateTopPadding() +
+        GlassSearchOverlayDefaults.BarHeight + GlassSearchOverlayDefaults.VerticalPadding * 2
+    val hasResults = results.isNotEmpty()
+    val padding = remember(resultsTop, searchTopPadding, hasResults) {
+        val horizontal = if (hasResults) 12.dp else 28.dp
+        val gap = if (hasResults) 4.dp else 12.dp
+        val base = PaddingValues(horizontal = horizontal, vertical = 24.dp)
+        object : PaddingValues by base {
+            override fun calculateTopPadding() = resultsTop + gap + searchTopPadding()
+        }
+    }
+    if (!hasResults) {
         MiuixText(
             text = stringResource(R.string.search_empty),
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             style = MiuixTheme.textStyles.footnote2,
-            modifier = modifier.padding(horizontal = 28.dp, vertical = 12.dp),
+            modifier = modifier.padding(padding),
         )
         return
     }
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 24.dp),
+        contentPadding = padding,
     ) {
         item(key = "results") {
             Card {

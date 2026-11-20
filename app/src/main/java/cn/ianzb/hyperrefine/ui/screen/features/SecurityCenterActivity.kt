@@ -23,45 +23,48 @@ class SecurityCenterActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.section_security_center
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.miui.securitycenter")) }
+    override val topBarActions: @Composable () -> Unit = SecurityCenterActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
-    ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val section = HookSection(
-            titleRes = R.string.section_notifications,
-            specs = listOf(
-                featureSpec(KEY_FAST_CHARGE_ENTER),
-                featureSpec(KEY_FAST_CHARGE_EXIT),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            searchSectionItem(section) {
-                HookSectionCard(section) {
-                    section.specs.forEach { HookOptionView(it) }
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        SecurityCenterContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val SecurityCenterActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.miui.securitycenter")) }
+
+@Composable
+internal fun SecurityCenterContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val section = HookSection(
+        titleRes = R.string.section_notifications,
+        specs = listOf(
+            featureSpec(KEY_FAST_CHARGE_ENTER),
+            featureSpec(KEY_FAST_CHARGE_EXIT),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
                 }
+            ),
+        contentPadding = contentPadding,
+    ) {
+        searchSectionItem(section) {
+            HookSectionCard(section) {
+                section.specs.forEach { HookOptionView(it) }
             }
         }
     }

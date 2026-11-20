@@ -30,59 +30,62 @@ class TopBarBlurActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.feature_top_bar_blur
 
-    override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(MiuixAppLoad.MIUIX_PACKAGES) }
+    override val topBarActions: @Composable () -> Unit = TopBarBlurActions
 
     @Composable
-    override fun SubPageContent(
-        isBlurEnabled: Boolean,
-        contentPadding: PaddingValues,
+    override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+        TopBarBlurContent(isBlurEnabled, contentPadding)
+    }
+}
+
+internal val TopBarBlurActions: @Composable () -> Unit = { QuickActionsAction(MiuixAppLoad.MIUIX_PACKAGES) }
+
+@Composable
+internal fun TopBarBlurContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val section = HookSection(
+        titleRes = R.string.section_top_bar,
+        specs = listOf(
+            featureSpec(TopBarKeys.KEY),
+            featureSpec(TopBarKeys.STRENGTH),
+            featureSpec(TopBarKeys.OPACITY),
+            featureSpec(TopBarKeys.MULTI_BLUR),
+            featureSpec(TopBarKeys.MULTI_BLUR_FALLBACK),
+        ),
+    )
+    // 应用专属适配：统一开关 + 笔记 / 计算器 / 文件管理单独开关。
+    val advancedSection = HookSection(
+        titleRes = R.string.section_top_bar_advanced,
+        specs = listOf(
+            featureSpec(TopBarKeys.ADVANCED),
+            featureSpec(TopBarKeys.ADVANCED_NOTES),
+            featureSpec(TopBarKeys.ADVANCED_CALCULATOR),
+            featureSpec(TopBarKeys.ADVANCED_FILE_EXPLORER),
+        ),
+    )
+    val listState = rememberLazyListState()
+    SearchLandingLazyColumn(
+        scrollBehavior = scrollBehavior,
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.pageScrollModifiers(
+                        showTopAppBar = true,
+                        topAppBarScrollBehavior = scrollBehavior,
+                        contentState = listState,
+                    )
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = contentPadding,
     ) {
-        val scrollBehavior = LocalSubPageScrollBehavior.current
-        val section = HookSection(
-            titleRes = R.string.section_top_bar,
-            specs = listOf(
-                featureSpec(TopBarKeys.KEY),
-                featureSpec(TopBarKeys.STRENGTH),
-                featureSpec(TopBarKeys.OPACITY),
-                featureSpec(TopBarKeys.MULTI_BLUR),
-                featureSpec(TopBarKeys.MULTI_BLUR_FALLBACK),
-            ),
-        )
-        // 应用专属适配：统一开关 + 笔记 / 计算器 / 文件管理单独开关。
-        val advancedSection = HookSection(
-            titleRes = R.string.section_top_bar_advanced,
-            specs = listOf(
-                featureSpec(TopBarKeys.ADVANCED),
-                featureSpec(TopBarKeys.ADVANCED_NOTES),
-                featureSpec(TopBarKeys.ADVANCED_CALCULATOR),
-                featureSpec(TopBarKeys.ADVANCED_FILE_EXPLORER),
-            ),
-        )
-        val listState = rememberLazyListState()
-        SearchLandingLazyColumn(
-            scrollBehavior = scrollBehavior,
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.pageScrollModifiers(
-                            showTopAppBar = true,
-                            topAppBarScrollBehavior = scrollBehavior,
-                            contentState = listState,
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = contentPadding,
-        ) {
-            listOf(section, advancedSection).forEach { sec ->
-                searchSectionItem(sec) {
-                    HookSectionCard(sec) {
-                        sec.specs.forEach { HookOptionView(it) }
-                    }
+        listOf(section, advancedSection).forEach { sec ->
+            searchSectionItem(sec) {
+                HookSectionCard(sec) {
+                    sec.specs.forEach { HookOptionView(it) }
                 }
             }
         }

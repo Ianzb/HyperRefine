@@ -765,8 +765,8 @@ fun rememberHookStatus(spec: OptionSpec): HookStatus   // 见 5.3
 | `HookDropdownCard` | `GlassDropdownPreference` | 第一项为默认（不 hook），其余按值 hook |
 | `HookRadioCard` | `RadioButtonPreference` | 右侧单选按钮表示选中项 |
 | `HookSliderCard` | `SliderPreference` | 主开关控制显隐与生效，支持整数/小数/范围，数值类型说明居左、当前值紧邻箭头，点击弹出输入对话框 |
-| `HookTextCard` | `ArrowPreference` + `AppDialog` | 点击弹出文本输入对话框 |
-| `HookPackageListCard` | `ArrowPreference` + `AppDialog` | 包名列表输入（多行），驱动页面右上角「重启应用」按钮 |
+| `HookTextCard` | `AppArrowPreference` + `AppDialog` + `GlassTextField` | 点击弹出文本输入对话框 |
+| `HookPackageListCard` | `AppArrowPreference` + `AppDialog` + `GlassTextField` | 包名列表输入（多行），驱动页面右上角「重启应用」按钮 |
 | `HookOptionView` | 分发器 | 按 `OptionSpec.type` 渲染对应组件 |
 | `HookOptionsPage` | `AppLazyPage` | 通用功能页面，支持全局搜索定位 |
 | `HookSubPage` | — | 子页面搜索入口：把子页面（支持多级嵌套）内的功能并入父页搜索 |
@@ -877,7 +877,7 @@ fun HookSectionCard(
 - 自动把本页分区与 `subPages`（**含多级嵌套 `HookSubPage.subPages`**）内的全部 `OptionSpec` 注册到 `OptionRegistry`，标题接入全局搜索。
 - `AppSearchOverlay` 参考 Miuix 官方示例，覆盖导航栏，支持键盘、清除和返回退出。
 - 搜索结果为可点击列表项（标题 = 配置项标题，摘要 = 所属分区 / 子页面多级路径「父 / 子」）；点击后收起搜索、清空输入：本页分区则滚动定位，子页面功能则调用对应层级 `HookSubPage.onOpen(key)` **直接打开目标页面**，**不内联渲染组件**。
-- 搜索按配置项列出结果，可匹配标题、功能说明和页面路径，并在结果中高亮关键词。命中分区时滚动定位、折叠顶栏并闪烁两次。命中子页面功能时，用 `Intent.withSearchTarget(key)` 转发命中键，目标页使用 `SearchLandingLazyColumn` 与 `searchSectionItem` 定位并播放相同反馈。
+- 搜索按配置项列出结果，可匹配标题、功能说明和页面路径，并在结果中高亮关键词。命中分区时滚动定位、折叠顶栏并闪烁两次。命中子页面功能时，通过 `AppPageRoute.SubPage.searchTarget` 或独立页面的 `Intent.withSearchTarget(key)` 转发命中键，目标页使用 `SearchLandingLazyColumn` 与 `searchSectionItem` 定位并播放相同反馈。
 - 箭头卡片点击回调 `onArrowClick(spec)`。
 - **重启应用**：当分区内存在 `PACKAGE_LIST` 选项，或传入 `customActionPackages` 时，顶栏右上角出现「重启」图标按钮。点击弹出 `QuickActionDialog`：每行右侧勾选应用（默认全选），底部左侧「全选 / 全不选」、右侧「重启」（无勾选时禁用），对选中包批量结束进程（需 Root；普通应用不会自动重新打开，系统界面由系统自动拉起），完成后弹出成功提示（`quick_action_restart_success`；缺少 Root 时为 `scope_restart_need_root`）。
   - 包名来源 = 全部 `PACKAGE_LIST` 选项解析结果 + `customActionPackages`，去重。
@@ -973,18 +973,17 @@ HookSectionCard(
 
 ### 5.6 布局规范（间距统一，强制要求）
 
-> **所有页面必须遵循以下间距规范**，新增页面 / 组件时请复用 `HookOptionsPage`、`HookSectionCard`、`SubPageScaffold`，静态设置分组使用 `AppSectionCard`，禁止自行硬编码间距，以保证全局视觉一致。
+> **所有页面必须遵循以下间距规范**，新增页面 / 组件时请复用 `HookOptionsPage`、`AppSectionCard`、`SubPageScaffold`，禁止自行硬编码间距，以保证全局视觉一致。
 
 | 位置 | 规范 | 说明 |
 |---|---|---|
-| 卡片水平内边距 | `Modifier.padding(horizontal = 12.dp)` | 所有卡片统一左右 12dp |
-| 卡片间距 | `Modifier.padding(bottom = 12.dp)` | **统一用 `bottom`，不要用 `top`**；避免与标题上间距叠加导致不一致 |
+| 分组卡片外边距 | `AppSectionCard`（或 `Modifier.sectionCardPadding(top = …)`） | 左右各 12 dp、底部 12 dp，统一由卡片组自己承担；首组用 `topSpace` / `top` 补与顶栏的距离；多列卡片组把 `sectionCardPadding` 加在整组上 |
 | 分组标题 | `SmallTitle(text = hookSectionTitle(section))` | 单语言标题（仅 `titleRes`）；`titleEn` 仅示例展示用；**不要额外加 `Modifier.padding(top = ...)`**，`SmallTitle` 默认 `insideMargin = PaddingValues(28.dp, 8.dp)` 已提供标准间距 |
 | 组件行内边距 | `BasicComponentDefaults.InsideMargin`（16dp） | 由 Miuix 组件默认提供，不要覆盖 |
 | 页面顶/底内边距 | 使用 `Scaffold` 的 `innerPadding` + `extraBottomPadding` | 不要额外加固定 top 间距 |
 | 顶部搜索栏间距 | `Modifier.padding(top = 12.dp, bottom = 8.dp)` | 搜索栏与上方顶栏、下方首个分区的间距 |
 | 设备独占 | `OptionSpec.deviceScope` + `rememberOptionEnabled` | 非白名单设备上组件**禁用灰显不隐藏**；切换「当前设备类型」后实时生效 |
-| 二级页面 | 继承 `BaseSubPageActivity`，内容用 `SubPageScaffold` 提供的 `contentPadding` | 不要自行处理系统栏 / 顶栏间距 |
+| 二级页面 | 主导航内通过 `AppSubPage` 路由，独立入口使用 `BaseSubPageActivity` | 内容使用 `SubPageScaffold` 提供的系统栏、顶栏和动态侧栏间距 |
 
 **标题规范（强制）：** 实际功能页的分区标题使用**单一语言**（仅 `HookSection.titleRes`）。`titleEn` 仅为模板示例保留：非空时由 `HookSection(titleRes, specs, titleEn)` + `hookSectionTitle()` 拼成单行 `中文（English）`（例如 `开关卡片（SwitchPreference）`），用于展示 API 英文组件名；无论哪种情形都不得拆成「英文标题 + 中文副标题」两行。
 
@@ -1052,9 +1051,9 @@ AnimatedVisibility(
   - `sliderUnitRes` → 显示在**数值右侧**的单位后缀（如 `%`、`dp`）。
   仅当 `masterKey == null && sliderValueLabelRes == 0` 时，`HookSliderCard` 才会退化为把 `titleRes` 作为**滑动组件外面**的独立标题显示（见 `HookSliderCard.kt` 中 `if (masterKey == null && spec.sliderValueLabelRes == 0)` 分支）。
   **因此：若希望标题与数值同行、显示在数值左侧，必须设置 `sliderValueLabelRes`（可直接复用 `titleRes` 的字符串资源），否则标题会显示在滑动组件外面。** 指定 `sliderValueLabelRes` 后不会再额外渲染外部标题。
-- 点击滑块行空白弹出居中 `AppDialog`：第一行左右显示最小值 / 最大值，中间显示「当前值 · 默认值」；下方 `TextField` 手动输入（超范围提示错误）；底部按钮 **取消 / 恢复默认 / 确定**。
+- 点击滑块行空白弹出贴底 `AppDialog`（玻璃弹层）：第一行左右显示最小值 / 最大值，中间显示「当前值 · 默认值」；下方用 `GlassTextField` 手动输入（超范围提示错误）；底部按钮 **取消 / 恢复默认 / 确定**。
 
-**`HookTextCard` 细则：** 主界面为一行（标题 + 当前值摘要），点击弹出与滑块一致的对话框：当前值 / 默认值同行左右显示 + `TextField` + 取消 / 恢复默认 / 确定。
+**`HookTextCard` 细则：** 主界面为一行（标题 + 当前值摘要），点击弹出与滑块一致的对话框，内含当前值、默认值、`GlassTextField` 和取消 / 恢复默认 / 确定按钮。
 
 **设备独占：** 需要仅在特定设备形态显示 / 生效的功能，声明 `OptionSpec.deviceScope`；非白名单设备上组件保持可见但**禁用灰显**，hook 侧由 `BaseHook.deviceScope` / `BaseNativeHook.deviceScope` 用同一份设备形态同步跳过。示例：功能页「控制中心 → 融合设备中心 → 横屏融合设备中心右置」（`deviceScope = setOf(DeviceType.PHONE)`）。
 
@@ -1071,6 +1070,99 @@ AnimatedVisibility(
 - 非拖拽区域的左右滑动切页、惯性分页、触控板滚轮 / Pan 翻页、无障碍翻页均不受影响。
 
 ---
+
+### 5.9 浮层层级（弹层必须盖在底栏 / 侧栏之上）
+
+悬浮底栏（`GlassNavigationBar` / `IosLiquidGlassNavigationBar`）与宽屏侧栏都是**覆盖在页面内容之上**的导航 chrome，而 miuix 的弹层（`GlassDialog` / `GlassDropdownPreference` 的下拉气泡等）由所在 `Scaffold` 的 `popupHost` 承载。**`popupHost` 的绘制顺序在同一个 `Scaffold` 的 `bottomBar` 之上，但不会越过外层 `Scaffold`**，因此浮层注册到哪一层决定了它会不会被底栏压住。
+
+模板与 miuix 示例（`example/shared/.../AppContent.kt`）保持同一层级：
+
+```text
+Scaffold                     ← 只负责弹层：无顶栏 / 底栏，contentWindowInsets = WindowInsets(0)
+└── MainScreen
+    ├── HorizontalPager → 各页面 Scaffold（顶栏 + 内容）
+    └── 悬浮底栏 / 宽屏侧栏（覆盖在页面之上）
+```
+
+- `MainActivity` 里这层「只负责弹层」的 `Scaffold` 同时包住 pager、悬浮底栏与侧栏，它的 `popupHost` 因此在绘制顺序上位于底栏 / 侧栏**之上**。
+- 所有弹层一律使用 `renderInRootScaffold = true`：`AppDialog` 已固定；`GlassDropdownPreference` 也要显式传 `true`（默认值为 `true`，但**不要**改成 `false`）。
+- 这样贴底弹层与遮罩会直接盖在底栏上（与 miuix 示例一致），既不会被底栏遮挡，也**不需要任何避让垫高**；没有底栏的页面（二级页、许可证页）位置同样是库默认值，不做任何特殊处理。
+- 页面内容仍然铺满全屏、从底栏下方穿过（玻璃底栏要采样滚动中的内容），所以**不要**给 pager 或页面根布局加底栏高度的 padding；内容底部留白由各页面的 `extraBottomPadding` 负责。
+
+> 反例：把弹层宿主关掉（`Scaffold(popupHost = { })`）或把弹层注册到页面自己的 `Scaffold`（`renderInRootScaffold = false`），弹层就会落在底栏**下面**，表现为「对话框底部被底栏遮住 / 下拉最后一项看不见」。
+
+---
+
+### 5.10 全局搜索与底栏宽度
+
+**两个搜索入口**（与 miuix 示例 `GlassPage` 一致）：
+
+1. 底部玻璃底栏右侧的独立搜索圆钮（`GlassNavigationBar` 的 `trailingAction`，胶囊之外的一颗 `GlassIconButton`）——**只在「功能」页出现**（可搜索的内容都在该页）；
+2. 功能页顶栏右侧的搜索按钮（主页容器提供 `LocalAppSearchState`，功能页通过 `AppPageScaffold(topBarSearchAction = true)` 启用入口）。`AppTopAppBar` 为相邻的右侧操作按钮统一提供 8 dp 间距。
+
+两处入口共用同一个 `AppSearchState`，唤起同一个搜索界面。
+
+**搜索界面**（`ui/component/search/AppSearchOverlay.kt`）
+
+使用 miuix 官方 `GlassSearchOverlay`，并将搜索结果列表的滚动位移传给浮层，驱动搜索栏后方的渐进模糊。
+
+- 400ms 弹簧曲线：搜索框宽度生长、右侧「取消」按钮从右侧滑入（位移 / 缩放 / 模糊同步），退出时反向收回；
+- 搜索在窄屏覆盖悬浮底栏，宽屏保留可操作的顶部胶囊和左侧面板。搜索框和结果随导航栏形变实时调整边距；
+- `imePadding` 跟随键盘；点击空白只收起键盘，`返回键` / 取消按钮才退出；
+- 结果由 `content` 槽提供，本项目使用 `AppSearchResults`。
+
+层级：宽屏搜索与页面一起录入导航栏的玻璃采样层。点击导航项会关闭搜索并进入对应页面。
+
+**结果与跳转**
+
+- 结果来源：`OptionRegistry.search(context, query)`（功能页启动时注册了全部配置项，含子页面内的功能）。
+- 结果摘要：`AppSearchIndex`（由 `HookOptionsPage` 登记「配置键 → 分区 / 子页面标题路径」）。
+- 点击结果：`MainActivity` 关闭搜索、切到「功能」页并把配置键作为 `pendingSearchKey` 传给 `FeaturesPageView`，
+  由 `HookOptionsPage` 滚动到对应分区，或调用 `HookSubPage.onOpen()` 打开对应子页面。
+- 跳转后的收尾（`HookOptionsPage`）：
+  - **顶栏收起 + 渐变模糊**：`animateScrollToItem` 是程序化滚动、不经过 `nestedScroll`，顶栏不会像手指下滑那样自动收起；
+    因此落位后按「手动滑到该位置」的结果补写 `TopAppBarState.heightOffset = heightOffsetLimit`（收起大标题）
+    与 `contentOffset = -饱和距离`（出现带区 / 渐进模糊）。
+  - **强调目标位置**：目标分区卡片播放两次「变灰闪烁」（`Card` 底色在 `surfaceContainer` 与 `onSurface` 之间插值，
+    每轮 160ms 渐入 + 300ms 渐出），由 `HookSectionCard(flashToken)` 触发，递增 token 即可重放。
+
+```kotlin
+@Composable fun AppSearchOverlay(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    blurEnabled: Boolean = true,
+    scrollOffset: () -> Float = { 0f },
+    searchTopPadding: () -> Dp = { 0.dp },
+    content: @Composable ColumnScope.(String) -> Unit,
+)
+@Composable fun AppSearchResults(
+    query: String,
+    onPick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+    searchTopPadding: () -> Dp = { 0.dp },
+)
+
+@Stable class AppSearchState { var expanded: Boolean; fun open(); fun close() }
+val LocalAppSearchState: ProvidableCompositionLocal<AppSearchState?>
+@Composable fun rememberAppSearchOpen(): (() -> Unit)?
+```
+
+**底栏宽度（复刻示例的收敛逻辑）**
+
+手机竖屏底栏本就该铺满（左右各 24.dp 留白）；宽度变大后若继续拉伸，胶囊会被拉得很长、tab 间距也变得松散。`BottomNavigationBar` 因此按示例的做法收敛：
+
+```kotlin
+val actionWidth = GlassNavigationBarDefaults.Height + GlassNavigationBarDefaults.ActionSpacing
+val available = maxWidth - actionWidth + (10.dp * (tabCount - 1) - 6.dp)
+val width = if (available > 400.dp) 344.dp + actionWidth else maxWidth
+```
+
+超过阈值时整条底栏收成「344.dp 胶囊 + 搜索按钮」并由父级 `Box` 居中，否则保持铺满（344.dp / 400.dp 为示例 4 个 tab 的实测值，本项目同样是 4 个 tab）。iOS 液态玻璃底栏同时避开横屏开孔与侧边系统导航，并在宽屏居中。
+
+<br>
 
 ## 6. 二级页面模板
 
@@ -1091,7 +1183,37 @@ fun SubPageScaffold(
 
 使用 `AppPageScaffold` 提供玻璃顶栏和统一的页面采样层。玻璃对话框与下拉从 `LocalPreferenceBackdrop` 获取页面内容采样源，关闭背景模糊时使用不透明材质。顶栏位于采样层之外，主页面弹层统一挂到根 Scaffold。应用顶栏采用 miuix Glass 材质的渐进模糊参数；「顶栏渐变」功能的强度和不透明度设置用于被 Hook 的应用。二级页列表应把自己的 `LazyListState` 传给 `pageScrollModifiers(contentState = ...)`，使短列表也能正常回弹。
 
-`topBarActions` 用于注入「重启应用」等右上角入口。
+主导航通过 miuix `NavDisplay` 展示 `AppSubPage`，侧栏在路由宿主外持续显示。列表直接使用 `SubPageScaffold` 提供的 `contentPadding`，侧栏起始留白在测量阶段读取。独立的二级页入口可继续使用 `BaseSubPageActivity`。
+
+顶栏与「第三方许可证与致谢」页完全同一条代码路径（`AppPageScaffold` 默认的 miuix `GlassTopAppBar`），不自行绘制任何顶栏 / 返回按钮：返回按钮就是组件库的 `GlassIconButton` + `MiuixIcons.Glass.ChevronBackward`。
+
+页面列表必须接上 `pageScrollModifiers`，否则顶栏不知道内容是否滚动：
+
+```kotlin
+@Composable
+override fun SubPageContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
+    val scrollBehavior = LocalSubPageScrollBehavior.current
+    val listState = rememberLazyListState()
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize().then(
+            if (scrollBehavior != null) {
+                Modifier.pageScrollModifiers(
+                    showTopAppBar = true,
+                    topAppBarScrollBehavior = scrollBehavior,
+                    contentState = listState,   // 必传：用于判断页面是否真的有滚动余量
+                )
+            } else {
+                Modifier
+            },
+        ),
+        contentPadding = contentPadding,
+    ) { /* item { ... } */ }
+}
+```
+
+- `contentState` 会让脚手架知道「页面能不能滚」。内容不足一屏时顶栏不接管上滑手势，改由 `overScrollVertical` 做弹性回弹，回弹位移写入 `TopAppBarState.overscrollOffset`：**上滑回弹过程中玻璃带区与渐变模糊会照常出现**，松手后回弹并恢复大标题，不会卡在折叠态。
+- 内容可以滚动时就是标准行为：上滑先折叠大标题，滚到边界后弹性回弹，同样带模糊。
 
 ### 6.2 `BaseSubPageActivity`
 
@@ -1231,6 +1353,7 @@ Card { HookSwitchCard(spec) }
 | 配置系统 | `app/.../prefs/` |
 | 服务与状态 | `app/.../xposed/XposedServiceManager.kt`、`RootHelper.kt`、`SafeModeReader.kt` |
 | 组件 | `app/.../ui/component/pref/`（`HookCards.kt`、`HookDropdownCards.kt`、`HookSliderCard.kt`、`HookTextCard.kt`、`HookOptionView.kt`、`HookOptionSupport.kt`、`HookOptionsPage.kt`） |
+| 分组卡片容器 | `app/.../ui/component/AppSectionCard.kt`（`AppSectionCard` / `Modifier.sectionCardPadding()`） |
 | 顶栏重启应用 | `app/.../ui/component/QuickActionsAction.kt` |
 | 显隐动画 | `app/.../ui/util/MiuixAnimations.kt`（`MiuixExpandSpec`） |
 | 二级页面模板 | `app/.../ui/component/SubPageScaffold.kt`、`app/.../ui/screen/subpage/BaseSubPageActivity.kt` |

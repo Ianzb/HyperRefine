@@ -22,7 +22,7 @@ import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text as MiuixText
-import top.yukonga.miuix.kmp.preference.ArrowPreference
+import cn.ianzb.hyperrefine.ui.component.AppArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -176,7 +176,7 @@ fun HookArrowCard(
     onClick: () -> Unit,
 ) {
     val enabled = rememberOptionEnabled(spec)
-    ArrowPreference(
+    AppArrowPreference(
         title = stringResource(spec.titleRes),
         summary = spec.summaryRes.takeIf { it != 0 }?.let { stringResource(it) },
         onClick = onClick,

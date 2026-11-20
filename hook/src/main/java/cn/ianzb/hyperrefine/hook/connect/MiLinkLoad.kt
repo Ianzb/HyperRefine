@@ -4,6 +4,7 @@ import cn.ianzb.hyperrefine.hook.base.BaseLoad
 import cn.ianzb.hyperrefine.hook.base.PackageTarget
 import cn.ianzb.hyperrefine.hook.miuix.TopBarKeys
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
+import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
 
 /**
@@ -16,9 +17,19 @@ import cn.ianzb.hyperrefine.hook.xposed.Reflect
  */
 class MiLinkLoad : BaseLoad() {
 
-    override val targetPackages: List<String> = listOf(TARGET_PACKAGE)
+    override val targetPackages: List<String> = listOf(TARGET_PACKAGE, SMART_HOME_PACKAGE)
 
     override fun onPackageLoaded(target: PackageTarget) {
+        if (target.packageName == SMART_HOME_PACKAGE) {
+            if (target.processName == SMART_HOME_PACKAGE) {
+                initHook(ExpandedDeviceCardGlassHook(), CcGlassKeys.isEnabled(CcGlassKeys.DEVICE_CARD))
+                initHook(
+                    SmartHomeCardAnimationHook(),
+                    HookPrefs.getBoolean(ConnectKeys.SMART_HOME_CARD_ANIMATION, false),
+                )
+            }
+            return
+        }
         val cardGlass = HookPrefs.getBoolean(ConnectKeys.CARD_GLASS, false)
         when (target.processName) {
             PROCESS_MAIN -> initHook(MiLinkSettingsTrampolineHook(), true)
@@ -28,6 +39,7 @@ class MiLinkLoad : BaseLoad() {
                     HookPrefs.getBoolean(ConnectKeys.CROSS_DEVICE_NOTIFICATION, false),
                 )
                 initHook(MiLinkCardGlassHook(), cardGlass)
+                initHook(ExpandedDeviceCardGlassHook(), CcGlassKeys.isEnabled(CcGlassKeys.DEVICE_CARD))
                 // 融合设备中心（CirculateWorldActivity）：常驻顶栏渐变模糊（随「顶栏渐变」总开关）。
                 initHook(CirculateWorldTopBarGradientHook(), HookPrefs.getBoolean(TopBarKeys.KEY, false))
             }
@@ -53,6 +65,7 @@ class MiLinkLoad : BaseLoad() {
 
     companion object {
         const val TARGET_PACKAGE = "com.milink.service"
+        const val SMART_HOME_PACKAGE = "com.xiaomi.smarthome"
         const val PROCESS_MAIN = "com.milink.service"
         const val PROCESS_UI = "com.milink.service:ui"
         const val PROCESS_FLOW = "com.milink.crossdeviceservice"

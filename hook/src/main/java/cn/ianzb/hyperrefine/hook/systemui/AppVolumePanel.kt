@@ -719,7 +719,7 @@ object AppVolumePanel {
             fakeStream = fakeStream,
             initialPercent = percent,
             barRadiusPx = (radiusDp(CcRadiusKeys.APP_VOLUME_BAR) * density).toInt(),
-            glass = HookPrefs.getBoolean(CcGlassKeys.MASTER, false),
+            glass = CcGlassKeys.isEnabled(CcGlassKeys.SIDE_VOLUME),
             onPercent = { value -> PercentText.show(percentText, value, 100, PERCENT_PREF, null, null, PERCENT_HIGHLIGHT) },
             onCommit = { value -> forward(context, app, value / 100f) },
         ) ?: return null

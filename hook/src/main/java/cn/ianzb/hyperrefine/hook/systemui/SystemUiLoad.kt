@@ -60,7 +60,7 @@ class SystemUiLoad : BaseLoad() {
             HookPrefs.getBoolean(DeviceCenterLandscapeRightHook.KEY, false),
         )
         initHook(CcGlassHook(), HookPrefs.getBoolean(CcGlassHook.KEY, false))
-        initHook(SideGlassMirrorHook(), HookPrefs.getBoolean(CcGlassKeys.MASTER, false))
+        initHook(SideGlassMirrorHook(), CcGlassKeys.isEnabled(CcGlassKeys.SIDE_VOLUME))
         initHook(CcMaterialGateHook(), HookPrefs.getBoolean(CcGlassKeys.THEME_MATERIAL, false))
         initHook(WallpaperDarkDimHook(), HookPrefs.getBoolean(WallpaperDimKeys.ENABLED, false))
         // 常驻：锁屏玻璃的压暗跟随系统壁纸压暗开关/滑条实时变化，不要求重启 SystemUI。

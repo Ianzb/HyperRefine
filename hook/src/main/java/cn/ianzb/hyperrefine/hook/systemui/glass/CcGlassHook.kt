@@ -82,7 +82,7 @@ class CcGlassHook : BaseHook() {
             runCatching {
                 HookHelper.hookAfter(method) { param ->
                     val controller = param.thisObject ?: return@hookAfter
-                    if (!master() || controller.javaClass.simpleName != "DetailPanelController") return@hookAfter
+                    if (!CcGlassKeys.isEnabled(CcGlassKeys.NETWORK) || controller.javaClass.simpleName != "DetailPanelController") return@hookAfter
                     val root = call(controller, "getContent") as? View ?: return@hookAfter
                     if (!root.isShown) return@hookAfter
                     traverse(root) { row ->
@@ -125,10 +125,10 @@ class CcGlassHook : BaseHook() {
         val root = call(controller, "getSecondaryPanelContainer") as? View
             ?: call(controller, "getView") as? View
         when (controller.javaClass.simpleName) {
-            "BrightnessPanelController" -> glassBrightness(root)
-            "MediaPanelController" -> glassMedia(root)
-            "VolumePanelController" -> glassCcVolume(controller, root)
-            "DetailPanelController" -> glassDetail(root)
+            "BrightnessPanelController" -> if (CcGlassKeys.isEnabled(CcGlassKeys.BRIGHTNESS)) glassBrightness(root)
+            "MediaPanelController" -> if (CcGlassKeys.isEnabled(CcGlassKeys.MEDIA)) glassMedia(root)
+            "VolumePanelController" -> if (CcGlassKeys.isEnabled(CcGlassKeys.CC_VOLUME)) glassCcVolume(controller, root)
+            "DetailPanelController" -> if (CcGlassKeys.isEnabled(CcGlassKeys.NETWORK)) glassDetail(root)
         }
     }
 
@@ -154,7 +154,7 @@ class CcGlassHook : BaseHook() {
         runCatching {
             // (pluginContext, sysUIContext, card, isDetailTile) -> isDetailTile = false
             HookHelper.hookBefore(ctor) { param ->
-                if (param.args.getOrNull(3) == true) param.setArg(3, false)
+                if (CcGlassKeys.isEnabled(CcGlassKeys.BRIGHTNESS) && param.args.getOrNull(3) == true) param.setArg(3, false)
             }
         }.onFailure { HookHelper.log("$tag: hook brightness tile ctor failed", it) }
     }
@@ -162,7 +162,7 @@ class CcGlassHook : BaseHook() {
     private fun glassBrightness(root: View?) {
         // 大亮度条轨道；主题 / 配置切换后系统会重绘，稍后再补一次。
         applyBrightnessSlider(root)
-        root?.postDelayed({ if (master()) applyBrightnessSlider(root) }, 300L)
+        root?.postDelayed({ if (CcGlassKeys.isEnabled(CcGlassKeys.BRIGHTNESS)) applyBrightnessSlider(root) }, 300L)
     }
 
     private fun applyBrightnessSlider(root: View?) {
@@ -184,20 +184,20 @@ class CcGlassHook : BaseHook() {
                 val adapter = param.thisObject ?: return@hookAfter
                 pendingDetailLayouts.remove(view)?.let(view::removeOnLayoutChangeListener)
                 detailRows.remove(view)
-                if (master()) applyDetailGlass(view, index, adapter) else applyDetailTopGap(view, 0)
+                if (CcGlassKeys.isEnabled(CcGlassKeys.NETWORK)) applyDetailGlass(view, index, adapter) else applyDetailTopGap(view, 0)
             }
         }.onFailure { HookHelper.log("$tag: hook detail items failed", it) }
         cls.declaredMethods.filter { it.name == "onBindViewHolder" && it.parameterCount == 3 }
             .forEach { bind ->
                 runCatching {
                     HookHelper.hookAfter(bind) { param ->
-                        if (!master()) return@hookAfter
+                        if (!CcGlassKeys.isEnabled(CcGlassKeys.NETWORK)) return@hookAfter
                         val holder = param.args.getOrNull(0) ?: return@hookAfter
                         val row = runCatching { Reflect.getObjectField(holder, "itemView") }.getOrNull() as? View
                             ?: return@hookAfter
                         val binding = detailRows[row] ?: return@hookAfter
                         row.post {
-                            if (detailRows[row] !== binding || !row.isAttachedToWindow || !master()) return@post
+                            if (detailRows[row] !== binding || !row.isAttachedToWindow || !CcGlassKeys.isEnabled(CcGlassKeys.NETWORK)) return@post
                             binding.get()?.let { applyDetailMaterial(row, it) }
                         }
                     }
@@ -230,7 +230,7 @@ class CcGlassHook : BaseHook() {
             method.isAccessible = true
             runCatching {
                 HookHelper.hookAfter(method) { param ->
-                    if (!master()) return@hookAfter
+                    if (!CcGlassKeys.isEnabled(CcGlassKeys.NETWORK)) return@hookAfter
                     val holder = param.args.getOrNull(0) ?: return@hookAfter
                     val index = param.args.getOrNull(1) as? Int ?: return@hookAfter
                     val adapter = param.thisObject ?: return@hookAfter
@@ -242,7 +242,7 @@ class CcGlassHook : BaseHook() {
                     if (!item.javaClass.name.endsWith("ToggleItem")) return@hookAfter
                     val view = Reflect.getObjectField(holder, "itemView") as? View ?: return@hookAfter
                     applyToggleGlass(view)
-                    view.post { if (master()) runCatching { applyToggleGlass(view) } }
+                    view.post { if (CcGlassKeys.isEnabled(CcGlassKeys.NETWORK)) runCatching { applyToggleGlass(view) } }
                 }
             }.onFailure { HookHelper.log("$tag: hook toggle items failed", it) }
         }
@@ -270,7 +270,7 @@ class CcGlassHook : BaseHook() {
                     val listener = View.OnLayoutChangeListener { row, left, top, right, bottom, _, _, _, _ ->
                         if (right > left && bottom > top) {
                             pendingDetailLayouts.remove(row)?.let(row::removeOnLayoutChangeListener)
-                            if (master()) applyDetailMaterial(row, content)
+                            if (CcGlassKeys.isEnabled(CcGlassKeys.NETWORK)) applyDetailMaterial(row, content)
                         }
                     }
                     pendingDetailLayouts[view] = listener
@@ -351,11 +351,11 @@ class CcGlassHook : BaseHook() {
     private fun glassMedia(root: View?) {
         val list = findList(root) as? ViewGroup ?: return
         applyDeviceCards(list)
-        list.post { if (master()) runCatching { applyDeviceCards(list) } }
+        list.post { if (CcGlassKeys.isEnabled(CcGlassKeys.MEDIA)) runCatching { applyDeviceCards(list) } }
         if (observed[list] == true) return
         observed[list] = true
         list.viewTreeObserver.addOnGlobalLayoutListener {
-            if (master()) runCatching { applyDeviceCards(list) }
+            if (CcGlassKeys.isEnabled(CcGlassKeys.MEDIA)) runCatching { applyDeviceCards(list) }
         }
     }
 
@@ -368,7 +368,7 @@ class CcGlassHook : BaseHook() {
     private fun applyDeviceCard(child: View) {
         // 尺寸为 0 时等下一帧布局完成后再套，避免按 0 尺寸算出错误参数（过饱和 / 不透明）。
         if (child.width == 0 || child.height == 0) {
-            child.post { if (master()) runCatching { applyDeviceCard(child) } }
+            child.post { if (CcGlassKeys.isEnabled(CcGlassKeys.MEDIA)) runCatching { applyDeviceCard(child) } }
             return
         }
         child.background = null
@@ -412,7 +412,7 @@ class CcGlassHook : BaseHook() {
     }
 
     private fun applySideVolume(controller: Any) {
-        if (!master()) return
+        if (!CcGlassKeys.isEnabled(CcGlassKeys.SIDE_VOLUME)) return
         val expanded = runCatching { Reflect.getObjectField(controller, "mExpanded") }.getOrNull() as? Boolean ?: false
         val signature = (sideVolumeGeneration shl 1) or (if (expanded) 1L else 0L)
         // 仅音量值变化时签名不变：跳过本轮遍历（调音量不再重复套玻璃 / 清底），消除卡顿。
@@ -462,8 +462,11 @@ class CcGlassHook : BaseHook() {
         method.isAccessible = true
         runCatching {
             HookHelper.hookAfter(method) { param ->
-                if (!master()) return@hookAfter
                 val helper = param.thisObject ?: return@hookAfter
+                val layout = runCatching { Reflect.getObjectField(helper, "this\$0") }.getOrNull() ?: return@hookAfter
+                val side = runCatching { Reflect.getObjectField(layout, "mNeedShowDialog") as? Boolean }
+                    .getOrNull() ?: return@hookAfter
+                if (!CcGlassKeys.isEnabled(if (side) CcGlassKeys.SIDE_VOLUME else CcGlassKeys.CC_VOLUME)) return@hookAfter
                 val standard = Reflect.getObjectField(helper, "mStandardView") as? View ?: return@hookAfter
                 if (standard.background != null) standard.background = null
             }
@@ -539,7 +542,7 @@ class CcGlassHook : BaseHook() {
             method.isAccessible = true
             runCatching {
                 HookHelper.hookAfter(method) { param ->
-                    if (!master()) return@hookAfter
+                    if (!CcGlassKeys.isEnabled(CcGlassKeys.DEVICE_CENTER)) return@hookAfter
                     val container = deviceContainer(param.thisObject) ?: return@hookAfter
                     applyDeviceItemGlass(container)
                 }
@@ -563,11 +566,11 @@ class CcGlassHook : BaseHook() {
      */
     private fun applyDeviceItemGlass(container: View) {
         if (container.width == 0 || container.height == 0) {
-            container.post { if (master()) runCatching { applyDeviceItemGlass(container) } }
+            container.post { if (CcGlassKeys.isEnabled(CcGlassKeys.DEVICE_CENTER)) runCatching { applyDeviceItemGlass(container) } }
             return
         }
         styleDeviceItemGlass(container)
-        container.post { if (master()) runCatching { styleDeviceItemGlass(container) } }
+        container.post { if (CcGlassKeys.isEnabled(CcGlassKeys.DEVICE_CENTER)) runCatching { styleDeviceItemGlass(container) } }
     }
 
     private fun styleDeviceItemGlass(container: View) {
@@ -590,7 +593,7 @@ class CcGlassHook : BaseHook() {
         method.isAccessible = true
         runCatching {
             HookHelper.hookAfter(method) { param ->
-                if (!master()) return@hookAfter
+                if (!CcGlassKeys.isEnabled(CcGlassKeys.NETWORK)) return@hookAfter
                 (param.thisObject as? View)?.let { CcGlassApi.apply(it, TOKEN_GLASS) }
             }
         }.onFailure { HookHelper.log("$tag: hook more button failed", it) }

@@ -441,7 +441,17 @@ private fun glassSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
         specByKey(specs, CcGlassKeys.MASTER),
         specByKey(specs, CcGlassKeys.THEME_MATERIAL),
-    )
+    ) + glassScenes.keys.map { specByKey(specs, it) }
+
+internal val glassScenes = linkedMapOf(
+    CcGlassKeys.BRIGHTNESS to R.string.cc_glass_brightness,
+    CcGlassKeys.NETWORK to R.string.cc_glass_network,
+    CcGlassKeys.MEDIA to R.string.cc_glass_media,
+    CcGlassKeys.CC_VOLUME to R.string.cc_glass_cc_volume,
+    CcGlassKeys.SIDE_VOLUME to R.string.cc_glass_side_volume,
+    CcGlassKeys.DEVICE_CENTER to R.string.cc_glass_device_center,
+    CcGlassKeys.DEVICE_CARD to R.string.cc_glass_device_card,
+)
 
 /** 顶栏渐变二级页内的配置项，用于功能页搜索直达。 */
 fun topBarSpecs(specs: List<OptionSpec>): List<OptionSpec> =
@@ -471,6 +481,7 @@ private fun deviceCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
         specByKey(specs, KEY_DEVICE_CENTER_SHRINK_HIT_AREA),
         specByKey(specs, KEY_DEVICE_CENTER_CARD_GLASS),
+        specByKey(specs, ConnectKeys.SMART_HOME_CARD_ANIMATION),
     )
 
 /** 「网络」二级页内的配置项，用于功能页搜索直达。 */
@@ -1348,6 +1359,28 @@ internal fun featureSpecs(): List<OptionSpec> {
         targetPackages = systemUi,
         showStatus = true,
     )
+    specs += OptionSpec(
+        key = ConnectKeys.SMART_HOME_CARD_ANIMATION,
+        type = OptionType.SWITCH,
+        titleRes = R.string.device_center_smart_home_card_animation,
+        summaryRes = R.string.device_center_smart_home_card_animation_summary,
+        defaultBoolean = false,
+        targetPackages = listOf("com.xiaomi.smarthome"),
+        showStatus = true,
+    )
+    glassScenes.forEach { (key, title) ->
+        specs += OptionSpec(
+            key = key,
+            type = OptionType.SWITCH,
+            titleRes = title,
+            defaultBoolean = true,
+            targetPackages = if (key == CcGlassKeys.DEVICE_CARD) {
+                listOf("com.milink.service", "com.xiaomi.smarthome")
+            } else systemUi,
+            dependsOn = CcGlassKeys.MASTER,
+            showStatus = key == CcGlassKeys.DEVICE_CARD,
+        )
+    }
     specs += OptionSpec(
         key = CcGlassKeys.THEME_MATERIAL,
         type = OptionType.SWITCH,

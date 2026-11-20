@@ -25,7 +25,7 @@ class GlassActivity : BaseSubPageActivity() {
     override val titleRes: Int = R.string.feature_glass
 
     override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui")) }
+        { QuickActionsAction(listOf("com.android.systemui", "com.milink.service", "com.xiaomi.smarthome")) }
 
     @Composable
     override fun SubPageContent(
@@ -35,10 +35,10 @@ class GlassActivity : BaseSubPageActivity() {
         val scrollBehavior = LocalSubPageScrollBehavior.current
         val glassSection = HookSection(
             titleRes = R.string.section_cc_glass,
-            specs = listOf(
-                featureSpec(CcGlassKeys.MASTER),
-                featureSpec(CcGlassKeys.THEME_MATERIAL),
-            ),
+            specs = listOf(featureSpec(CcGlassKeys.MASTER)) + glassScenes.keys.map(::featureSpec),
+        )
+        val themeSection = HookSection(
+            specs = listOf(featureSpec(CcGlassKeys.THEME_MATERIAL)),
         )
         val listState = rememberLazyListState()
         SearchLandingLazyColumn(
@@ -59,9 +59,11 @@ class GlassActivity : BaseSubPageActivity() {
                 ),
             contentPadding = contentPadding,
         ) {
-            searchSectionItem(glassSection) {
-                HookSectionCard(glassSection) {
-                    glassSection.specs.forEach { HookOptionView(it) }
+            listOf(glassSection, themeSection).forEach { section ->
+                searchSectionItem(section) {
+                    HookSectionCard(section) {
+                        section.specs.forEach { HookOptionView(it) }
+                    }
                 }
             }
         }

@@ -25,6 +25,7 @@ object ConnectKeys {
 
     /** 融合设备中心流转卡片补柔光玻璃。 */
     const val CARD_GLASS = "device_center_card_glass"
+    const val SMART_HOME_CARD_ANIMATION = "device_center_smart_home_card_animation"
 
     /**
      * 「跨设备通知流转设置」跳板 extra。

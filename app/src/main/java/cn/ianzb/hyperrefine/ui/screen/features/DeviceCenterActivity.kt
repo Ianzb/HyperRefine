@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.hook.connect.ConnectKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
@@ -24,7 +25,7 @@ class DeviceCenterActivity : BaseSubPageActivity() {
     override val titleRes: Int = R.string.section_device_center
 
     override val topBarActions: (@Composable () -> Unit)? =
-        { QuickActionsAction(listOf("com.android.systemui", "com.milink.service")) }
+        { QuickActionsAction(listOf("com.android.systemui", "com.milink.service", "com.xiaomi.smarthome")) }
 
     @Composable
     override fun SubPageContent(
@@ -39,6 +40,7 @@ class DeviceCenterActivity : BaseSubPageActivity() {
                 featureSpec(KEY_DEVICE_CENTER_HIDE_MORE),
                 featureSpec(KEY_DEVICE_CENTER_SHRINK_HIT_AREA),
                 featureSpec(KEY_DEVICE_CENTER_CARD_GLASS),
+                featureSpec(ConnectKeys.SMART_HOME_CARD_ANIMATION),
                 featureSpec(KEY_DEVICE_CENTER_LANDSCAPE_RIGHT),
             ),
         )

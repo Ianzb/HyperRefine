@@ -786,4 +786,13 @@
     <string name="rail_style_top">顶部胶囊</string>
     <string name="rail_style_left">左侧面板</string>
     <string name="rail_style_summary">仅在宽屏生效；启用后由侧栏取代底栏，进入时停在所选形态</string>
+    <string name="cc_glass_brightness">亮度二级面板</string>
+    <string name="cc_glass_network">网络与蓝牙详情</string>
+    <string name="cc_glass_media">播放器二级面板</string>
+    <string name="cc_glass_cc_volume">控制中心音量面板</string>
+    <string name="cc_glass_side_volume">侧边音量与多应用音量</string>
+    <string name="cc_glass_device_center">融合设备中心入口</string>
+    <string name="cc_glass_device_card">展开的设备卡片</string>
+    <string name="device_center_smart_home_card_animation">同步米家卡片开场动画</string>
+    <string name="device_center_smart_home_card_animation_summary">让米家设备卡片的开场透明度跟随设备互联样式</string>
 </resources>

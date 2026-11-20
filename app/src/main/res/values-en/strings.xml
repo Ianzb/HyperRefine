@@ -786,4 +786,13 @@
     <string name="rail_style_top">Top Pill</string>
     <string name="rail_style_left">Left Panel</string>
     <string name="rail_style_summary">Wide screens only; when enabled the rail replaces the bottom bar and starts in the selected form</string>
+    <string name="cc_glass_brightness">Brightness panel</string>
+    <string name="cc_glass_network">Network and Bluetooth details</string>
+    <string name="cc_glass_media">Media panel</string>
+    <string name="cc_glass_cc_volume">Control Center volume</string>
+    <string name="cc_glass_side_volume">Side and per-app volume</string>
+    <string name="cc_glass_device_center">Device center shortcuts</string>
+    <string name="cc_glass_device_card">Expanded device cards</string>
+    <string name="device_center_smart_home_card_animation">Match Mi Home card opening animation</string>
+    <string name="device_center_smart_home_card_animation_summary">Use the device connectivity style for the card’s opening opacity</string>
 </resources>

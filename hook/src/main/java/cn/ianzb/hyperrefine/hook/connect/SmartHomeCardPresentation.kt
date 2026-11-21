@@ -1,10 +1,8 @@
 package cn.ianzb.hyperrefine.hook.connect
 
-import android.graphics.drawable.ColorDrawable
+import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewOutlineProvider
-import android.provider.Settings
 import cn.ianzb.hyperrefine.hook.base.BaseHook
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
@@ -96,13 +94,6 @@ internal class SmartHomeCardPresentation(private val loader: ClassLoader?) {
             // The provider already samples the blurred host backdrop.
             methods.setRadius.invoke(view, 0, 0)
             methods.setBloom.invoke(view, MILINK_PANEL_BLOOM.clone())
-            // The remote surface controls what glass can sample. Composite a translucent fill
-            // above that glass and below the card contents, using the provider's rounded clip.
-            if (view.clipToOutline && view.outlineProvider != null &&
-                view.outlineProvider !== ViewOutlineProvider.BACKGROUND
-            ) {
-                view.background = ColorDrawable(CARD_HIGHLIGHT)
-            }
             view.invalidate()
         }.onFailure { HookHelper.log("Mi Home card backdrop sync failed", it) }
     }
@@ -116,8 +107,6 @@ internal class SmartHomeCardPresentation(private val loader: ClassLoader?) {
     )
 
     companion object {
-        private const val CARD_HIGHLIGHT = 0x33FFFFFF
-
         fun canUseGlass(view: View): Boolean {
             val resolver = view.context.contentResolver
             return Settings.Secure.getInt(resolver, "background_blur_enable", 0) == 1 &&

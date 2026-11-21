@@ -47,7 +47,12 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
                 }
                 val shape = view.background
                 val result = chain.proceed()
-                applyGlass(view, type, shape ?: view.background)
+                val drawable = CONTROL_OUTLINES[resourceName(view)]
+                if (drawable != null) {
+                    loadControlOutline(view, drawable)?.let { applyGlass(view, type, it) }
+                } else {
+                    applyGlass(view, type, shape ?: view.background)
+                }
                 result
             }
             hookSynergyState(applyGlass)
@@ -157,6 +162,15 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
             val renderer = rendererFactory.invoke(null, view.context) ?: return
             cardMaterial.invoke(renderer, view, type)
             view.background = transparent
+            if (gradient != null && resourceName(view) in CONTROL_OUTLINES) {
+                val radius = gradient.cornerRadius
+                view.outlineProvider = object : ViewOutlineProvider() {
+                    override fun getOutline(target: View, outline: android.graphics.Outline) {
+                        outline.setRoundRect(0, 0, target.width, target.height, radius)
+                        outline.alpha = 1f
+                    }
+                }
+            }
             view.invalidateOutline()
         }.onFailure { HookHelper.log("$tag: apply expanded card material failed", it) }
     }
@@ -166,9 +180,9 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
         while (ancestor != null) {
             when (ancestor.javaClass.name) {
                 BASE_CARD_VIEW -> return ancestor !== view
-                SYNERGY_VIEW -> return runCatching {
-                    view.resources.getResourceEntryName(view.id) in SYNERGY_SURFACES
-                }.getOrDefault(false)
+                SYNERGY_VIEW -> return resourceName(view) in SYNERGY_SURFACES
+                WATCH_CARD_VIEW -> return resourceName(view) == WATCH_MORE_BUTTON
+                HEADSET_CARD_VIEW -> return resourceName(view) in HEADSET_SURFACES
             }
             if (deviceCard?.isInstance(ancestor) == true) return ancestor !== view
             ancestor = ancestor.parent as? View
@@ -176,12 +190,31 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
         return false
     }
 
+    private fun resourceName(view: View): String? =
+        runCatching { view.resources.getResourceEntryName(view.id) }.getOrNull()
+
+    private fun loadControlOutline(view: View, name: String): Drawable? = runCatching {
+        val resources = view.resources
+        val packageName = resources.getResourcePackageName(view.id)
+        val id = resources.getIdentifier(name, "drawable", packageName)
+        if (id == 0) null else resources.getDrawable(id, view.context.theme)
+    }.getOrNull()
+
     private companion object {
         const val MATERIAL_UTILS = "com.milink.util.MaterialUtils"
         const val BASE_CARD_VIEW = "com.milink.cardframelibrary.adapters.BaseCardView"
         const val SYNERGY_VIEW = "com.miui.circulate.world.sticker.ui.SynergyView"
         val SYNERGY_SURFACES = setOf("item_container", "item_icon_container")
         const val DEVICE_CARD_VIEW = "com.miui.circulate.world.sticker.blecard.BleView"
+        const val WATCH_CARD_VIEW = "com.miui.circulate.world.watch.WatchControlView"
+        const val WATCH_MORE_BUTTON = "watch_more_btn"
+        const val HEADSET_CARD_VIEW = "com.miui.circulateplus.world.headset.HeadSetsDetail"
+        val HEADSET_SURFACES = setOf("volume_bar", "headset_more_settings", "anc_select_card", "mi_audio_effect_select_card")
+        val CONTROL_OUTLINES = mapOf(
+            WATCH_MORE_BUTTON to "watch_more_btn_shape",
+            "headset_more_settings" to "headset_detail_more_settings_shape",
+            "volume_bar" to "miplay_detail_header_bg_shape",
+        )
         const val SMART_HOME_CARD_HOST = "com.xiaomi.smarthome.fusion.MiJiaControlViewHostService"
         const val SMART_HOME_MATERIAL = "com.xiaomi.smarthome.control.utils.material.MaterialUtils"
         const val SMART_HOME_SKETCH = "com.xiaomi.smarthome.newui.widget.topnavi.widgets.SketchCardView"

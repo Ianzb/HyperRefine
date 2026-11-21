@@ -445,6 +445,7 @@ internal val glassScenes = linkedMapOf(
     CcGlassKeys.BRIGHTNESS to R.string.cc_glass_brightness,
     CcGlassKeys.NETWORK to R.string.cc_glass_network,
     CcGlassKeys.MEDIA to R.string.cc_glass_media,
+    CcGlassKeys.NOTIFICATION_MEDIA to R.string.cc_glass_notification_media,
     CcGlassKeys.CC_VOLUME to R.string.cc_glass_cc_volume,
     CcGlassKeys.SIDE_VOLUME to R.string.cc_glass_side_volume,
     CcGlassKeys.DEVICE_CENTER to R.string.cc_glass_device_center,
@@ -1375,6 +1376,12 @@ internal fun featureSpecs(): List<OptionSpec> {
             key = key,
             type = OptionType.SWITCH,
             titleRes = title,
+            summaryRes = when (key) {
+                CcGlassKeys.MEDIA, CcGlassKeys.NOTIFICATION_MEDIA -> R.string.cc_glass_media_summary
+                CcGlassKeys.DEVICE_CENTER -> R.string.cc_glass_device_center_summary
+                CcGlassKeys.DEVICE_CARD -> R.string.cc_glass_device_card_summary
+                else -> 0
+            },
             defaultBoolean = true,
             targetPackages = if (key == CcGlassKeys.DEVICE_CARD) {
                 listOf("com.milink.service", "com.xiaomi.smarthome")

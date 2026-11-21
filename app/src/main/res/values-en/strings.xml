@@ -373,7 +373,7 @@
 
     <string name="section_cc_glass">Soft glass</string>
     <string name="cc_glass_master">Enable soft glass in more areas</string>
-    <string name="cc_glass_master_summary">Extend soft glass to more areas of Control center</string>
+    <string name="cc_glass_master_summary">Choose where to use soft glass in Control Center, notification media, volume panels, and Device Center</string>
     <string name="cc_glass_theme_material">Force-enable material with third-party themes</string>
     <string name="cc_glass_theme_material_summary">Force-enable the system’s soft glass with third-party themes</string>
 
@@ -788,12 +788,16 @@
     <string name="rail_style_left">Left Panel</string>
     <string name="rail_style_summary">Wide screens only; when enabled the rail replaces the bottom bar and starts in the selected form</string>
     <string name="cc_glass_brightness">Brightness panel</string>
-    <string name="cc_glass_network">Network and Bluetooth details</string>
-    <string name="cc_glass_media">Media panel</string>
+    <string name="cc_glass_network">Wi-Fi, mobile network, and Bluetooth details</string>
+    <string name="cc_glass_media">Control Center media details</string>
+    <string name="cc_glass_notification_media">Notification media details</string>
+    <string name="cc_glass_media_summary">Device list and horizontal master volume slider</string>
     <string name="cc_glass_cc_volume">Control Center volume</string>
     <string name="cc_glass_side_volume">Side and per-app volume</string>
-    <string name="cc_glass_device_center">Device center shortcuts</string>
-    <string name="cc_glass_device_card">Expanded device cards</string>
+    <string name="cc_glass_device_center">Device Center shortcuts in Control Center</string>
+    <string name="cc_glass_device_center_summary">Circular device tiles and the Device Center button</string>
+    <string name="cc_glass_device_card">Expanded Device Center cards</string>
+    <string name="cc_glass_device_card_summary">Controls inside device cards and the headphone connection device list</string>
     <string name="device_center_smart_home_card_animation">Match Mi Home card opening animation</string>
     <string name="device_center_smart_home_card_animation_summary">Use the device connectivity style for the card’s opening opacity</string>
 </resources>

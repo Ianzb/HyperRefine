@@ -14,6 +14,7 @@ object CcGlassKeys {
     const val BRIGHTNESS = "cc_glass_brightness"
     const val NETWORK = "cc_glass_network"
     const val MEDIA = "cc_glass_media"
+    const val NOTIFICATION_MEDIA = "cc_glass_notification_media"
     const val CC_VOLUME = "cc_glass_cc_volume"
     const val SIDE_VOLUME = "cc_glass_side_volume"
     const val DEVICE_CENTER = "cc_glass_device_center"

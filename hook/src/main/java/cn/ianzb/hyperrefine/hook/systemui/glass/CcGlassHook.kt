@@ -30,7 +30,7 @@ class CcGlassHook : BaseHook() {
     override val key: String = KEY
 
     /** 已监听布局的列表容器（避免重复添加 `OnGlobalLayoutListener`）。 */
-    private val observed = java.util.WeakHashMap<ViewGroup, Boolean>()
+    private val observedMediaLists = java.util.WeakHashMap<ViewGroup, Boolean>()
 
     /** 已设置圆形轮廓的设备中心卡片。 */
     private val outlined = java.util.WeakHashMap<View, Boolean>()
@@ -70,6 +70,8 @@ class CcGlassHook : BaseHook() {
             hookSecondaryPanels(pluginCl)
             runCatching { hookMediaVolumeSlider(pluginCl) }
                 .onFailure { HookHelper.log("$tag: hook media volume slider failed", it) }
+            runCatching { hookNotificationMedia(pluginCl) }
+                .onFailure { HookHelper.log("$tag: hook notification media failed", it) }
             hookBrightnessTileDetailFlag(pluginCl)
             hookMoreButton(pluginCl)
             hookDetailItems(systemCl)
@@ -302,17 +304,34 @@ class CcGlassHook : BaseHook() {
 
     // ---------------- 播放器 ----------------
 
+    private fun hookNotificationMedia(pluginCl: ClassLoader) {
+        val content = Reflect.findClassIfExists(MEDIA_CONTENT_CLASS, pluginCl) ?: return
+        HookHelper.hookAfter(content.getDeclaredMethod("onAttachedToWindow")) { param ->
+            val root = param.thisObject as? View ?: return@hookAfter
+            if (mediaScene(root) == CcGlassKeys.NOTIFICATION_MEDIA && CcGlassKeys.isEnabled(CcGlassKeys.NOTIFICATION_MEDIA)) {
+                glassMedia(root)
+            }
+        }
+    }
+
+    private fun mediaScene(view: View): String =
+        if (generateSequence(view) { it.parent as? View }.any {
+            it.javaClass.name == NOTIFICATION_MEDIA_HOST_CLASS
+        }) CcGlassKeys.NOTIFICATION_MEDIA else CcGlassKeys.MEDIA
+
     private fun hookMediaVolumeSlider(pluginCl: ClassLoader) {
-        val header = Reflect.findClassIfExists("com.android.systemui.QSControlMiPlayDetailHeader", pluginCl)
-            ?: return
+        val header = Reflect.findClassIfExists(MEDIA_HEADER_CLASS, pluginCl) ?: return
         val volumeBar = header.declaredFields.singleOrNull {
             it.name == "volumeBar" && SeekBar::class.java.isAssignableFrom(it.type)
         }?.apply { isAccessible = true } ?: return
         val applyMaterial = header.getDeclaredMethod("applyMaterialBackground")
         HookHelper.hookAfter(applyMaterial) { param ->
-            if (!CcGlassKeys.isEnabled(CcGlassKeys.MEDIA)) return@hookAfter
+            if (!CcGlassKeys.isEnabled(CcGlassKeys.MEDIA) &&
+                !CcGlassKeys.isEnabled(CcGlassKeys.NOTIFICATION_MEDIA)
+            ) return@hookAfter
             val slider = volumeBar.get(param.thisObject) as? SeekBar ?: return@hookAfter
-            applyBeforeGlassDraw(slider, CcGlassKeys.MEDIA) {
+            // Header inflation can happen before it is attached to either host.
+            applyBeforeGlassDraw(slider, scene = { mediaScene(slider) }) {
                 applyMediaVolumeSlider(slider)
             }
         }
@@ -340,17 +359,18 @@ class CcGlassHook : BaseHook() {
     }
 
     private fun glassMedia(root: View?) {
-        val list = findList(root) as? ViewGroup ?: return
+        if (root == null) return
+        val list = (call(root, "getMRecycler") ?: findList(root)) as? ViewGroup ?: return
         applyDeviceCards(list)
-        list.post { if (CcGlassKeys.isEnabled(CcGlassKeys.MEDIA)) runCatching { applyDeviceCards(list) } }
-        if (observed[list] == true) return
-        observed[list] = true
+        list.post { runCatching { applyDeviceCards(list) } }
+        if (observedMediaLists.put(list, true) == true) return
         list.viewTreeObserver.addOnGlobalLayoutListener {
-            if (CcGlassKeys.isEnabled(CcGlassKeys.MEDIA)) runCatching { applyDeviceCards(list) }
+            runCatching { applyDeviceCards(list) }
         }
     }
 
     private fun applyDeviceCards(list: ViewGroup) {
+        if (!CcGlassKeys.isEnabled(mediaScene(list))) return
         forEachChild(list) { child ->
             if (child.isClickable && child !is android.widget.TextView) applyDeviceCard(child)
         }
@@ -359,7 +379,9 @@ class CcGlassHook : BaseHook() {
     private fun applyDeviceCard(child: View) {
         // 尺寸为 0 时等下一帧布局完成后再套，避免按 0 尺寸算出错误参数（过饱和 / 不透明）。
         if (child.width == 0 || child.height == 0) {
-            child.post { if (CcGlassKeys.isEnabled(CcGlassKeys.MEDIA)) runCatching { applyDeviceCard(child) } }
+            applyBeforeGlassDraw(child, scene = { mediaScene(child) }) {
+                if (child.parent is ViewGroup && child.isClickable) applyDeviceCard(child)
+            }
             return
         }
         child.background = null
@@ -555,6 +577,12 @@ class CcGlassHook : BaseHook() {
         view: View,
         scene: String,
         apply: () -> Unit,
+    ) = applyBeforeGlassDraw(view, { scene }, apply)
+
+    private fun applyBeforeGlassDraw(
+        view: View,
+        scene: () -> String,
+        apply: () -> Unit,
     ) {
         if (pendingGlassDraws.put(view, true) == true) return
         val listener = object : ViewTreeObserver.OnPreDrawListener, View.OnAttachStateChangeListener {
@@ -573,11 +601,12 @@ class CcGlassHook : BaseHook() {
             }
 
             override fun onPreDraw(): Boolean {
-                val enabled = CcGlassKeys.isEnabled(scene)
+                val key = scene()
+                val enabled = CcGlassKeys.isEnabled(key)
                 if (enabled && (!view.isShown || view.width <= 0 || view.height <= 0)) return true
                 remove()
                 if (enabled) runCatching(apply)
-                    .onFailure { HookHelper.log("$tag: apply $scene glass before draw failed", it) }
+                    .onFailure { HookHelper.log("$tag: apply $key glass before draw failed", it) }
                 return true
             }
         }
@@ -682,6 +711,10 @@ class CcGlassHook : BaseHook() {
     }
 
     companion object {
+        private const val MEDIA_CONTENT_CLASS = "com.android.systemui.QSControlMiPlayDetailContent"
+        private const val MEDIA_HEADER_CLASS = "com.android.systemui.QSControlMiPlayDetailHeader"
+        private const val NOTIFICATION_MEDIA_HOST_CLASS =
+            "com.android.systemui.statusbar.notification.modal.ModalQSControlDetail"
         private val MEDIA_VOLUME_TRACK_OUTLINE = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 val track = ((view as? SeekBar)?.progressDrawable as? LayerDrawable)

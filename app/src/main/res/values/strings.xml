@@ -373,7 +373,7 @@
 
     <string name="section_cc_glass">柔光玻璃</string>
     <string name="cc_glass_master">更多场景启用柔光玻璃</string>
-    <string name="cc_glass_master_summary">柔光玻璃的适用范围扩展到更多控制中心位置</string>
+    <string name="cc_glass_master_summary">可分别设置控制中心、通知中心播放器、音量面板和融合设备中心的柔光玻璃</string>
     <string name="cc_glass_theme_material">第三方主题下强制启用材质</string>
     <string name="cc_glass_theme_material_summary">使用第三方主题时也强制启用系统柔光玻璃</string>
 
@@ -789,12 +789,16 @@
     <string name="rail_style_left">左侧面板</string>
     <string name="rail_style_summary">仅在宽屏生效；启用后由侧栏取代底栏，进入时停在所选形态</string>
     <string name="cc_glass_brightness">亮度二级面板</string>
-    <string name="cc_glass_network">网络与蓝牙详情</string>
-    <string name="cc_glass_media">播放器二级面板</string>
+    <string name="cc_glass_network">WLAN、移动网络与蓝牙详情</string>
+    <string name="cc_glass_media">控制中心播放器二级面板</string>
+    <string name="cc_glass_notification_media">通知中心播放器详情</string>
+    <string name="cc_glass_media_summary">设备列表和横向总音量条</string>
     <string name="cc_glass_cc_volume">控制中心音量面板</string>
     <string name="cc_glass_side_volume">侧边音量与多应用音量</string>
-    <string name="cc_glass_device_center">融合设备中心入口</string>
-    <string name="cc_glass_device_card">展开的设备卡片</string>
+    <string name="cc_glass_device_center">控制中心的融合设备中心快捷入口</string>
+    <string name="cc_glass_device_center_summary">圆形设备图标卡片和设备中心按钮</string>
+    <string name="cc_glass_device_card">融合设备中心展开卡片</string>
+    <string name="cc_glass_device_card_summary">设备卡片内的操作控件和「耳机连接至」设备列表</string>
     <string name="device_center_smart_home_card_animation">同步米家卡片开场动画</string>
     <string name="device_center_smart_home_card_animation_summary">让米家设备卡片的开场透明度跟随设备互联样式</string>
 </resources>

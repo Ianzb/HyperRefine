@@ -56,6 +56,41 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
                 result
             }
             hookSynergyState(applyGlass)
+            hookHeadsetRouteRows(applyGlass)
+        }
+    }
+
+    private fun hookHeadsetRouteRows(applyGlass: (View, Int, Drawable?) -> Unit) {
+        val fragment = Reflect.findClassIfExists(HEADSET_ROUTE_FRAGMENT, target.classLoader) ?: return
+        val bind = fragment.declaredMethods.singleOrNull {
+            it.name == "a1" && it.parameterCount == 2 &&
+                it.parameterTypes[0] == View::class.java && Enum::class.java.isAssignableFrom(it.parameterTypes[1])
+        } ?: return
+        val refresh = fragment.declaredMethods.singleOrNull { it.name == "U0" && it.parameterCount == 0 }
+            ?: return
+        val rowsByFragment = WeakHashMap<Any, WeakHashMap<View, Int>>()
+        HookHelper.hookAfter(bind) { param ->
+            if (!CcGlassKeys.isEnabled(key)) return@hookAfter
+            val owner = param.thisObject ?: return@hookAfter
+            val item = param.args.getOrNull(0) as? View ?: return@hookAfter
+            val type = when ((param.args.getOrNull(1) as? Enum<*>)?.name) {
+                "HIGHLIGHTED" -> ROUTE_SELECTED_MATERIAL
+                "DEFAULT", "LOADING" -> ROUTE_DEFAULT_MATERIAL
+                else -> return@hookAfter
+            }
+            val id = item.resources.getIdentifier(HEADSET_ROUTE_ROW, "id", item.context.packageName)
+            val row = if (id != 0) item.findViewById<View>(id) else null
+            if (row != null) {
+                rowsByFragment.getOrPut(owner) { WeakHashMap() }[row] = type
+                applyGlass(row, type, row.background)
+            }
+        }
+        HookHelper.hookAfter(refresh) { param ->
+            if (!CcGlassKeys.isEnabled(key)) return@hookAfter
+            // The stock refresh clears the material on every unselected destination.
+            rowsByFragment[param.thisObject]?.forEach { (row, type) ->
+                if (type == ROUTE_DEFAULT_MATERIAL) applyGlass(row, type, row.background)
+            }
         }
     }
 
@@ -144,6 +179,7 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
         rendererFactory: Method,
         cardMaterial: Method,
     ) {
+        val name = resourceName(view)
         // Keep the stock shape and round-rect outline while removing its solid fill.
         val gradient = (shape?.current as? GradientDrawable)
             ?.constantState?.newDrawable(view.resources)?.mutate() as? GradientDrawable
@@ -162,7 +198,7 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
             val renderer = rendererFactory.invoke(null, view.context) ?: return
             cardMaterial.invoke(renderer, view, type)
             view.background = transparent
-            if (gradient != null && resourceName(view) in CONTROL_OUTLINES) {
+            if (gradient != null && (name in CONTROL_OUTLINES || name == HEADSET_ROUTE_ROW)) {
                 val radius = gradient.cornerRadius
                 view.outlineProvider = object : ViewOutlineProvider() {
                     override fun getOutline(target: View, outline: android.graphics.Outline) {
@@ -209,6 +245,10 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
         const val WATCH_CARD_VIEW = "com.miui.circulate.world.watch.WatchControlView"
         const val WATCH_MORE_BUTTON = "watch_more_btn"
         const val HEADSET_CARD_VIEW = "com.miui.circulateplus.world.headset.HeadSetsDetail"
+        const val HEADSET_ROUTE_FRAGMENT = "com.miui.circulate.world.headset.ui.HeadsetCirculateFragment"
+        const val HEADSET_ROUTE_ROW = "circulate_device_item_container"
+        const val ROUTE_DEFAULT_MATERIAL = 2
+        const val ROUTE_SELECTED_MATERIAL = 3
         val HEADSET_SURFACES = setOf("volume_bar", "headset_more_settings", "anc_select_card", "mi_audio_effect_select_card")
         val CONTROL_OUTLINES = mapOf(
             WATCH_MORE_BUTTON to "watch_more_btn_shape",

@@ -161,15 +161,14 @@ object CcGlassApi {
         val token = bionics(if (selected) "ACTIVATED_GLASS_TOKEN" else "DEFAULT_GLASS_TOKEN") ?: return false
         // Native panels size their SDF targets before the first glass frame. Detail rows
         // are created by the host RecyclerView and are absent from the plugin's target list.
-        runCatching { setGlassSdfSizeMethod?.invoke(null, view, view.width.toFloat(), view.height.toFloat()) }
-            .onFailure { HookHelper.log("CcGlass: set detail SDF size failed", it) }
+        setSdfSize(view)
         if (!selected) {
             val outline = view.outlineProvider
             val clipToOutline = view.clipToOutline
             // Keep the media token's native blur-enhancement state. The list still owns its outline.
             view.background = null
             val applied = try {
-                apply(view, "MediaItemToken")
+                apply(view, "MediaItemToken").also { if (it) view.background = null }
             } finally {
                 view.outlineProvider = outline
                 view.clipToOutline = clipToOutline
@@ -182,6 +181,12 @@ object CcGlassApi {
         view.invalidateOutline()
         view.invalidate()
         return true
+    }
+
+    fun setSdfSize(view: View, width: Int = view.width, height: Int = view.height) {
+        if (width <= 0 || height <= 0) return
+        runCatching { setGlassSdfSizeMethod?.invoke(null, view, width.toFloat(), height.toFloat()) }
+            .onFailure { HookHelper.log("CcGlass: set SDF size failed", it) }
     }
 
     fun clearBionicsStyle(view: View) {

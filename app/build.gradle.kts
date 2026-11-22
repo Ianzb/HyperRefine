@@ -35,8 +35,8 @@ android {
         applicationId = "cn.ianzb.hyperrefine"
         minSdk = 35
         targetSdk = 37
-        versionCode = 27
-        versionName = "1.16.0"
+        versionCode = 28
+        versionName = "1.16.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -119,6 +119,7 @@ dependencies {
     implementation(libs.material.icons)
     implementation(libs.commonmark)
 }
+
 
 
 

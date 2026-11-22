@@ -31,6 +31,8 @@ class CcGlassHook : BaseHook() {
 
     /** 已监听布局的列表容器（避免重复添加 `OnGlobalLayoutListener`）。 */
     private val observedMediaLists = java.util.WeakHashMap<ViewGroup, Boolean>()
+    private val mediaVolumeSliders = java.util.WeakHashMap<View, java.lang.ref.WeakReference<SeekBar>>()
+    private var mediaContentClass: Class<*>? = null
 
     /** 已设置圆形轮廓的设备中心卡片。 */
     private val outlined = java.util.WeakHashMap<View, Boolean>()
@@ -39,6 +41,9 @@ class CcGlassHook : BaseHook() {
     private val bionicsDetailRows = java.util.WeakHashMap<View, Boolean>()
     private val detailTopMargins = java.util.WeakHashMap<View, Pair<Int, Int>>()
     private val detailRows = java.util.WeakHashMap<View, java.lang.ref.WeakReference<Any>>()
+    private val detailGlassParams = CcDetailGlassParams()
+    private val defaultGlassParams by lazy { bionicsParams(TOKEN_DEFAULT) }
+    private val activatedGlassParams by lazy { bionicsParams(TOKEN_ACTIVATED) }
     private var ringerResources: Class<*>? = null
 
     /**
@@ -64,6 +69,7 @@ class CcGlassHook : BaseHook() {
     override fun init() {
         val systemCl = target.classLoader ?: return
         CcGlassApi.initSystem(systemCl)
+        detailGlassParams.install()
         PluginLoader.register(key, systemCl) { pluginCl ->
             CcGlassApi.init(pluginCl)
             ringerResources = Reflect.findClassIfExists(RINGER_RES_CLASS, pluginCl)
@@ -272,7 +278,14 @@ class CcGlassHook : BaseHook() {
     private fun applyDetailMaterial(view: View, content: Any) {
         if (view.width <= 0 || view.height <= 0) return
         runCatching {
-            if (CcGlassApi.applyDetailBionicsStyle(view, view.isSelected)) {
+            val selected = view.isSelected
+            val suffix = call(content, "getSuffix")
+            val applied = if (!selected && (suffix == "Wifi" || suffix == "Bluetooth")) {
+                detailGlassParams.applyToTarget(view) { CcGlassApi.applyDetailBionicsStyle(view, false) }
+            } else {
+                CcGlassApi.applyDetailBionicsStyle(view, selected)
+            }
+            if (applied) {
                 bionicsDetailRows[view] = true
             } else {
                 if (bionicsDetailRows.remove(view) == true) CcGlassApi.clearBionicsStyle(view)
@@ -299,18 +312,31 @@ class CcGlassHook : BaseHook() {
 
     /** 详情面板补「更多设置」按钮玻璃（列表项由 [hookDetailItems] 处理）。 */
     private fun glassDetail(root: View?) {
-        byId(root, setOf("more_button"))
+        if (root == null) return
+        val defaults = defaultGlassParams
+        traverse(root) { child ->
+            if (idName(child) == "more_button") {
+                if (defaults == null) glass(child)
+                else detailGlassParams.capture(root, child, defaults) { glass(child) }
+            }
+        }
     }
 
     // ---------------- 播放器 ----------------
 
     private fun hookNotificationMedia(pluginCl: ClassLoader) {
         val content = Reflect.findClassIfExists(MEDIA_CONTENT_CLASS, pluginCl) ?: return
+        mediaContentClass = content
         HookHelper.hookAfter(content.getDeclaredMethod("onAttachedToWindow")) { param ->
             val root = param.thisObject as? View ?: return@hookAfter
             if (mediaScene(root) == CcGlassKeys.NOTIFICATION_MEDIA && CcGlassKeys.isEnabled(CcGlassKeys.NOTIFICATION_MEDIA)) {
                 glassMedia(root)
             }
+        }
+        HookHelper.hookAfter(content.getDeclaredMethod("onDetachedFromWindow")) { param ->
+            val root = param.thisObject as? View ?: return@hookAfter
+            mediaVolumeSliders.remove(root)
+            detailGlassParams.clear(root)
         }
     }
 
@@ -318,6 +344,14 @@ class CcGlassHook : BaseHook() {
         if (generateSequence(view) { it.parent as? View }.any {
             it.javaClass.name == NOTIFICATION_MEDIA_HOST_CLASS
         }) CcGlassKeys.NOTIFICATION_MEDIA else CcGlassKeys.MEDIA
+
+    private fun mediaContent(view: View): View? {
+        val contentClass = mediaContentClass ?: return null
+        return generateSequence(view) { it.parent as? View }.firstOrNull(contentClass::isInstance)
+    }
+
+    private fun bionicsParams(token: String): FloatArray? =
+        CcGlassApi.bionics(token)?.let { (call(it, "getToBionicsParams") as? FloatArray)?.copyOf() }
 
     private fun hookMediaVolumeSlider(pluginCl: ClassLoader) {
         val header = Reflect.findClassIfExists(MEDIA_HEADER_CLASS, pluginCl) ?: return
@@ -330,23 +364,36 @@ class CcGlassHook : BaseHook() {
                 !CcGlassKeys.isEnabled(CcGlassKeys.NOTIFICATION_MEDIA)
             ) return@hookAfter
             val slider = volumeBar.get(param.thisObject) as? SeekBar ?: return@hookAfter
-            // Header inflation can happen before it is attached to either host.
-            applyBeforeGlassDraw(slider, scene = { mediaScene(slider) }) {
-                applyMediaVolumeSlider(slider)
-            }
+            // Resolve the host after attachment and wait for the track's own layout.
+            scheduleMediaVolumeSlider(slider)
         }
     }
 
+    private fun scheduleMediaVolumeSlider(slider: SeekBar) {
+        applyBeforeGlassDraw(
+            slider,
+            scene = { mediaScene(slider) },
+            ready = { mediaVolumeTrack(slider)?.bounds?.isEmpty == false },
+            applyOnLayout = false,
+        ) {
+            mediaContent(slider)?.let { mediaVolumeSliders[it] = java.lang.ref.WeakReference(slider) }
+            applyMediaVolumeSlider(slider)
+        }
+    }
+
+    private fun mediaVolumeTrack(slider: SeekBar) =
+        (slider.progressDrawable as? LayerDrawable)?.findDrawableByLayerId(android.R.id.background)
+
     private fun applyMediaVolumeSlider(slider: SeekBar) {
         val layers = slider.progressDrawable as? LayerDrawable ?: return
-        val track = layers.findDrawableByLayerId(android.R.id.background) ?: return
+        val track = mediaVolumeTrack(slider) ?: return
         if (track.bounds.isEmpty) return
         if (!CcGlassApi.canApplyDetailBionicsStyle()) return
         val token = CcGlassApi.bionics(TOKEN_DEFAULT) ?: return
         val originalOutline = slider.outlineProvider
         slider.outlineProvider = MEDIA_VOLUME_TRACK_OUTLINE
         CcGlassApi.setSdfSize(slider, track.bounds.width(), track.bounds.height())
-        if (!CcGlassApi.applyStyle(slider, token)) {
+        if (!detailGlassParams.applyToTarget(slider) { CcGlassApi.applyStyle(slider, token) }) {
             slider.outlineProvider = originalOutline
             return
         }
@@ -354,7 +401,6 @@ class CcGlassHook : BaseHook() {
         // that color state, so only the inactive drawable stays hidden across refreshes.
         layers.mutate()
         layers.findDrawableByLayerId(android.R.id.background)?.alpha = 0
-        slider.outlineProvider = MEDIA_VOLUME_TRACK_OUTLINE
         slider.invalidateOutline()
     }
 
@@ -362,17 +408,48 @@ class CcGlassHook : BaseHook() {
         if (root == null) return
         val list = (call(root, "getMRecycler") ?: findList(root)) as? ViewGroup ?: return
         applyDeviceCards(list)
-        list.post { runCatching { applyDeviceCards(list) } }
         if (observedMediaLists.put(list, true) == true) return
-        list.viewTreeObserver.addOnGlobalLayoutListener {
-            runCatching { applyDeviceCards(list) }
+        val watcher = object : View.OnAttachStateChangeListener, ViewTreeObserver.OnGlobalLayoutListener {
+            private var observer: ViewTreeObserver? = null
+
+            override fun onViewAttachedToWindow(view: View) {
+                observer = view.viewTreeObserver.also { it.addOnGlobalLayoutListener(this) }
+            }
+
+            override fun onViewDetachedFromWindow(view: View) {
+                observer?.takeIf { it.isAlive }?.removeOnGlobalLayoutListener(this)
+                observer = null
+            }
+
+            override fun onGlobalLayout() {
+                runCatching { applyDeviceCards(list) }
+                    .onFailure { HookHelper.log("$tag: media glass layout update failed", it) }
+            }
         }
+        list.addOnAttachStateChangeListener(watcher)
+        if (list.isAttachedToWindow) watcher.onViewAttachedToWindow(list)
     }
 
     private fun applyDeviceCards(list: ViewGroup) {
         if (!CcGlassKeys.isEnabled(mediaScene(list))) return
-        forEachChild(list) { child ->
-            if (child.isClickable && child !is android.widget.TextView) applyDeviceCard(child)
+        val cards = (0 until list.childCount).mapNotNull(list::getChildAt)
+            .filter { it.isClickable && it !is android.widget.TextView }
+        val panel = mediaContent(list)
+        val readyCards = cards.asSequence().filter { it.width > 0 && it.height > 0 }
+        val source = readyCards.firstOrNull { !it.isSelected } ?: readyCards.firstOrNull()
+        val defaults = defaultGlassParams
+        val sourceDefaults = if (source?.isSelected == true) activatedGlassParams else defaults
+        if (panel != null && source != null && defaults != null && sourceDefaults != null) {
+            val changed = detailGlassParams.capture(panel, source, sourceDefaults, defaults) {
+                applyDeviceCard(source)
+            }
+            if (changed) {
+                mediaVolumeSliders[panel]?.get()?.takeIf { mediaContent(it) === panel }
+                    ?.let(::scheduleMediaVolumeSlider)
+            }
+            cards.forEach { if (it !== source) applyDeviceCard(it) }
+        } else {
+            cards.forEach(::applyDeviceCard)
         }
     }
 
@@ -572,47 +649,66 @@ class CcGlassHook : BaseHook() {
         return runCatching { Reflect.getObjectField(binding, "container") as? View }.getOrNull()
     }
 
-    /** Apply before the first draw with valid layout, including the beginning of the opening animation. */
+    /** Apply after layout and before drawing, when the target and its host are ready. */
     private fun applyBeforeGlassDraw(
         view: View,
         scene: String,
         apply: () -> Unit,
-    ) = applyBeforeGlassDraw(view, { scene }, apply)
+    ) = applyBeforeGlassDraw(view, { scene }, apply = apply)
 
     private fun applyBeforeGlassDraw(
         view: View,
         scene: () -> String,
+        ready: () -> Boolean = { true },
+        applyOnLayout: Boolean = true,
         apply: () -> Unit,
     ) {
         if (pendingGlassDraws.put(view, true) == true) return
-        val listener = object : ViewTreeObserver.OnPreDrawListener, View.OnAttachStateChangeListener {
-            private var observer = view.viewTreeObserver
+        val listener = object : ViewTreeObserver.OnPreDrawListener,
+            View.OnAttachStateChangeListener, View.OnLayoutChangeListener {
+            private var observer: ViewTreeObserver? = null
 
             override fun onViewAttachedToWindow(v: View) {
-                observer = v.viewTreeObserver
+                observer = v.viewTreeObserver.also { it.addOnPreDrawListener(this) }
+                if (applyOnLayout) applyIfReady()
             }
 
             override fun onViewDetachedFromWindow(v: View) = remove()
 
+            override fun onLayoutChange(
+                v: View,
+                left: Int, top: Int, right: Int, bottom: Int,
+                oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int,
+            ) = applyIfReady(fromLayout = true)
+
             private fun remove() {
-                if (observer.isAlive) observer.removeOnPreDrawListener(this)
+                observer?.takeIf { it.isAlive }?.removeOnPreDrawListener(this)
                 view.removeOnAttachStateChangeListener(this)
+                if (applyOnLayout) view.removeOnLayoutChangeListener(this)
                 pendingGlassDraws.remove(view)
             }
 
-            override fun onPreDraw(): Boolean {
+            private fun applyIfReady(fromLayout: Boolean = false) {
+                if (!view.isAttachedToWindow || view.width <= 0 || view.height <= 0) return
+                if (!fromLayout && (!view.isLaidOut || view.isLayoutRequested)) return
                 val key = scene()
-                val enabled = CcGlassKeys.isEnabled(key)
-                if (enabled && (!view.isShown || view.width <= 0 || view.height <= 0)) return true
+                if (!CcGlassKeys.isEnabled(key)) {
+                    remove()
+                    return
+                }
+                if (!ready()) return
                 remove()
-                if (enabled) runCatching(apply)
-                    .onFailure { HookHelper.log("$tag: apply $key glass before draw failed", it) }
+                runCatching(apply).onFailure { HookHelper.log("$tag: initialize $key glass failed", it) }
+            }
+
+            override fun onPreDraw(): Boolean {
+                applyIfReady()
                 return true
             }
         }
-        view.viewTreeObserver.addOnPreDrawListener(listener)
+        if (applyOnLayout) view.addOnLayoutChangeListener(listener)
         view.addOnAttachStateChangeListener(listener)
-        view.invalidate()
+        if (view.isAttachedToWindow) listener.onViewAttachedToWindow(view)
     }
 
     private fun styleDeviceItemGlass(container: View) {
@@ -742,8 +838,7 @@ class CcGlassHook : BaseHook() {
         private const val TILE_ICON_CLASS =
             "miui.systemui.controlcenter.qs.tileview.QSTileItemIconView"
         private const val TIMER_SEEK_BAR_NAME = "MiuiVolumeTimerSeekBar"
-        private const val DETAIL_ADAPTER_CLASS =
-            "com.android.systemui.qs.QSDetailContent\$Adapter"
+        private const val DETAIL_ADAPTER_CLASS = "com.android.systemui.qs.QSDetailContent\$Adapter"
         private const val RINGER_HELPER_CLASS =
             "com.android.systemui.miui.volume.MiuiRingerModeLayout\$RingerButtonHelper"
         private const val MORE_BUTTON_CLASS =

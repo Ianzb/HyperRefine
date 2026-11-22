@@ -76,11 +76,11 @@ cd HyperRefine
 
 ## miuix 依赖
 
-OS4 玻璃组件（`miuix-glass`、`miuix-material`、`miuix-glass-icons`）随 miuix 发布到 Maven Central，本项目直接使用 **0.9.5-beta02**。
+OS4 玻璃组件（`miuix-glass`、`miuix-material`、`miuix-glass-icons`）随 miuix 发布到 Maven Central，本项目直接使用 **0.9.5-beta03**。
 
 ```toml
 # gradle/libs.versions.toml
-miuix = "0.9.5-beta02"
+miuix = "0.9.5-beta03"
 ```
 
 `settings.gradle.kts` 只保留 `google()` 与 `mavenCentral()`（已移除 `mavenLocal()`），因此任意机器 / CI 上 `./gradlew assembleDebug` 都能直接解析依赖。

@@ -5,7 +5,6 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -39,7 +38,8 @@ import cn.ianzb.hyperrefine.RailStyle
 import cn.ianzb.hyperrefine.UpdateChecker
 import cn.ianzb.hyperrefine.ui.component.AppLazyPage
 import cn.ianzb.hyperrefine.ui.component.CurrentChangelogDialog
-import cn.ianzb.hyperrefine.ui.component.AppSectionCard
+import cn.ianzb.hyperrefine.ui.component.AppCardRow
+import cn.ianzb.hyperrefine.ui.component.appGroupedCardItems
 import cn.ianzb.hyperrefine.ui.util.LocalPreferenceBackdrop
 import cn.ianzb.hyperrefine.xposed.RootHelper
 import cn.ianzb.hyperrefine.xposed.SafeModeReader
@@ -140,220 +140,238 @@ fun SettingsPageView(
         extraBottomPadding = extraBottomPadding,
         scrollBehavior = scrollBehavior,
     ) {
-        item {
-            Column {
-                AppSectionCard(title = stringResource(R.string.settings_module)) {
-                    val autoDevice = remember { DeviceContext.detected.type }
-                    val deviceOptions = listOf(
-                        stringResource(
-                            R.string.device_type_default,
-                            stringResource(deviceTypeLabelRes(autoDevice)),
-                        ),
-                        stringResource(R.string.device_type_phone),
-                        stringResource(R.string.device_type_pad),
-                        stringResource(R.string.device_type_fold),
-                    )
-                    val deviceValues = listOf(
-                        DeviceType.OVERRIDE_AUTO,
-                        DeviceType.PHONE.key,
-                        DeviceType.PAD.key,
-                        DeviceType.FOLD.key,
-                    )
-                    val savedDevice = ConfigState.string(
-                        DeviceContext.KEY_DEVICE_TYPE,
-                        DeviceType.OVERRIDE_AUTO,
-                    )
-                    val deviceIndex = deviceValues.indexOf(savedDevice).takeIf { it >= 0 } ?: 0
-                    GlassDropdownPreference(
-                        title = stringResource(R.string.settings_device_type),
-                        items = deviceOptions,
-                        selectedIndex = deviceIndex,
-                        onSelectedIndexChange = {
-                            ConfigState.set(DeviceContext.KEY_DEVICE_TYPE, deviceValues[it])
-                        },
-                        backdrop = LocalPreferenceBackdrop.current,
-                        renderInRootScaffold = true,
-                    )
-
-                    if (safeModePackages.isNotEmpty()) {
-                        BasicComponent(
-                            title = stringResource(R.string.safe_mode_active_title),
-                        )
-                    }
-                    AppArrowPreference(
-                        title = stringResource(R.string.safe_mode_manage),
-                        onClick = openSafeMode,
-                    )
-
-                    AppArrowPreference(
-                        title = stringResource(R.string.module_scope_request),
-                        onClick = {
-                            val packages = OptionRegistry.all()
-                                .flatMap { it.targetPackages }
-                                .distinct()
-                            XposedServiceManager.ensureScope(packages) { ok, message ->
-                                val text = if (ok) {
-                                    resources.getString(R.string.module_scope_request_success)
-                                } else {
-                                    resources.getString(R.string.module_scope_request_failed, message ?: "")
-                                }
-                                Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+        appGroupedCardItems(
+            title = R.string.settings_module,
+            AppCardRow(R.string.settings_device_type) {
+                val autoDevice = remember { DeviceContext.detected.type }
+                val deviceOptions = listOf(
+                    stringResource(
+                        R.string.device_type_default,
+                        stringResource(deviceTypeLabelRes(autoDevice)),
+                    ),
+                    stringResource(R.string.device_type_phone),
+                    stringResource(R.string.device_type_pad),
+                    stringResource(R.string.device_type_fold),
+                )
+                val deviceValues = listOf(
+                    DeviceType.OVERRIDE_AUTO,
+                    DeviceType.PHONE.key,
+                    DeviceType.PAD.key,
+                    DeviceType.FOLD.key,
+                )
+                val savedDevice = ConfigState.string(
+                    DeviceContext.KEY_DEVICE_TYPE,
+                    DeviceType.OVERRIDE_AUTO,
+                )
+                val deviceIndex = deviceValues.indexOf(savedDevice).takeIf { it >= 0 } ?: 0
+                GlassDropdownPreference(
+                    title = stringResource(R.string.settings_device_type),
+                    items = deviceOptions,
+                    selectedIndex = deviceIndex,
+                    onSelectedIndexChange = {
+                        ConfigState.set(DeviceContext.KEY_DEVICE_TYPE, deviceValues[it])
+                    },
+                    backdrop = LocalPreferenceBackdrop.current,
+                    renderInRootScaffold = true,
+                )
+            },
+            if (safeModePackages.isNotEmpty()) AppCardRow(R.string.safe_mode_active_title) {
+                BasicComponent(title = stringResource(R.string.safe_mode_active_title))
+            } else null,
+            AppCardRow(R.string.safe_mode_manage) {
+                AppArrowPreference(
+                    title = stringResource(R.string.safe_mode_manage),
+                    onClick = openSafeMode,
+                )
+            },
+            AppCardRow(R.string.module_scope_request) {
+                AppArrowPreference(
+                    title = stringResource(R.string.module_scope_request),
+                    onClick = {
+                        val packages = OptionRegistry.all()
+                            .flatMap { it.targetPackages }
+                            .distinct()
+                        XposedServiceManager.ensureScope(packages) { ok, message ->
+                            val text = if (ok) {
+                                resources.getString(R.string.module_scope_request_success)
+                            } else {
+                                resources.getString(R.string.module_scope_request_failed, message ?: "")
                             }
-                        },
-                    )
-                    AppArrowPreference(
-                        title = stringResource(R.string.module_clear_dexkit),
-                        onClick = {
-                            val targets = XposedServiceManager.scope
-                            scope.launch {
-                                val success = withContext(Dispatchers.IO) {
-                                    RootHelper.deleteDexKitCache(targets, DexKitCacheManager.CACHE_DIR)
-                                }
-                                val text = if (success) {
-                                    resources.getString(R.string.module_clear_dexkit_success)
-                                } else {
-                                    resources.getString(R.string.module_clear_dexkit_failed)
-                                }
-                                Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
+            },
+            AppCardRow(R.string.module_clear_dexkit) {
+                AppArrowPreference(
+                    title = stringResource(R.string.module_clear_dexkit),
+                    onClick = {
+                        val targets = XposedServiceManager.scope
+                        scope.launch {
+                            val success = withContext(Dispatchers.IO) {
+                                RootHelper.deleteDexKitCache(targets, DexKitCacheManager.CACHE_DIR)
                             }
-                        },
-                    )
-                }
+                            val text = if (success) {
+                                resources.getString(R.string.module_clear_dexkit_success)
+                            } else {
+                                resources.getString(R.string.module_clear_dexkit_failed)
+                            }
+                            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
+            },
+        )
 
-                AppSectionCard(title = stringResource(R.string.settings_interface)) {
-                    val modes = listOf(
-                        stringResource(R.string.theme_system),
-                        stringResource(R.string.theme_light),
-                        stringResource(R.string.theme_dark),
-                        stringResource(R.string.theme_monet_system),
-                        stringResource(R.string.theme_monet_light),
-                        stringResource(R.string.theme_monet_dark)
-                    )
-                    val modesEnum = listOf(
-                        ColorSchemeMode.System,
-                        ColorSchemeMode.Light,
-                        ColorSchemeMode.Dark,
-                        ColorSchemeMode.MonetSystem,
-                        ColorSchemeMode.MonetLight,
-                        ColorSchemeMode.MonetDark
-                    )
-                    val currentIndex = modesEnum.indexOf(currentMode).takeIf { it >= 0 } ?: 0
+        appGroupedCardItems(
+            title = R.string.settings_interface,
+            AppCardRow(R.string.theme_mode) {
+                val modes = listOf(
+                    stringResource(R.string.theme_system),
+                    stringResource(R.string.theme_light),
+                    stringResource(R.string.theme_dark),
+                    stringResource(R.string.theme_monet_system),
+                    stringResource(R.string.theme_monet_light),
+                    stringResource(R.string.theme_monet_dark)
+                )
+                val modesEnum = listOf(
+                    ColorSchemeMode.System,
+                    ColorSchemeMode.Light,
+                    ColorSchemeMode.Dark,
+                    ColorSchemeMode.MonetSystem,
+                    ColorSchemeMode.MonetLight,
+                    ColorSchemeMode.MonetDark
+                )
+                val currentIndex = modesEnum.indexOf(currentMode).takeIf { it >= 0 } ?: 0
 
-                    GlassDropdownPreference(
-                        title = stringResource(R.string.theme_mode),
-                        items = modes,
-                        selectedIndex = currentIndex,
-                        onSelectedIndexChange = { onModeChange(modesEnum[it]) },
-                        backdrop = LocalPreferenceBackdrop.current,
-                        renderInRootScaffold = true,
-                    )
+                GlassDropdownPreference(
+                    title = stringResource(R.string.theme_mode),
+                    items = modes,
+                    selectedIndex = currentIndex,
+                    onSelectedIndexChange = { onModeChange(modesEnum[it]) },
+                    backdrop = LocalPreferenceBackdrop.current,
+                    renderInRootScaffold = true,
+                )
 
-                    // 底栏样式与侧栏样式各自独立：平板可以「左侧面板侧栏 + iOS 底栏」这类组合，
-                    // 窄屏只用到底栏样式（侧栏不生效）。
-                    val bottomBarStyles = listOf(
-                        stringResource(R.string.bottom_bar_style_hyperos),
-                        stringResource(R.string.bottom_bar_style_ios)
-                    )
-                    val bottomBarStyleValues = BottomBarStyle.entries
+                // 底栏样式与侧栏样式各自独立：平板可以「左侧面板侧栏 + iOS 底栏」这类组合，
+                // 窄屏只用到底栏样式（侧栏不生效）。
+            },
+            AppCardRow(R.string.bottom_bar_style) {
+                val bottomBarStyles = listOf(
+                    stringResource(R.string.bottom_bar_style_hyperos),
+                    stringResource(R.string.bottom_bar_style_ios)
+                )
+                val bottomBarStyleValues = BottomBarStyle.entries
 
-                    GlassDropdownPreference(
-                        title = stringResource(R.string.bottom_bar_style),
-                        summary = stringResource(R.string.bottom_bar_style_summary),
-                        items = bottomBarStyles,
-                        selectedIndex = bottomBarStyleValues.indexOf(bottomBarStyle)
-                            .takeIf { it >= 0 } ?: 0,
-                        onSelectedIndexChange = {
-                            onBottomBarStyleChange(bottomBarStyleValues[it])
-                        },
-                        backdrop = LocalPreferenceBackdrop.current,
-                        renderInRootScaffold = true,
-                    )
+                GlassDropdownPreference(
+                    title = stringResource(R.string.bottom_bar_style),
+                    summary = stringResource(R.string.bottom_bar_style_summary),
+                    items = bottomBarStyles,
+                    selectedIndex = bottomBarStyleValues.indexOf(bottomBarStyle)
+                        .takeIf { it >= 0 } ?: 0,
+                    onSelectedIndexChange = {
+                        onBottomBarStyleChange(bottomBarStyleValues[it])
+                    },
+                    backdrop = LocalPreferenceBackdrop.current,
+                    renderInRootScaffold = true,
+                )
+            },
+            AppCardRow(R.string.rail_style) {
+                val railStyles = listOf(
+                    stringResource(R.string.rail_style_none),
+                    stringResource(R.string.rail_style_top),
+                    stringResource(R.string.rail_style_left)
+                )
+                val railStyleValues = RailStyle.entries
 
-                    val railStyles = listOf(
-                        stringResource(R.string.rail_style_none),
-                        stringResource(R.string.rail_style_top),
-                        stringResource(R.string.rail_style_left)
-                    )
-                    val railStyleValues = RailStyle.entries
+                GlassDropdownPreference(
+                    title = stringResource(R.string.rail_style),
+                    summary = stringResource(R.string.rail_style_summary),
+                    items = railStyles,
+                    selectedIndex = railStyleValues.indexOf(railStyle)
+                        .takeIf { it >= 0 } ?: 0,
+                    onSelectedIndexChange = {
+                        onRailStyleChange(railStyleValues[it])
+                    },
+                    backdrop = LocalPreferenceBackdrop.current,
+                    renderInRootScaffold = true,
+                )
+            },
+            AppCardRow(R.string.blur_enabled) {
+                SwitchPreference(
+                    title = stringResource(R.string.blur_enabled),
+                    summary = stringResource(R.string.blur_enabled_summary),
+                    checked = isBlurEnabled,
+                    onCheckedChange = onBlurEnabledChange
+                )
+            },
+            AppCardRow(R.string.hide_launcher_icon) {
+                SwitchPreference(
+                    title = stringResource(R.string.hide_launcher_icon),
+                    summary = stringResource(R.string.hide_launcher_icon_summary),
+                    checked = hideLauncherIcon,
+                    onCheckedChange = onHideLauncherIconChange
+                )
+            },
+        )
 
-                    GlassDropdownPreference(
-                        title = stringResource(R.string.rail_style),
-                        summary = stringResource(R.string.rail_style_summary),
-                        items = railStyles,
-                        selectedIndex = railStyleValues.indexOf(railStyle)
-                            .takeIf { it >= 0 } ?: 0,
-                        onSelectedIndexChange = {
-                            onRailStyleChange(railStyleValues[it])
-                        },
-                        backdrop = LocalPreferenceBackdrop.current,
-                        renderInRootScaffold = true,
-                    )
+        appGroupedCardItems(
+            title = R.string.settings_language,
+            AppCardRow(R.string.settings_language) {
+                val languageNames = listOf(
+                    stringResource(R.string.language_default),
+                    stringResource(R.string.language_zh_cn),
+                    stringResource(R.string.language_en)
+                )
+                val languageValues = listOf(
+                    LocaleHelper.Language.SYSTEM,
+                    LocaleHelper.Language.ZH_CN,
+                    LocaleHelper.Language.EN
+                )
+                val savedLanguage = LocaleHelper.getSavedLanguage(context)
+                val langCurrentIndex = languageValues.indexOf(savedLanguage)
+                    .takeIf { it >= 0 } ?: 0
 
-                    SwitchPreference(
-                        title = stringResource(R.string.blur_enabled),
-                        summary = stringResource(R.string.blur_enabled_summary),
-                        checked = isBlurEnabled,
-                        onCheckedChange = onBlurEnabledChange
-                    )
+                GlassDropdownPreference(
+                    title = stringResource(R.string.settings_language),
+                    items = languageNames,
+                    selectedIndex = langCurrentIndex,
+                    onSelectedIndexChange = {
+                        LocaleHelper.setLanguage(context, languageValues[it])
+                        activity?.recreate()
+                    },
+                    backdrop = LocalPreferenceBackdrop.current,
+                    renderInRootScaffold = true,
+                )
+            },
+        )
 
-                    SwitchPreference(
-                        title = stringResource(R.string.hide_launcher_icon),
-                        summary = stringResource(R.string.hide_launcher_icon_summary),
-                        checked = hideLauncherIcon,
-                        onCheckedChange = onHideLauncherIconChange
-                    )
-                }
-
-                AppSectionCard(title = stringResource(R.string.settings_language)) {
-                    val languageNames = listOf(
-                        stringResource(R.string.language_default),
-                        stringResource(R.string.language_zh_cn),
-                        stringResource(R.string.language_en)
-                    )
-                    val languageValues = listOf(
-                        LocaleHelper.Language.SYSTEM,
-                        LocaleHelper.Language.ZH_CN,
-                        LocaleHelper.Language.EN
-                    )
-                    val savedLanguage = LocaleHelper.getSavedLanguage(context)
-                    val langCurrentIndex = languageValues.indexOf(savedLanguage)
-                        .takeIf { it >= 0 } ?: 0
-
-                    GlassDropdownPreference(
-                        title = stringResource(R.string.settings_language),
-                        items = languageNames,
-                        selectedIndex = langCurrentIndex,
-                        onSelectedIndexChange = {
-                            LocaleHelper.setLanguage(context, languageValues[it])
-                            activity?.recreate()
-                        },
-                        backdrop = LocalPreferenceBackdrop.current,
-                        renderInRootScaffold = true,
-                    )
-                }
-
-                AppSectionCard(title = stringResource(R.string.settings_update)) {
-                    SwitchPreference(
-                        title = stringResource(R.string.check_update_on_launch),
-                        summary = stringResource(R.string.check_update_on_launch_summary),
-                        checked = checkUpdateOnLaunch,
-                        onCheckedChange = onCheckUpdateOnLaunchChange,
-                    )
-
-                    AppArrowPreference(
-                        title = stringResource(R.string.check_update),
-                        summary = if (isCheckingUpdate) {
-                            stringResource(R.string.check_update_checking)
-                        } else {
-                            stringResource(R.string.check_update_summary, appVersion)
-                        },
-                        onClick = onCheckUpdate,
-                    )
-                    AppArrowPreference(
-                        title = stringResource(R.string.current_changelog),
-                        onClick = { showChangelog = true },
-                    )
-                }
+        appGroupedCardItems(
+            title = R.string.settings_update,
+            AppCardRow(R.string.check_update_on_launch) {
+                SwitchPreference(
+                    title = stringResource(R.string.check_update_on_launch),
+                    summary = stringResource(R.string.check_update_on_launch_summary),
+                    checked = checkUpdateOnLaunch,
+                    onCheckedChange = onCheckUpdateOnLaunchChange,
+                )
+            },
+            AppCardRow(R.string.check_update) {
+                AppArrowPreference(
+                    title = stringResource(R.string.check_update),
+                    summary = if (isCheckingUpdate) {
+                        stringResource(R.string.check_update_checking)
+                    } else {
+                        stringResource(R.string.check_update_summary, appVersion)
+                    },
+                    onClick = onCheckUpdate,
+                )
+            },
+            AppCardRow(R.string.current_changelog) {
+                AppArrowPreference(
+                    title = stringResource(R.string.current_changelog),
+                    onClick = { showChangelog = true },
+                )
                 if (showChangelog) {
                     val notes = remember(context, appVersion) {
                         try {
@@ -364,33 +382,39 @@ fun SettingsPageView(
                     }
                     CurrentChangelogDialog(appVersion, notes) { showChangelog = false }
                 }
+            },
+        )
 
-                AppSectionCard(title = stringResource(R.string.settings_data)) {
-                    AppArrowPreference(
-                        title = stringResource(R.string.export_settings),
-                        summary = stringResource(R.string.export_settings_summary),
-                        onClick = {
-                            exportLauncher.launch("MiuixGuiTemplate_settings.json")
-                        }
-                    )
-
-                    AppArrowPreference(
-                        title = stringResource(R.string.import_settings),
-                        summary = stringResource(R.string.import_settings_summary),
-                        onClick = { importLauncher.launch("application/json") }
-                    )
-                }
-
-                MiuixText(
-                    text = stringResource(R.string.copyright),
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    style = MiuixTheme.textStyles.footnote2,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 24.dp, bottom = 16.dp),
-                    textAlign = TextAlign.Center
+        appGroupedCardItems(
+            title = R.string.settings_data,
+            AppCardRow(R.string.export_settings) {
+                AppArrowPreference(
+                    title = stringResource(R.string.export_settings),
+                    summary = stringResource(R.string.export_settings_summary),
+                    onClick = {
+                        exportLauncher.launch("MiuixGuiTemplate_settings.json")
+                    }
                 )
-            }
+            },
+            AppCardRow(R.string.import_settings) {
+                AppArrowPreference(
+                    title = stringResource(R.string.import_settings),
+                    summary = stringResource(R.string.import_settings_summary),
+                    onClick = { importLauncher.launch("application/json") }
+                )
+            },
+        )
+
+        item(key = "copyright") {
+            MiuixText(
+                text = stringResource(R.string.copyright),
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                style = MiuixTheme.textStyles.footnote2,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp, bottom = 16.dp),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

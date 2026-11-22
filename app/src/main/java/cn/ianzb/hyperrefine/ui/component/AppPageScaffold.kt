@@ -1,6 +1,7 @@
 package cn.ianzb.hyperrefine.ui.component
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -9,13 +10,13 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import cn.ianzb.hyperrefine.ui.util.LocalPreferenceBackdrop
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -26,11 +27,13 @@ import cn.ianzb.hyperrefine.ui.component.search.rememberAppSearchOpen
 import cn.ianzb.hyperrefine.ui.util.PageBackdrop
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import cn.ianzb.hyperrefine.ui.util.pageStartInset
+import cn.ianzb.hyperrefine.ui.util.rememberBlurBackdrop
 import cn.ianzb.hyperrefine.ui.util.rememberTopBarBackdrop
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.glass.Search
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -46,9 +49,8 @@ val AppPageContentWindowInsets: WindowInsets
 /**
  * 页面骨架：玻璃顶栏 + [PageBackdrop] 采样图层。
  *
- * 把「顶栏模糊源」与「页面内容录入采样图层」两件事绑定在一个 API 内，页面内所有玻璃组件
- * （[AppDialog]、`GlassDropdownPreference`、`GlassDialog` 等）都能通过 [LocalPreferenceBackdrop]
- * 拿到同一个 backdrop，不会因为漏传而退化成不透明材质。
+ * 顶栏采样正文，页面弹窗通过 `LocalPreferenceBackdrop` 采样整页。
+ * 使用 `renderInRootScaffold` 的页面应放在外层 Scaffold 中，由外层宿主绘制弹窗。
  *
  * @param title 顶栏标题。
  * @param isBlurEnabled 总开关（用户设置中的「背景模糊」）；关闭时顶栏用纯色、弹层用不透明材质。
@@ -80,41 +82,47 @@ fun AppPageScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val topBarBackdrop = rememberTopBarBackdrop(isBlurEnabled)
+    val popupBackdrop = if (isBlurEnabled) rememberBlurBackdrop() else null
     val blurActive = topBarBackdrop != null
     val barColor = color ?: if (blurActive) Color.Transparent else MiuixTheme.colorScheme.surface
     // 全局搜索入口：只有在主页容器（`LocalAppSearchState` 可用）内才渲染顶栏搜索按钮，
     // 二级页面 / 许可证页等独立 Activity 没有搜索状态，因此不会出现一个按了没反应的图标。
     val openSearch = rememberAppSearchOpen()
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            AppTopAppBar(
-                title = title,
-                scrollBehavior = scrollBehavior,
-                color = barColor,
-                backdrop = topBarBackdrop,
-                onBack = onBack,
-                titleAlpha = titleAlpha ?: { 1f },
-                expandable = expandable,
-                useGlassTopBar = useGlassTopBar,
-                actions = {
-                    if (topBarSearchAction && openSearch != null) {
-                        AppTopAppBarIconAction(onClick = openSearch) {
-                            Icon(
-                                imageVector = MiuixIcons.Glass.Search,
-                                contentDescription = stringResource(R.string.search_hint),
-                                tint = MiuixTheme.colorScheme.onSurface,
-                            )
+    PageBackdrop(popupBackdrop, modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                AppTopAppBar(
+                    title = title,
+                    scrollBehavior = scrollBehavior,
+                    color = barColor,
+                    backdrop = topBarBackdrop,
+                    onBack = onBack,
+                    titleAlpha = titleAlpha ?: { 1f },
+                    expandable = expandable,
+                    useGlassTopBar = useGlassTopBar,
+                    actions = {
+                        if (topBarSearchAction && openSearch != null) {
+                            AppTopAppBarIconAction(onClick = openSearch) {
+                                Icon(
+                                    imageVector = MiuixIcons.Glass.Search,
+                                    modifier = Modifier.size(28.dp),
+                                    contentDescription = stringResource(R.string.search_hint),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                )
+                            }
                         }
-                    }
-                    CompositionLocalProvider(LocalPreferenceBackdrop provides topBarBackdrop) { actions() }
-                },
-            )
-        },
-        contentWindowInsets = contentWindowInsets,
-    ) { innerPadding ->
-        PageBackdrop(topBarBackdrop) {
-            content(innerPadding)
+                        actions()
+                    },
+                )
+            },
+            contentWindowInsets = contentWindowInsets,
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier.fillMaxSize()
+                    .then(if (topBarBackdrop != null) Modifier.layerBackdrop(topBarBackdrop) else Modifier),
+            ) {
+                content(innerPadding)
+            }
         }
     }
 }

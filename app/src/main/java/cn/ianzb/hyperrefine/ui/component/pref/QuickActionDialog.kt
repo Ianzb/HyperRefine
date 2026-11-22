@@ -27,6 +27,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import cn.ianzb.hyperrefine.ui.util.isInDarkTheme
 import top.yukonga.miuix.kmp.preference.CheckboxLocation
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
 
@@ -69,7 +72,13 @@ fun QuickActionDialog(
     ) {
         // 外层限高 + 列表 weight：包名很多时列表占满剩余空间并滚动，底部两个按钮始终可见。
         Column(modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
-            Card(modifier = Modifier.fillMaxWidth().weight(1f, fill = false)) {
+            val panelColor = MiuixTheme.colorScheme.onBackground.copy(
+                alpha = if (isInDarkTheme()) 36f / 255f else 15f / 255f,
+            )
+            Card(
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                colors = CardDefaults.defaultColors(color = panelColor),
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()

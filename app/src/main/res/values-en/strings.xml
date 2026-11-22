@@ -190,6 +190,9 @@
     <string name="fast_charge_notify_enter">Hide charging boost start reminders</string>
     <string name="fast_charge_notify_enter_summary">Hide the reminder shown when charging boost starts</string>
     <string name="fast_charge_notify_exit">Hide charging boost end reminders</string>
+    <string name="section_toolbox">Sidebar toolbox</string>
+    <string name="toolbox_sidebar_glass">Match the toolbox glass to the sidebar</string>
+    <string name="toolbox_sidebar_glass_summary">Use the same blur material and blend colors as the sidebar in the game and video toolboxes</string>
     <string name="fast_charge_notify_exit_summary">Hide the reminder shown when charging boost ends</string>
 
     <string name="section_device_connect">Device connectivity</string>
@@ -505,7 +508,7 @@
     <string name="about_telegram">Telegram Group</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">Third Party Licenses &amp; Credits</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.8.1</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.8.2</string>
     <string name="license_agpl">GNU AGPL v3.0</string>
     <string name="license_agpl_summary">View full license text</string>
     <string name="third_party_licenses_title">Third Party Licenses &amp; Credits</string>

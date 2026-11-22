@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ProvidableCompositionLocal
@@ -26,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -139,7 +141,7 @@ fun rememberTopBarBackdrop(blurActive: Boolean): LayerBackdrop? =
  * 两件事必须成对发生：只 [layerBackdrop] 而不下发，弹层取到的 backdrop 为 null，
  * 会退化成不透明材质（看起来就是旧版对话框）；只下发而不 [layerBackdrop]，弹层采样到的是空图层。
  *
- * @param backdrop 页面顶栏使用的模糊图层，null 表示当前未启用背景模糊
+ * @param backdrop 页面弹窗使用的模糊图层，null 表示当前未启用背景模糊
  * @param modifier 作用于内容容器的 Modifier
  * @param content 页面内容
  */
@@ -172,8 +174,7 @@ fun isInDarkTheme(): Boolean {
  * 与 miuix 官方 demo（`utils/PageUtils.kt` 的 `pageScrollModifiers`）保持同一条代码路径：
  * - `overScrollVertical(onOffsetChanged = ...)` 把弹性回弹位移写进
  *   [top.yukonga.miuix.kmp.basic.TopAppBarState.overscrollOffset]，
- *   玻璃顶栏的带区、模糊、按钮材质都由 `visualContentOffset = contentOffset + overscrollOffset`
- *   驱动，因此「内容不足一屏也能上滑回弹，并在回弹过程中出模糊」。
+ *   玻璃顶栏的带区、模糊和按钮材质会响应滚动与负向回弹，因此「内容不足一屏也能上滑回弹，并在回弹过程中出模糊」。
  * - `nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)` 负责大标题折叠。
  *
  * @param contentState 页面列表的滚动状态。传入后会把「是否真的有滚动余量」同步给
@@ -253,15 +254,18 @@ fun pageContentPadding(
 
 @Composable
 fun shouldShowSplitPane(): Boolean {
-    val windowInfo = LocalWindowInfo.current
+    val size = LocalAppContainerSize.current ?: LocalWindowInfo.current.containerSize
     val density = LocalDensity.current
     return with(density) {
-        val widthDp = windowInfo.containerSize.width.toDp()
-        val heightDp = windowInfo.containerSize.height.toDp()
+        val widthDp = size.width.toDp()
+        val heightDp = size.height.toDp()
+        if (widthDp <= 0.dp) return@with false
         val ratio = heightDp / widthDp
         widthDp >= 840.dp || (widthDp >= 600.dp && ratio < 1.2f)
     }
 }
+
+internal val LocalAppContainerSize = compositionLocalOf<IntSize?> { null }
 
 object ColorBlendToken {
     val Pured_Regular_Light = listOf(

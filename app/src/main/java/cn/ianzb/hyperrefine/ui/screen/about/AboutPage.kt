@@ -21,7 +21,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.computedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -80,7 +80,7 @@ fun AboutPageContent(
     val lazyListState = rememberLazyListState()
 
     val scrollProgress by remember {
-        derivedStateOf {
+        computedStateOf {
             when {
                 lazyListState.firstVisibleItemIndex > 0 -> 1f
                 else -> {
@@ -95,8 +95,8 @@ fun AboutPageContent(
         }
     }
 
-    val collapsed by remember { derivedStateOf { scrollProgress == 1f } }
-    // 玻璃顶栏不使用 color 参数（带区固定走 bandBrush），仅在着色器不可用时需要
+    val collapsed by remember { computedStateOf { scrollProgress == 1f } }
+    // 玻璃顶栏不使用 color 参数（带区固定走 bandBrush），只有回退到 BlurredBar 时才需要
     // 「滚到只剩卡片后给实色底」。因此玻璃路径下不要读 collapsed——否则会在大标题消失的
     // 临界点触发整页一次重组，滚动到那里会明显顿一下。
     val fallbackBarColor = !isGlassTopBarAvailable()
@@ -120,6 +120,7 @@ fun AboutPageContent(
             ),
             topAppBarScrollBehavior = topAppBarScrollBehavior,
             lazyListState = lazyListState,
+            isBlurEnabled = isBlurEnabled,
             scrollProgressProvider = { scrollProgress },
             openLicensePage = openLicensePage,
         )
@@ -129,13 +130,14 @@ fun AboutPageContent(
 @Composable
 private fun AboutContent(
     padding: PaddingValues,
+    isBlurEnabled: Boolean,
     topAppBarScrollBehavior: ScrollBehavior,
     lazyListState: LazyListState,
     scrollProgressProvider: () -> Float,
     openLicensePage: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
-    val contentBackdrop = rememberBlurBackdrop()
+    val contentBackdrop = if (isBlurEnabled) rememberBlurBackdrop() else null
     var blurRadius by remember { mutableFloatStateOf(60f) }
     var noiseCoefficient by remember { mutableFloatStateOf(BlurDefaults.NoiseCoefficient) }
     var brightness by remember { mutableFloatStateOf(0f) }

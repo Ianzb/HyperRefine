@@ -68,6 +68,10 @@ android {
 }
 ```
 
+> `gradle/libs.versions.toml` 配置的 miuix `0.9.5-beta03` 由 Maven Central 提供，包含 `miuix-glass`、`miuix-material` 和 `miuix-glass-icons`。
+
+设置页新增静态偏好项时，将新行作为 `AppCardRow` 加入对应的 `appGroupedCardItems`，以字符串资源 ID 作为行键。分组会统一处理首尾圆角、外边距和模糊采样接缝。
+
 ### 1.2 源码包重命名
 
 1. 将 `app/src/main/java/cn/ianzb/miuixguitemplate/` 重命名为 `com/yourname/yourmodule/`；

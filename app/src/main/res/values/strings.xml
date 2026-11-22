@@ -190,6 +190,9 @@
     <string name="fast_charge_notify_enter">隐藏进入快充加速提醒</string>
     <string name="fast_charge_notify_enter_summary">充电时不再弹出进入快充加速的提醒</string>
     <string name="fast_charge_notify_exit">隐藏退出快充加速提醒</string>
+    <string name="section_toolbox">侧边栏工具箱</string>
+    <string name="toolbox_sidebar_glass">统一工具箱柔光玻璃</string>
+    <string name="toolbox_sidebar_glass_summary">让游戏和视频工具箱的背景使用与侧边栏一致的模糊材质和混色</string>
     <string name="fast_charge_notify_exit_summary">退出快充加速时不再弹出提醒</string>
 
     <string name="section_device_connect">设备互联</string>
@@ -506,7 +509,7 @@
     <string name="about_telegram">Telegram 群组</string>
     <string name="about_telegram_summary">https://t.me/HyperRefine</string>
     <string name="about_dependencies">第三方许可证与致谢</string>
-    <string name="about_based_on">Based on MiuixGuiTemplate 0.8.1</string>
+    <string name="about_based_on">Based on MiuixGuiTemplate 0.8.2</string>
     <string name="license_agpl">GNU AGPL v3.0</string>
     <string name="license_agpl_summary">查看完整协议文本</string>
     <string name="third_party_licenses_title">第三方许可证与致谢</string>

@@ -377,6 +377,7 @@ const val KEY_PHRASE_REORDER = PhraseReorderKeys.ENABLED
 const val KEY_VOICE_ASSIST = "feature_voice_assist"
 const val KEY_ASSISTANT = "feature_assistant"
 const val KEY_CC_RADIUS = "feature_cc_radius"
+const val KEY_TOOLBOX_SIDEBAR_GLASS = "security_center_toolbox_sidebar_glass"
 const val KEY_FAST_CHARGE_ENTER = "security_center_fast_charge_enter_notify"
 const val KEY_FAST_CHARGE_EXIT = "security_center_fast_charge_exit_notify"
 const val SIDE_INSIDE_KEY = "side_volume_inside"
@@ -543,11 +544,12 @@ private fun volumeBarLayoutSpecs(specs: List<OptionSpec>): List<OptionSpec> =
         specByKey(specs, VolumeBarKeys.AUTO_BALANCE_LANDSCAPE),
     )
 
-/** 安全服务二级页（快充加速通知）内的配置项，用于功能页搜索直达。 */
+/** 安全服务二级页内的配置项，用于功能页搜索直达。 */
 private fun securityCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
         specByKey(specs, KEY_FAST_CHARGE_ENTER),
         specByKey(specs, KEY_FAST_CHARGE_EXIT),
+        specByKey(specs, KEY_TOOLBOX_SIDEBAR_GLASS),
     )
 
 /** 设备互联二级页内的配置项，用于功能页搜索直达。 */
@@ -1109,6 +1111,15 @@ internal fun featureSpecs(): List<OptionSpec> {
             key = KEY_SECURITY_CENTER,
             type = OptionType.ARROW,
             titleRes = R.string.section_security_center,
+        ),
+        OptionSpec(
+            key = KEY_TOOLBOX_SIDEBAR_GLASS,
+            type = OptionType.SWITCH,
+            titleRes = R.string.toolbox_sidebar_glass,
+            summaryRes = R.string.toolbox_sidebar_glass_summary,
+            defaultBoolean = false,
+            targetPackages = securityCenter,
+            showStatus = true,
         ),
         OptionSpec(
             key = KEY_FAST_CHARGE_ENTER,

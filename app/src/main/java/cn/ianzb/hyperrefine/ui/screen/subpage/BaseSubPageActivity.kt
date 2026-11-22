@@ -18,6 +18,7 @@ import cn.ianzb.hyperrefine.ui.component.pref.SEARCH_TARGET_EXTRA
 import cn.ianzb.hyperrefine.ui.theme.AppTheme
 import cn.ianzb.hyperrefine.ui.util.applyWindowBackground
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.yukonga.miuix.kmp.basic.Scaffold
 
 /**
  * 二级页面 Activity 模板。
@@ -64,14 +65,16 @@ abstract class BaseSubPageActivity : ComponentActivity() {
 
         setContent {
             AppTheme(themeMode = themeMode) {
-                SubPageScaffold(
-                    title = stringResource(titleRes),
-                    isBlurEnabled = settings.isBlurEnabled,
-                    onBack = { finish() },
-                    topBarActions = topBarActions,
-                ) { padding ->
-                    CompositionLocalProvider(LocalSearchTarget provides intent.getStringExtra(SEARCH_TARGET_EXTRA)) {
-                        SubPageContent(settings.isBlurEnabled, padding)
+                Scaffold {
+                    SubPageScaffold(
+                        title = stringResource(titleRes),
+                        isBlurEnabled = settings.isBlurEnabled,
+                        onBack = { finish() },
+                        topBarActions = topBarActions,
+                    ) { padding ->
+                        CompositionLocalProvider(LocalSearchTarget provides intent.getStringExtra(SEARCH_TARGET_EXTRA)) {
+                            SubPageContent(settings.isBlurEnabled, padding)
+                        }
                     }
                 }
             }

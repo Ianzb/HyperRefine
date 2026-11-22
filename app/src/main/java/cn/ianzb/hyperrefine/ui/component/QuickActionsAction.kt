@@ -1,5 +1,7 @@
 package cn.ianzb.hyperrefine.ui.component
 
+import androidx.compose.foundation.layout.size
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -7,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.ui.component.pref.QuickActionDialog
 import top.yukonga.miuix.kmp.basic.Icon
@@ -35,7 +38,7 @@ fun QuickActionsAction(
             imageVector = MiuixIcons.Glass.Refresh,
             contentDescription = stringResource(R.string.quick_action_title),
             tint = MiuixTheme.colorScheme.onSurface,
-            modifier = modifier,
+            modifier = modifier.size(28.dp),
         )
     }
 

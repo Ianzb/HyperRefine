@@ -9,6 +9,7 @@ import cn.ianzb.hyperrefine.ui.screen.about.LicensePageContent
 import cn.ianzb.hyperrefine.ui.theme.AppTheme
 import cn.ianzb.hyperrefine.ui.util.applyWindowBackground
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.yukonga.miuix.kmp.basic.Scaffold
 
 class LicenseActivity : ComponentActivity() {
 
@@ -33,7 +34,9 @@ class LicenseActivity : ComponentActivity() {
 
         setContent {
             AppTheme(themeMode = themeMode) {
-                LicensePageContent(onBack = { finish() }, isBlurEnabled = isBlurEnabled)
+                Scaffold {
+                    LicensePageContent(onBack = { finish() }, isBlurEnabled = isBlurEnabled)
+                }
             }
         }
     }

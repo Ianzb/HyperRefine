@@ -11,7 +11,7 @@ kotlin = "2.4.21"
 composeBom = "2026.09.00"
 
 # OS4 玻璃组件（miuix-glass / miuix-material / miuix-glass-icons 自 0.9.5-beta01 起已上架 Maven Central）
-miuix = "0.9.5-beta02"
+miuix = "0.9.5-beta03"
 materialIcons = "1.7.8"
 
 libxposed = "102.0.0"

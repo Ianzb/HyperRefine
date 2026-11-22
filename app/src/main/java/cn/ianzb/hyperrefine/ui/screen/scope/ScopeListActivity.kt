@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,9 +47,9 @@ import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.InputField
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.SearchBarDefaults
+import top.yukonga.miuix.kmp.glass.GlassIconButton
+import top.yukonga.miuix.kmp.glass.GlassTextField
+import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.glass.Close
 import top.yukonga.miuix.kmp.icon.glass.Search
@@ -94,9 +97,8 @@ internal fun ScopeListContent(contentPadding: PaddingValues) {
     val coroutineScope = rememberCoroutineScope()
     val scrollBehavior = LocalSubPageScrollBehavior.current
     val listState = rememberLazyListState()
-
-    // 搜索：按包名或应用名（大小写不敏感）过滤当前作用域列表。
-    var query by remember { mutableStateOf("") }
+    val searchField = rememberTextFieldState()
+    val query = searchField.text.toString()
     val trimmedQuery = query.trim()
     val filteredScope = remember(scope, trimmedQuery) {
         if (trimmedQuery.isEmpty()) {
@@ -131,60 +133,45 @@ internal fun ScopeListContent(contentPadding: PaddingValues) {
             ),
         contentPadding = contentPadding,
     ) {
-        if (scope.isEmpty()) {
-            item {
-                MiuixText(
-                    text = stringResource(R.string.scope_empty),
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    style = MiuixTheme.textStyles.footnote2,
-                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp),
+        if (scope.isNotEmpty()) item(key = "scope_search") {
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(top = 12.dp)
+            ) {
+                GlassTextField(
+                    state = searchField,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.package_search_hint),
+                    useLabelAsPlaceholder = true,
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = MiuixIcons.Glass.Search,
+                            contentDescription = null,
+                            tint = MiuixTheme.colorScheme.onSurfaceContainerHigh,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            GlassIconButton(onClick = searchField::clearText, surfaceAlpha = 0f, size = 36.dp) {
+                                Icon(
+                                    imageVector = MiuixIcons.Glass.Close,
+                                    contentDescription = stringResource(R.string.search_clear),
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MiuixTheme.colorScheme.onSurfaceContainerHighest,
+                                )
+                            }
+                        }
+                    },
                 )
             }
-        } else {
-            item(key = "scope_search") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .padding(top = 12.dp, bottom = 8.dp),
-                ) {
-                    InputField(
-                        query = query,
-                        onQueryChange = { query = it },
-                        onSearch = { query = it },
-                        expanded = false,
-                        onExpandedChange = {},
-                        label = stringResource(R.string.package_search_hint),
-                        leadingIcon = {
-                            Icon(
-                                imageVector = MiuixIcons.Glass.Search,
-                                contentDescription = null,
-                                tint = MiuixTheme.colorScheme.onSurfaceContainerHigh,
-                                modifier = Modifier.padding(
-                                    start = SearchBarDefaults.LeadingIconStartPadding,
-                                    end = SearchBarDefaults.LeadingIconEndPadding,
-                                ),
-                            )
-                        },
-                        trailingIcon = {
-                            if (query.isNotEmpty()) {
-                                IconButton(onClick = { query = "" }) {
-                                    Icon(
-                                        imageVector = MiuixIcons.Glass.Close,
-                                        contentDescription = stringResource(R.string.search_clear),
-                                        tint = MiuixTheme.colorScheme.onSurfaceContainerHighest,
-                                    )
-                                }
-                            }
-                        },
-                    )
-                }
-            }
         }
-        if (scope.isNotEmpty() && filteredScope.isEmpty()) {
+        if (filteredScope.isEmpty()) {
             item(key = "scope_search_empty") {
                 MiuixText(
-                    text = stringResource(R.string.package_search_empty),
+                    text = stringResource(if (scope.isEmpty()) R.string.scope_empty else R.string.package_search_empty),
                     color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     style = MiuixTheme.textStyles.footnote2,
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 16.dp),

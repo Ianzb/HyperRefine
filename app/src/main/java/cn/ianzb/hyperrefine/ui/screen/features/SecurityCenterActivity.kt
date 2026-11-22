@@ -17,7 +17,7 @@ import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 
 /**
- * 安全服务子页：快充加速通知的独立开关（进入提醒 / 退出提醒）。
+ * 安全服务功能设置。
  */
 class SecurityCenterActivity : BaseSubPageActivity() {
 
@@ -36,12 +36,16 @@ internal val SecurityCenterActions: @Composable () -> Unit = { QuickActionsActio
 @Composable
 internal fun SecurityCenterContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
     val scrollBehavior = LocalSubPageScrollBehavior.current
-    val section = HookSection(
+    val notifications = HookSection(
         titleRes = R.string.section_notifications,
         specs = listOf(
             featureSpec(KEY_FAST_CHARGE_ENTER),
             featureSpec(KEY_FAST_CHARGE_EXIT),
         ),
+    )
+    val toolbox = HookSection(
+        titleRes = R.string.section_toolbox,
+        specs = listOf(featureSpec(KEY_TOOLBOX_SIDEBAR_GLASS)),
     )
     val listState = rememberLazyListState()
     SearchLandingLazyColumn(
@@ -62,9 +66,11 @@ internal fun SecurityCenterContent(isBlurEnabled: Boolean, contentPadding: Paddi
             ),
         contentPadding = contentPadding,
     ) {
-        searchSectionItem(section) {
-            HookSectionCard(section) {
-                section.specs.forEach { HookOptionView(it) }
+        listOf(notifications, toolbox).forEach { section ->
+            searchSectionItem(section) {
+                HookSectionCard(section) {
+                    section.specs.forEach { HookOptionView(it) }
+                }
             }
         }
     }

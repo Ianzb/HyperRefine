@@ -7,6 +7,8 @@ import android.graphics.Outline
 import android.graphics.drawable.GradientDrawable
 import android.media.AudioManager
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -135,9 +137,7 @@ object AppVolumePanel {
 
     private fun close(dodge: Boolean) {
         val currentHost = host ?: return
-        // 先摘出本面板的列：动画结束后再释放，期间保留音量条一起淡出。
-        val toRelease = ArrayList(officialColumns)
-        officialColumns.clear()
+        if (closing) return
         val currentCard = card
         if (currentCard != null && currentCard.isAttachedToWindow) {
             closing = true
@@ -148,12 +148,10 @@ object AppVolumePanel {
                 anim.translationX(currentCard.translationX + slideOutOffset(currentCard, dialogRef))
             }
             anim.withEndAction {
-                toRelease.forEach { it.release() }
-                cleanup(currentHost, fromDetach = !currentHost.isAttachedToWindow)
+                cleanup(currentHost)
             }.start()
         } else {
-            toRelease.forEach { it.release() }
-            cleanup(currentHost, fromDetach = !currentHost.isAttachedToWindow)
+            cleanup(currentHost)
         }
     }
 
@@ -182,6 +180,7 @@ object AppVolumePanel {
     private fun cleanup(currentHost: View, fromDetach: Boolean = false) {
         if (host !== currentHost) return
         host = null
+        card?.animate()?.cancel()
         card = null
         closing = false
         preDrawListener?.let { listener ->
@@ -199,13 +198,21 @@ object AppVolumePanel {
         dialogMonitor = null
         val dialog = dialogRef
         val dialogGone = dialog?.isAttachedToWindow != true
-        if (!fromDetach) {
-            runCatching { (currentHost.parent as? ViewGroup)?.removeView(currentHost) }
+        val parent = currentHost.parent as? ViewGroup
+        if (parent != null) {
+            if (fromDetach) {
+                currentHost.alpha = 0f
+                Handler(Looper.getMainLooper()).post {
+                    if (currentHost.parent === parent) parent.removeView(currentHost)
+                }
+            } else {
+                parent.removeView(currentHost)
+            }
         }
+        officialColumns.forEach { runCatching { it.release() } }
+        officialColumns.clear()
         if (dialogGone) {
             // 窗口正在销毁：只释放列引用，别碰已经分离的 ViewTreeObserver / WindowManager。
-            officialColumns.forEach { runCatching { it.release() } }
-            officialColumns.clear()
             dialogRef = null
             windowAttrsOriginal = null
             insetsProxy = null
@@ -241,7 +248,7 @@ object AppVolumePanel {
         }
         closing = false
         // 侧边音量条已经隐藏时不要再创建窗口；否则会生成一个没有锚点的面板。
-        if (!dialog.isAttachedToWindow || !dialog.isShown) return
+        if (!dialog.isAttachedToWindow || !dialog.isShown || anchor.rootView !== root || dialog.rootView !== root) return
         val density = context.resources.displayMetrics.density
         // 正在播放的应用：与系统官方（音质音效 `playervolume.f.a`）逐条对齐的判定（共享 UID 感知），
         // 读后台探测快照；快照里没有应用时先请一次后台探测（主线程不等待音频 IPC，
@@ -304,8 +311,7 @@ object AppVolumePanel {
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
         ).apply {
-            gravity = Gravity.END or Gravity.CENTER_VERTICAL
-            marginEnd = (12 * density).toInt()
+            gravity = Gravity.LEFT or Gravity.CENTER_VERTICAL
             topMargin = (MARGIN_DP * density).toInt()
             bottomMargin = (MARGIN_DP * density).toInt()
         }
@@ -322,8 +328,9 @@ object AppVolumePanel {
         panel.background = null
         container.addView(panel, panelLp())
 
+        val bars = buildBars(context, density, apps, pluginClassLoader!!, maxWidth)
         panel.addView(
-            buildBars(context, density, apps, pluginClassLoader!!, maxWidth),
+            bars,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -376,6 +383,7 @@ object AppVolumePanel {
                     cleanup(container, fromDetach = !dialog.isAttachedToWindow)
                     return
                 }
+                if (!closing && !AppVolumePlayback.snapshot().hasActive) hide()
                 dialog.postOnAnimation(this)
             }
         }
@@ -406,28 +414,22 @@ object AppVolumePanel {
                     return true
                 }
                 // 淡出期间暂停跟随（否则侧边条一变就瞬移），交给整体平移 + 淡出。
-                if (!closing) {
+                val positioned = if (!closing) {
                     if (heightAuto) {
                         alignToDialogBar(panel, dialog)
                     } else {
                         val available = container.height - panel.height
                         if (available > 0) panel.translationY = (0.5f - heightPercent / 100f) * available
                     }
-                    positionLeftOfDialog(container, panel, dialog, density)
-                }
+                    positionLeftOfDialog(container, panel, dialog, bars, density)
+                } else false
                 // 背景层跟随面板的位置 / 透明度（兄弟层，不参与音量条取色）。
                 bg.translationY = panel.translationY
                 bg.translationX = panel.translationX
-                val pLp = panel.layoutParams as? FrameLayout.LayoutParams
-                val bLp = bg.layoutParams as? FrameLayout.LayoutParams
-                if (pLp != null && bLp != null && bLp.marginEnd != pLp.marginEnd) {
-                    bLp.marginEnd = pLp.marginEnd
-                    bg.layoutParams = bLp
-                }
                 bg.alpha = panel.alpha
                 // 官方可能在展开 / 材质变化后重新应用窗口压暗，这里每帧兜底清除。
                 clearWindowDim(dialog)
-                if (!started && panel.width > 0) {
+                if (!started && positioned && bg.width == panel.width && bg.height == panel.height) {
                     started = true
                     startShowAnimation(panel)
                 }
@@ -439,26 +441,31 @@ object AppVolumePanel {
         preDrawListener = listener
     }
 
-    /** 把面板右边缘贴到侧边音量条左边缘（垂直居中）。 */
-    private fun positionLeftOfDialog(container: View, panel: View, dialog: View, density: Float) {
-        runCatching {
-            if (container.width <= 0 || panel.width <= 0) return
-            // dialog 隐藏 / 尚未布局时坐标为 0，绝不能据此计算 margin，否则面板会被推到最左侧。
-            if (!dialog.isShown || !dialog.isAttachedToWindow || dialog.width <= 0) return
-            val dialogLoc = IntArray(2)
-            val containerLoc = IntArray(2)
-            dialog.getLocationOnScreen(dialogLoc)
-            container.getLocationOnScreen(containerLoc)
-            val containerRight = containerLoc[0] + container.width
-            val gap = (12 * density).toInt()
-            val endMargin = (containerRight - dialogLoc[0] + gap).coerceAtLeast(gap)
-            if (endMargin > container.width) return
-            val lp = panel.layoutParams as? FrameLayout.LayoutParams ?: return
-            if (lp.marginEnd != endMargin) {
-                lp.marginEnd = endMargin
-                panel.layoutParams = lp
+    /** Align using the visible column, rather than the dialog's potentially full-width bounds. */
+    private fun positionLeftOfDialog(
+        container: View, panel: View, dialog: View, bars: View, density: Float,
+    ): Boolean {
+        if (container.width <= 0 || panel.width <= 0 || panel.height <= 0) return false
+        val slider = findSideVolumeSlider(dialog)?.takeIf { it.isShown && it.width > 0 } ?: return false
+        val column = columnRoot(slider)?.takeIf { isDescendant(it, dialog) } ?: slider
+        val columnLocation = IntArray(2)
+        val containerLocation = IntArray(2)
+        column.getLocationInWindow(columnLocation)
+        container.getLocationInWindow(containerLocation)
+        val gap = (12 * density).toInt()
+        val rightEdge = (columnLocation[0] - containerLocation[0] - gap).coerceAtMost(container.width - gap)
+        val maxBarsWidth = rightEdge - gap - panel.paddingLeft - panel.paddingRight
+        if (maxBarsWidth <= 0) return false
+        if (panel.width > rightEdge - gap) {
+            if (bars.layoutParams.width != maxBarsWidth) {
+                bars.layoutParams = bars.layoutParams.apply { width = maxBarsWidth }
             }
+            return false
         }
+        panel.translationX = (rightEdge - panel.width - panel.left).toFloat()
+        val maxTop = (container.height - panel.height).coerceAtLeast(0) - panel.top
+        panel.translationY = panel.translationY.coerceIn(-panel.top.toFloat(), maxTop.toFloat())
+        return true
     }
 
     /**
@@ -505,7 +512,7 @@ object AppVolumePanel {
             }
         }
         val name = runCatching { root.resources.getResourceEntryName(root.id) }.getOrNull()
-        return if (name == SIDE_SLIDER_ID) root else null
+        return if (name == SIDE_SLIDER_ID && root.isShown && root.width > 0) root else null
     }
 
     /** 面板原地透明度淡入（跟随侧边音量条出现 / 隐藏，不缩放、不位移）。 */

@@ -1099,7 +1099,7 @@ internal fun featureSpecs(): List<OptionSpec> {
             titleRes = R.string.phrase_reorder_enabled,
             summaryRes = R.string.phrase_reorder_enabled_summary,
             defaultBoolean = false,
-            targetPackages = listOf(PhraseReorderKeys.PKG_PHRASE),
+            targetPackages = listOf(PhraseReorderKeys.PKG_SOGOU_IME),
             showStatus = true,
         ),
         OptionSpec(

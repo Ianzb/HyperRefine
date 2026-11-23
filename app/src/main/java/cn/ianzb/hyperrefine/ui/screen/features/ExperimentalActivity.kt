@@ -44,7 +44,7 @@ internal val ExperimentalActions: @Composable () -> Unit = {
             QuickActionsAction(
                 listOf(
                     WeatherKeys.TARGET_PACKAGE,
-                    PhraseReorderKeys.PKG_PHRASE,
+                    PhraseReorderKeys.PKG_SOGOU_IME,
                 ),
             )
         }

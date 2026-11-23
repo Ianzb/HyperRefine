@@ -10,7 +10,6 @@ import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
  */
 object PhraseReorderKeys {
 
-    const val PKG_PHRASE = "com.miui.phrase"
     const val PKG_SOGOU_IME = "com.sohu.inputmethod.sogou.xiaomi"
 
     const val ENABLED = "phrase_reorder_enabled"

@@ -72,6 +72,7 @@ fun FeaturesPageView(
                     specByKey(specs, KEY_DEVICE_CONNECT),
                     specByKey(specs, KEY_SECURITY_CENTER),
                     specByKey(specs, KEY_VOICE_ASSIST),
+                    specByKey(specs, KEY_IME),
                     specByKey(specs, KEY_PASSKEY),
                     specByKey(specs, KEY_BROWSER),
                     specByKey(specs, KEY_EXPERIMENTAL),
@@ -238,12 +239,22 @@ fun FeaturesPageView(
                 onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Browser, key) },
             ),
             HookSubPage(
+                titleRes = R.string.ime_title,
+                specs = listOf(
+                    specByKey(specs, KEY_VOICE_ASSIST_IME_GLOBAL_MATERIAL),
+                    specByKey(specs, KEY_VOICE_ASSIST_IME_MATERIAL_OPACITY),
+                    specByKey(specs, KEY_SOGOU_IME_GLASS),
+                    specByKey(specs, KEY_SOGOU_IME_BLUR_RADIUS),
+                    specByKey(specs, KEY_SOGOU_IME_CORNER_RADIUS),
+                    specByKey(specs, KEY_PHRASE_REORDER),
+                ),
+                onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Ime, key) },
+            ),
+            HookSubPage(
                 titleRes = R.string.section_experimental,
                 specs = listOf(
                     specByKey(specs, KEY_WEATHER),
                     specByKey(specs, KEY_ASSISTANT),
-                    specByKey(specs, KEY_IME),
-                    specByKey(specs, KEY_PHRASE_REORDER),
                     InstallerExperiment.entrySpec(),
                 ),
                 onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Experimental, key) },
@@ -252,17 +263,6 @@ fun FeaturesPageView(
                         titleRes = R.string.feature_assistant,
                         specs = assistantSpecs(specs),
                         onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Assistant, key) },
-                    ),
-                    HookSubPage(
-                        titleRes = R.string.ime_title,
-                        specs = listOf(
-                            specByKey(specs, KEY_VOICE_ASSIST_IME_GLOBAL_MATERIAL),
-                            specByKey(specs, KEY_VOICE_ASSIST_IME_MATERIAL_OPACITY),
-                            specByKey(specs, KEY_SOGOU_IME_GLASS),
-                            specByKey(specs, KEY_SOGOU_IME_BLUR_RADIUS),
-                            specByKey(specs, KEY_SOGOU_IME_CORNER_RADIUS),
-                        ),
-                        onOpen = { key -> openAppSubPage(context, openInHost, AppSubPage.Ime, key) },
                     ),
                     HookSubPage(
                         titleRes = R.string.feature_weather,
@@ -287,6 +287,8 @@ fun FeaturesPageView(
                 openAppSubPage(context, openInHost, AppSubPage.DeviceConnect, searchTarget)
             KEY_VOICE_ASSIST ->
                 openAppSubPage(context, openInHost, AppSubPage.VoiceAssist, searchTarget)
+            KEY_IME ->
+                openAppSubPage(context, openInHost, AppSubPage.Ime, searchTarget)
             KEY_PASSKEY ->
                 openAppSubPage(context, openInHost, AppSubPage.Passkey, searchTarget)
             KEY_BROWSER ->

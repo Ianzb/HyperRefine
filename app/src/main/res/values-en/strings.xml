@@ -352,11 +352,11 @@
 <string name="phrase_reorder_enabled_summary">Drag the handle beside a phrase to reorder it. The order is stored locally</string>
 <string name="sogou_ime_title">Sogou Keyboard</string>
  <string name="sogou_ime_glass">Keyboard glass material</string>
- <string name="sogou_ime_glass_summary">Add background blur and rounded corners to the Sogou keyboard; reopen the keyboard after enabling or changing it</string>
+ <string name="sogou_ime_glass_summary">Blur the Sogou keyboard background and round the toolbar’s top corners</string>
  <string name="sogou_ime_blur_radius">Blur radius</string>
  <string name="sogou_ime_blur_radius_summary">Background blur strength; 0 disables blur</string>
  <string name="sogou_ime_corner_radius">Corner radius</string>
- <string name="sogou_ime_corner_radius_summary">Corner size of the keyboard panel; 0 keeps square corners</string>
+ <string name="sogou_ime_corner_radius_summary">Radius of the toolbar’s top corners. Set to 0 to keep the original shape.</string>
  <string name="feature_assistant">App vault</string>
  <string name="assistant_section_anim">Transitions</string>
  <string name="assistant_section_server">System service</string>

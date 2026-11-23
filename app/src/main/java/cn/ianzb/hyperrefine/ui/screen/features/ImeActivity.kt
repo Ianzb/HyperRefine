@@ -21,9 +21,6 @@ import cn.ianzb.hyperrefine.ui.util.LocalSubPageScrollBehavior
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import cn.ianzb.hyperrefine.xposed.XposedServiceManager
 
-/**
- * 实验性功能下的「输入法」页，收纳超级小爱与搜狗输入法适配。
- */
 class ImeActivity : BaseSubPageActivity() {
 
     override val titleRes: Int = R.string.ime_title
@@ -37,8 +34,8 @@ class ImeActivity : BaseSubPageActivity() {
 }
 
 internal val ImeActions: @Composable () -> Unit = {
-        QuickActionsAction(listOf(VoiceAssistImeKeys.PKG_VOICE_ASSIST_IME, SogouImeKeys.PKG_SOGOU_IME))
-    }
+    QuickActionsAction(listOf(VoiceAssistImeKeys.PKG_VOICE_ASSIST_IME, SogouImeKeys.PKG_SOGOU_IME))
+}
 
 @Composable
 internal fun ImeContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
@@ -69,6 +66,10 @@ internal fun ImeContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
             featureSpec(KEY_SOGOU_IME_CORNER_RADIUS),
         ),
     )
+    val phraseSection = HookSection(
+        titleRes = R.string.phrase_reorder_section,
+        specs = listOf(featureSpec(KEY_PHRASE_REORDER)),
+    )
 
     val listState = rememberLazyListState()
     SearchLandingLazyColumn(
@@ -89,7 +90,7 @@ internal fun ImeContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
             ),
         contentPadding = contentPadding,
     ) {
-        listOf(voiceSection, sogouSection).forEach { section ->
+        listOf(voiceSection, sogouSection, phraseSection).forEach { section ->
             searchSectionItem(section) {
                 HookSectionCard(section) {
                     section.specs.forEach { spec ->

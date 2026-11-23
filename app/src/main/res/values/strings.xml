@@ -352,11 +352,11 @@
 <string name="phrase_reorder_enabled_summary">在常用语列表中拖动右侧手柄调整顺序，仅影响本机显示顺序</string>
 <string name="sogou_ime_title">搜狗输入法</string>
  <string name="sogou_ime_glass">键盘玻璃材质</string>
- <string name="sogou_ime_glass_summary">为搜狗输入法键盘叠加背景模糊与圆角；首次开启或调整后需重新打开键盘</string>
+ <string name="sogou_ime_glass_summary">为搜狗键盘添加背景模糊和工具栏顶部圆角</string>
  <string name="sogou_ime_blur_radius">模糊半径</string>
  <string name="sogou_ime_blur_radius_summary">键盘背景的模糊强度，0 为关闭模糊</string>
  <string name="sogou_ime_corner_radius">圆角半径</string>
- <string name="sogou_ime_corner_radius_summary">键盘顶部与底部的圆角大小，0 为直角</string>
+ <string name="sogou_ime_corner_radius_summary">工具栏左上角和右上角的圆角大小，0 为原样</string>
  <string name="feature_assistant">负一屏</string>
  <string name="assistant_section_anim">过渡动画</string>
  <string name="assistant_section_server">系统服务</string>

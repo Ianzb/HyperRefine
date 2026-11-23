@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.experimental.packageinstaller.InstallerExperiment
-import cn.ianzb.hyperrefine.hook.phrase.PhraseReorderKeys
 import cn.ianzb.hyperrefine.hook.weather.WeatherKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
@@ -41,13 +40,8 @@ class ExperimentalActivity : BaseSubPageActivity() {
 }
 
 internal val ExperimentalActions: @Composable () -> Unit = {
-            QuickActionsAction(
-                listOf(
-                    WeatherKeys.TARGET_PACKAGE,
-                    PhraseReorderKeys.PKG_SOGOU_IME,
-                ),
-            )
-        }
+    QuickActionsAction(listOf(WeatherKeys.TARGET_PACKAGE))
+}
 
 @Composable
 internal fun ExperimentalContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
@@ -56,21 +50,12 @@ internal fun ExperimentalContent(isBlurEnabled: Boolean, contentPadding: Padding
     val scrollBehavior = LocalSubPageScrollBehavior.current
     val sections = listOf(
         HookSection(
-            specs = listOf(
-                featureSpec(KEY_ASSISTANT),
-                featureSpec(KEY_IME),
-            ),
+            specs = listOf(featureSpec(KEY_ASSISTANT)),
         ),
         HookSection(
             titleRes = R.string.section_weather,
             specs = listOf(
                 featureSpec(KEY_WEATHER),
-            ),
-        ),
-        HookSection(
-            titleRes = R.string.phrase_reorder_section,
-            specs = listOf(
-                featureSpec(KEY_PHRASE_REORDER),
             ),
         ),
     )
@@ -102,7 +87,6 @@ internal fun ExperimentalContent(isBlurEnabled: Boolean, contentPadding: Padding
                             onArrowClick = {
                                 when (spec.key) {
                                     KEY_ASSISTANT -> openAppSubPage(context, openInHost, AppSubPage.Assistant, null)
-                                    KEY_IME -> openAppSubPage(context, openInHost, AppSubPage.Ime, null)
                                     KEY_WEATHER -> openAppSubPage(context, openInHost, AppSubPage.Weather, null)
                                 }
                             },

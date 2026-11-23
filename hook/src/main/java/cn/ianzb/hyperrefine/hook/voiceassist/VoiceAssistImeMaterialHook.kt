@@ -13,7 +13,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * 让超级小爱输入法在所有应用中启用「顶部圆角 + 高级材质（背景模糊）」。
  *
- * 官方 `jb.f0` 把材质判断拆成两层：包名允许表决定哪些应用启用，`h()` / `g()` 再决定
+ * 0.2.1448 的 `fb.h0` 在更新材质时读取包名允许表和拒绝表，由官方更新状态和渲染。
+ * 旧版 `jb.f0` 把材质判断拆成两层：包名允许表决定哪些应用启用，`h()` / `g()` 再决定
  * 是否创建透明材质层、`e0` / `u1` 是否取顶部圆角。这里不重绘输入法，只复用官方状态：
  *
  * 1. 让 `h()` / `g()` 返回 true（字段解析失败时仍能兜底）；
@@ -37,6 +38,13 @@ class VoiceAssistImeMaterialHook : BaseHook() {
 
     override fun init() {
         HookHelper.log("$tag: init, pref=${isEnabled()}, pkg=${target.packageName}")
+        val modernHelper = Reflect.findClassIfExists("fb.h0", target.classLoader)
+        if (modernHelper != null && installModernPolicy(modernHelper)) {
+            installPreferenceHook("j9.e")
+            installOpacityHook("hf.j")
+            HookHelper.log("$tag: installed 0.2.1448 material policy")
+            return
+        }
         val helperClass = Reflect.findClassIfExists(HELPER_CLASS, target.classLoader)
         if (helperClass == null) {
             HookHelper.log("$tag: $HELPER_CLASS not found")
@@ -70,6 +78,42 @@ class VoiceAssistImeMaterialHook : BaseHook() {
         )
     }
 
+    private fun installModernPolicy(clazz: Class<*>): Boolean {
+        val update = method(clazz, "l", Void.TYPE) ?: return false
+        val currentPackage = fieldOrNull(clazz, "x")?.takeIf { it.type == String::class.java }
+            ?: return false
+        val allowed = fieldOrNull(clazz, "y")?.takeIf { it.type == Map::class.java }
+            ?: return false
+        val denied = fieldOrNull(clazz, "z")?.takeIf { it.type == Map::class.java }
+            ?: return false
+        val capability = fieldOrNull(clazz, "w")?.takeIf { it.type == Boolean::class.javaPrimitiveType }
+            ?: return false
+
+        HookHelper.intercept(update) { chain ->
+            val helper = chain.thisObject
+            if (helper == null || !isEnabled() || !capability.getBoolean(helper)) {
+                return@intercept chain.proceed()
+            }
+            val pkg = currentPackage.get(helper) as? String
+            val originalAllowed = allowed.get(helper) as? Map<*, *>
+            val originalDenied = denied.get(helper) as? Map<*, *>
+            if (pkg.isNullOrEmpty() || originalAllowed == null || originalDenied == null) {
+                return@intercept chain.proceed()
+            }
+            val allowedForUpdate = LinkedHashMap<Any?, Any?>(originalAllowed).apply { put(pkg, 1) }
+            val deniedForUpdate = LinkedHashMap<Any?, Any?>(originalDenied).apply { remove(pkg) }
+            try {
+                allowed.set(helper, allowedForUpdate)
+                denied.set(helper, deniedForUpdate)
+                chain.proceed()
+            } finally {
+                denied.set(helper, originalDenied)
+                allowed.set(helper, originalAllowed)
+            }
+        }
+        return true
+    }
+
     /**
      * 先安装两条状态谓词 Hook。即使后续字段解析失败，官方渲染器仍能按
      * “材质已启用 + 有圆角”工作；`v` 为 false 时不强行启用，避免没有真实模糊的透明层。
@@ -93,18 +137,19 @@ class VoiceAssistImeMaterialHook : BaseHook() {
     }
 
     /** 覆盖输入法设置里的「高级材质」总开关；只拦截这一个 key。 */
-    private fun installPreferenceHook() {
-        val getter = Reflect.findClassIfExists(PREF_CLASS, target.classLoader)
+    private fun installPreferenceHook(prefClass: String = PREF_CLASS) {
+        val getter = Reflect.findClassIfExists(prefClass, target.classLoader)
             ?.declaredMethods
             ?.firstOrNull {
                 it.name == PREF_GETTER &&
                     it.parameterCount == 2 &&
                     it.parameterTypes[0] == String::class.java &&
-                    it.parameterTypes[1] == Boolean::class.javaPrimitiveType
+                    it.parameterTypes[1] == Boolean::class.javaPrimitiveType &&
+                    it.returnType == Boolean::class.javaPrimitiveType
             }
             ?.apply { isAccessible = true }
         if (getter == null) {
-            HookHelper.log("$tag: $PREF_CLASS.$PREF_GETTER not found; master switch not overridden")
+            HookHelper.log("$tag: $prefClass.$PREF_GETTER not found; master switch not overridden")
             return
         }
         HookHelper.hookBefore(getter) { param ->
@@ -119,10 +164,10 @@ class VoiceAssistImeMaterialHook : BaseHook() {
      * `mf.j.m(View, ArrayList<Point>)` 只服务输入法材质层，按比例缩放 alpha 即可，
      * 不改模糊半径、材质类型或输入法内容。
      */
-    private fun installOpacityHook() {
-        val clazz = Reflect.findClassIfExists(BLEND_CLASS, target.classLoader)
+    private fun installOpacityHook(blendClass: String = BLEND_CLASS) {
+        val clazz = Reflect.findClassIfExists(blendClass, target.classLoader)
         if (clazz == null) {
-            HookHelper.log("$tag: $BLEND_CLASS not found; opacity unavailable")
+            HookHelper.log("$tag: $blendClass not found; opacity unavailable")
             return
         }
         val method = clazz.declaredMethods.firstOrNull {
@@ -132,7 +177,7 @@ class VoiceAssistImeMaterialHook : BaseHook() {
                 it.parameterTypes[1] == ArrayList::class.java
         }?.apply { isAccessible = true }
         if (method == null) {
-            HookHelper.log("$tag: $BLEND_CLASS.$BLEND_METHOD not found; opacity unavailable")
+            HookHelper.log("$tag: $blendClass.$BLEND_METHOD not found; opacity unavailable")
             return
         }
         HookHelper.hookBefore(method) { param ->

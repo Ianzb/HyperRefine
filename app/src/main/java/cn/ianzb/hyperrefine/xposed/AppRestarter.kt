@@ -12,6 +12,7 @@ object AppRestarter {
     private val SYSTEM_PACKAGES = setOf("system", "android", "system_server")
 
     private const val SYSTEM_UI_PACKAGE = "com.android.systemui"
+    private const val SECURITY_CENTER_PACKAGE = "com.miui.securitycenter"
 
     fun isSystemPackage(packageName: String): Boolean = packageName in SYSTEM_PACKAGES
 
@@ -31,8 +32,13 @@ object AppRestarter {
         return RootHelper.exec("am force-stop $packageName")
     }
 
-    /** 应用是否在运行（Root 下 `pidof` 匹配主进程）。 */
-    private fun isRunning(packageName: String): Boolean = RootHelper.exec("pidof $packageName")
+    /** 安全服务的工具箱可以在主进程退出后继续留在 :ui 进程。 */
+    private fun isRunning(packageName: String): Boolean {
+        if (packageName == SECURITY_CENTER_PACKAGE) {
+            return RootHelper.exec("pidof $packageName $packageName:ui $packageName.remote $packageName:cache")
+        }
+        return RootHelper.exec("pidof $packageName")
+    }
 
     /** 重启系统（用于 system_server 目标）。 */
     @Suppress("unused")

@@ -3,6 +3,8 @@ package cn.ianzb.hyperrefine.hook.securitycenter
 import android.content.Context
 import android.view.ViewGroup
 import cn.ianzb.hyperrefine.hook.base.BaseHook
+import cn.ianzb.hyperrefine.hook.device.DeviceContext
+import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import java.lang.reflect.Modifier
@@ -13,7 +15,8 @@ class ToolboxSidebarGlassHook : BaseHook() {
     override fun init() {
         val loader = target.classLoader ?: return
         val gamePanel = loader.loadClass("com.miui.gamebooster.windowmanager.newbox.z1")
-        val videoPanel = loader.loadClass("gb.p")
+        val videoPanel = loader.loadClass("com.miui.gamebooster.windowmanager.newbox.TurboLayout")
+            .getMethod("getVideoBoxViewAdapter").returnType
         val videoBackground = videoPanel.getDeclaredField("b").apply { isAccessible = true }
         val gameRefresh = gamePanel.getDeclaredMethod("o")
         val videoRefresh = videoPanel.getDeclaredMethod("t")
@@ -22,18 +25,22 @@ class ToolboxSidebarGlassHook : BaseHook() {
         val sidebar = loader.loadClass("com.miui.dock.allapps.f0")
         val applySidebarMaterial = sidebar.getMethod("c", ViewGroup::class.java, Context::class.java)
         val sidebarRenderer = sidebar.getField("a").get(null) ?: return
-        // Phone 13.6.3 and tablet 13.8.0 share the panel entries, but rename the material utility.
-        val (supportsGlass, supportsBlur) = listOf("rq.g", "vq.g").firstNotNullOfOrNull { name ->
-            runCatching {
-                val capabilities = loader.loadClass(name)
-                val glass = capabilities.getMethod("u", Context::class.java)
-                val blur = capabilities.getMethod("s", Context::class.java)
-                check(listOf(glass, blur).all {
-                    Modifier.isStatic(it.modifiers) && it.returnType == Boolean::class.javaPrimitiveType
-                })
-                glass to blur
-            }.getOrNull()
-        } ?: error("Sidebar blur capability methods unavailable")
+        // Match the physical device and the adapter in the loaded APK. Phone and
+        // tablet packages can share a version number while using different classes.
+        val deviceType = DeviceContext.detected.type
+        val isTablet = deviceType == DeviceType.PAD
+        val capabilityClass = when {
+            isTablet && videoPanel.name == "gb.p" -> "rq.g"
+            !isTablet && videoPanel.name == "fb.p" -> "qq.g"
+            !isTablet && videoPanel.name == "gb.p" -> "vq.g"
+            else -> error("Unsupported toolbox layout: device=$deviceType, videoAdapter=${videoPanel.name}")
+        }
+        val capabilities = loader.loadClass(capabilityClass)
+        val supportsGlass = capabilities.getMethod("u", Context::class.java)
+        val supportsBlur = capabilities.getMethod("s", Context::class.java)
+        check(listOf(supportsGlass, supportsBlur).all {
+            Modifier.isStatic(it.modifiers) && it.returnType == Boolean::class.javaPrimitiveType
+        })
         check(ViewGroup::class.java.isAssignableFrom(gamePanel))
         check(ViewGroup::class.java.isAssignableFrom(videoBackground.type))
         check(listOf(gameRefresh, videoRefresh, toolboxBlur, applySidebarMaterial).all {

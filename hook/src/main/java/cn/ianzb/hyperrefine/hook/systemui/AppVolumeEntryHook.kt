@@ -322,6 +322,7 @@ class AppVolumeEntryHook : BaseHook() {
             return
         }
         val existing = entryOf(parent) ?: findEntry(parent)?.also { entries[parent] = it }
+        val alwaysHidden = entryVisibility() == AppVolumeKeys.VISIBILITY_NEVER
         val entry = existing ?: run {
             val dndIndex = parent.indexOfChild(dnd)
             var insertAt = dndIndex + 1
@@ -332,6 +333,7 @@ class AppVolumeEntryHook : BaseHook() {
                 val div = View(parent.context)
                 div.layoutParams = copyLayoutParams(divider)
                 div.tag = TAG_DIVIDER
+                if (alwaysHidden) div.visibility = View.GONE
                 parent.addView(div, insertAt.coerceIn(0, parent.childCount))
                 insertAt++
             }
@@ -341,6 +343,7 @@ class AppVolumeEntryHook : BaseHook() {
             inflated.tag = TAG_ENTRY
             inflated.isClickable = true
             inflated.isFocusable = true
+            if (alwaysHidden) inflated.visibility = View.GONE
             parent.addView(inflated, insertAt.coerceIn(0, parent.childCount))
             entries[parent] = inflated
             setupEntryBehavior(inflated)
@@ -348,7 +351,7 @@ class AppVolumeEntryHook : BaseHook() {
             attachDividerSync(parent)
             inflated
         }
-        entry.visibility = View.VISIBLE
+        if (alwaysHidden) hideEntryImmediately(entry) else entry.visibility = View.VISIBLE
         if (dialog != null) dialogEntries[dialog] = WeakReference(entry)
         copyOfficialMaterial(entry, dnd)
         // RingerButtonHelper 可能在 attach 后再次写入 bg_blur，布局完成后再对齐一次。
@@ -361,7 +364,7 @@ class AppVolumeEntryHook : BaseHook() {
                 }
             }
         }
-        findTaggedChild(parent, TAG_DIVIDER)?.visibility = View.VISIBLE
+        if (!alwaysHidden) findTaggedChild(parent, TAG_DIVIDER)?.visibility = View.VISIBLE
         joinAnimator(animator, entry)
         officialVisibilityState.remove(parent)
         applyOfficialVisibility(parent, dnd)
@@ -1258,6 +1261,14 @@ class AppVolumeEntryHook : BaseHook() {
     }
 
     private fun applyEntryState(entry: View, visible: Boolean, dodge: Boolean = false, deferCount: Int = 0) {
+        if (entryVisibility() == AppVolumeKeys.VISIBILITY_NEVER) {
+            if (dodge) AppVolumePanel.hideByExpand()
+            else if (!HookPrefs.getBoolean(key, false) || !HookPrefs.getBoolean(AppVolumeKeys.AUTO_SHOW, false)) {
+                AppVolumePanel.hide()
+            }
+            hideEntryImmediately(entry)
+            return
+        }
         desiredVisible[entry] = visible
         // 入口隐藏（展开态 / 面板收起）时同步关闭系统界面模式的面板，避免残留。
         // `dodge=true`（侧边二级面板展开）时用「避让」消失动画，其余情况原地淡出。
@@ -1304,6 +1315,19 @@ class AppVolumeEntryHook : BaseHook() {
         HookHelper.log("$tag: entry visible=$visible")
     }
 
+    private fun hideEntryImmediately(entry: View) {
+        desiredVisible[entry] = false
+        pendingShow.remove(entry)
+        val wasVisible = lastVisible.put(entry, false) == true || entry.visibility != View.GONE
+        if (wasVisible) {
+            entry.animate().withEndAction(null).cancel()
+            entry.visibility = View.GONE
+            entry.alpha = 1f
+            shiftPanel(entry, false)
+        }
+        (entry.parent as? ViewGroup)?.let { findTaggedChild(it, TAG_DIVIDER)?.visibility = View.GONE }
+    }
+
     /** 官方出现 / 收起动画是否仍在播放（`MiuiVolumeDialogMotion.mShowHideAnimator.isRunning()`）。 */
     private fun panelAnimating(entry: View): Boolean = runCatching {
         val panel = findVolumeDialog(entry) ?: return false
@@ -1323,6 +1347,10 @@ class AppVolumeEntryHook : BaseHook() {
 
     /** 播放入口出现动画；入口在本次显示周期内出现时同样按「自动显示」展开多应用音量面板。 */
     private fun showEntry(entry: View) {
+        if (entryVisibility() == AppVolumeKeys.VISIBILITY_NEVER) {
+            hideEntryImmediately(entry)
+            return
+        }
         if (lastVisible[entry] != true) return
         // 清掉上一次淡出挂的结束动作，避免复用时在本次动画结束时误收起入口。
         entry.animate().alpha(1f).withEndAction(null).setDuration(FADE_DURATION_MS).start()

@@ -27,42 +27,41 @@ class BrowserPackageHook : BaseHook() {
             ?: Reflect.findClassIfExists("android.app.ApplicationPackageManager")
             ?: return
 
-        val intType = Int::class.javaPrimitiveType!!
-        val packageInfoFlags = runCatching { PackageManager.PackageInfoFlags::class.java }.getOrNull()
-        val appInfoFlags = runCatching { PackageManager.ApplicationInfoFlags::class.java }.getOrNull()
+        hookInfoQuery(pmClass, "getPackageInfo", Integer.TYPE, ::buildFakePackageInfo)
+        hookInfoQuery(pmClass, "getPackageInfo", PackageManager.PackageInfoFlags::class.java, ::buildFakePackageInfo)
+        hookInfoQuery(pmClass, "getApplicationInfo", Integer.TYPE, ::buildFakeApplicationInfo)
+        hookInfoQuery(pmClass, "getApplicationInfo", PackageManager.ApplicationInfoFlags::class.java, ::buildFakeApplicationInfo)
 
-        hookFake(loader, pmClass, "getPackageInfo", arrayOf(String::class.java, intType)) { buildFakePackageInfo(it) }
-        packageInfoFlags?.let {
-            hookFake(loader, pmClass, "getPackageInfo", arrayOf(String::class.java, it)) { p -> buildFakePackageInfo(p) }
-        }
-        hookFake(loader, pmClass, "getApplicationInfo", arrayOf(String::class.java, intType)) { buildFakeApplicationInfo(it) }
-        appInfoFlags?.let {
-            hookFake(loader, pmClass, "getApplicationInfo", arrayOf(String::class.java, it)) { p -> buildFakeApplicationInfo(p) }
-        }
-
-        hookLaunchIntent(loader, pmClass)
-        hookIconsAndLabel(loader, pmClass)
+        hookLaunchIntent(pmClass)
+        hookIconsAndLabel(pmClass)
     }
 
-    private fun hookFake(
-        loader: ClassLoader,
+    private fun hookInfoQuery(
         pmClass: Class<*>,
         name: String,
-        params: Array<Class<*>>,
+        flagType: Class<*>,
         builder: (String) -> Any,
     ) {
-        val method = Reflect.findMethodIfExists(pmClass, name, *params) ?: return
+        val method = Reflect.findMethodIfExists(pmClass, name, String::class.java, flagType) ?: return
         runCatching {
             HookHelper.hookBefore(method) { param ->
                 val pkg = param.args.getOrNull(0) as? String ?: return@hookBefore
                 if (!XiaomiBrowserPackages.isBrowser(pkg)) return@hookBefore
                 if (currentProcessName() == pkg) return@hookBefore
+                val flags = when (val requested = param.args.getOrNull(1)) {
+                    is Int -> requested.toLong()
+                    is PackageManager.PackageInfoFlags -> requested.value
+                    is PackageManager.ApplicationInfoFlags -> requested.value
+                    else -> return@hookBefore
+                }
+                // 风险防护等功能读取真实 Manifest 元数据，不能用安装状态占位对象代替。
+                if ((flags and PackageManager.GET_META_DATA.toLong()) != 0L) return@hookBefore
                 param.setResultValue(builder(pkg))
             }
         }.onFailure { HookHelper.log("$tag: hook $name failed", it) }
     }
 
-    private fun hookLaunchIntent(loader: ClassLoader, pmClass: Class<*>) {
+    private fun hookLaunchIntent(pmClass: Class<*>) {
         val method = Reflect.findMethodIfExists(pmClass, "getLaunchIntentForPackage", String::class.java) ?: return
         runCatching {
             HookHelper.hookAfter(method) { param ->
@@ -77,7 +76,7 @@ class BrowserPackageHook : BaseHook() {
         }.onFailure { HookHelper.log("$tag: hook getLaunchIntentForPackage failed", it) }
     }
 
-    private fun hookIconsAndLabel(loader: ClassLoader, pmClass: Class<*>) {
+    private fun hookIconsAndLabel(pmClass: Class<*>) {
         Reflect.findMethodIfExists(pmClass, "getApplicationIcon", String::class.java)?.let { method ->
             runCatching {
                 HookHelper.hookBefore(method) { param ->

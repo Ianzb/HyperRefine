@@ -5,10 +5,7 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -41,7 +38,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
@@ -51,7 +47,7 @@ import cn.ianzb.hyperrefine.ui.component.effect.BgEffectBackground
 import cn.ianzb.hyperrefine.ui.component.isGlassTopBarAvailable
 import cn.ianzb.hyperrefine.ui.util.ColorBlendToken
 import cn.ianzb.hyperrefine.ui.util.isInDarkTheme
-import cn.ianzb.hyperrefine.ui.util.pageContentPadding
+import cn.ianzb.hyperrefine.ui.component.appPageListPadding
 import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import cn.ianzb.hyperrefine.ui.util.rememberBlurBackdrop
 import kotlin.math.abs
@@ -114,10 +110,7 @@ fun AboutPageContent(
         },
     ) { innerPadding ->
         AboutContent(
-            padding = PaddingValues(
-                top = innerPadding.calculateTopPadding(),
-                bottom = innerPadding.calculateBottomPadding() + extraBottomPadding,
-            ),
+            scrollPadding = appPageListPadding(innerPadding, extraBottomPadding),
             topAppBarScrollBehavior = topAppBarScrollBehavior,
             lazyListState = lazyListState,
             isBlurEnabled = isBlurEnabled,
@@ -129,7 +122,7 @@ fun AboutPageContent(
 
 @Composable
 private fun AboutContent(
-    padding: PaddingValues,
+    scrollPadding: PaddingValues,
     isBlurEnabled: Boolean,
     topAppBarScrollBehavior: ScrollBehavior,
     lazyListState: LazyListState,
@@ -144,21 +137,12 @@ private fun AboutContent(
     var contrast by remember { mutableFloatStateOf(1f) }
     var saturation by remember { mutableFloatStateOf(1f) }
 
-    val scrollPadding = pageContentPadding(
-        padding,
-        padding,
-        false,
-        extraStart = WindowInsets.displayCutout.asPaddingValues().calculateLeftPadding(LayoutDirection.Ltr),
-        extraEnd = WindowInsets.displayCutout.asPaddingValues().calculateRightPadding(LayoutDirection.Ltr),
-    )
-    val logoPadding = pageContentPadding(
-        padding,
-        padding,
-        false,
-        extraTop = 40.dp,
-        extraStart = WindowInsets.displayCutout.asPaddingValues().calculateLeftPadding(LayoutDirection.Ltr),
-        extraEnd = WindowInsets.displayCutout.asPaddingValues().calculateRightPadding(LayoutDirection.Ltr),
-    )
+    val logoPadding = remember(scrollPadding) {
+        object : PaddingValues by scrollPadding {
+            override fun calculateTopPadding() = scrollPadding.calculateTopPadding() + 40.dp
+            override fun calculateBottomPadding() = 0.dp
+        }
+    }
 
     val isInDark = isInDarkTheme()
 

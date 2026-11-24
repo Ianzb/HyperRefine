@@ -13,16 +13,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -49,10 +43,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import cn.ianzb.hyperrefine.ui.component.UpdateDialog
+import cn.ianzb.hyperrefine.ui.component.AppPageContentWindowInsets
 import cn.ianzb.hyperrefine.ui.component.LocalAppTopBarCompact
 import cn.ianzb.hyperrefine.ui.component.LocalAppTopBarCenterObstructionStart
 import cn.ianzb.hyperrefine.ui.component.LocalAppTopBarTitleAlpha
+import cn.ianzb.hyperrefine.ui.component.UpdateDialog
+import cn.ianzb.hyperrefine.ui.component.appPageHorizontalInsets
 import cn.ianzb.hyperrefine.ui.component.liquid.IosLiquidGlassNavigationBar
 import cn.ianzb.hyperrefine.ui.component.search.AppSearchOverlay
 import cn.ianzb.hyperrefine.ui.component.search.AppSearchResults
@@ -70,12 +66,12 @@ import cn.ianzb.hyperrefine.ui.screen.subpage.OpenAppSubPage
 import cn.ianzb.hyperrefine.ui.screen.subpage.rememberAppPageBackStack
 import cn.ianzb.hyperrefine.ui.screen.subpage.rememberOpenAppSubPage
 import cn.ianzb.hyperrefine.ui.theme.AppTheme
+import cn.ianzb.hyperrefine.ui.util.AppExpandedRailWidth
 import cn.ianzb.hyperrefine.ui.util.LocalAppPageStartInset
 import cn.ianzb.hyperrefine.ui.util.LocalAppContainerSize
 import cn.ianzb.hyperrefine.ui.util.LocalPreferenceBackdrop
 import cn.ianzb.hyperrefine.ui.util.applyWindowBackground
 import cn.ianzb.hyperrefine.ui.util.pagerSwipeOverride
-import cn.ianzb.hyperrefine.ui.util.pageStartInset
 import cn.ianzb.hyperrefine.ui.util.rememberTopBarBackdrop
 import cn.ianzb.hyperrefine.ui.util.shouldShowSplitPane
 import cn.ianzb.hyperrefine.ui.util.rememberBlurBackdrop
@@ -330,13 +326,12 @@ private fun MainScreen(
     LaunchedEffect(expandSidebar) {
         sidebarState.expanded = expandSidebar
     }
-    val sidebarWidth = GlassNavigationRailDefaults.Margin + GlassNavigationRailDefaults.ExpandedWidth
     val railProgress: () -> Float = remember(useRail, sidebarState) {
         { if (useRail) sidebarState.progress else 1f }
     }
     // 进度由页面的测量和绘制阶段读取，避免形变时逐帧重新组合整个导航宿主。
-    val sidebarInset: () -> Dp = remember(useRail, sidebarState, sidebarWidth) {
-        { if (useRail) sidebarWidth * sidebarState.progress else 0.dp }
+    val sidebarInset: () -> Dp = remember(useRail, sidebarState) {
+        { if (useRail) AppExpandedRailWidth * sidebarState.progress else 0.dp }
     }
     val searchTopPadding: () -> Dp = remember(useRail, sidebarState) {
         {
@@ -402,8 +397,8 @@ private fun MainScreen(
                 }
             }
             val pageProgress = rememberVisibleRailProgress(railProgress, pageVisible)
-            val pageInset: () -> Dp = remember(useRail, sidebarWidth, pageProgress) {
-                { if (useRail) sidebarWidth * pageProgress() else 0.dp }
+            val pageInset: () -> Dp = remember(useRail, pageProgress) {
+                { if (useRail) AppExpandedRailWidth * pageProgress() else 0.dp }
             }
             CompositionLocalProvider(
                 LocalAppPageStartInset provides pageInset,
@@ -442,6 +437,7 @@ private fun MainScreen(
                     3 -> AboutPageContent(
                         openLicensePage = rememberOpenAppSubPage(AppSubPage.Licenses),
                         isBlurEnabled = isBlurEnabled,
+                        extraBottomPadding = navBarHeight,
                     )
                 }
             }
@@ -485,11 +481,7 @@ private fun MainScreen(
                         }
                     },
                 ) { globalPadding ->
-                    val navigationBarHeight = if (useRail) {
-                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                    } else {
-                        globalPadding.calculateBottomPadding()
-                    }
+                    val navigationBarHeight = if (useRail) 0.dp else globalPadding.calculateBottomPadding()
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -510,8 +502,8 @@ private fun MainScreen(
                                     { backStack.lastOrNull() == route }
                                 }
                                 val progress = rememberVisibleRailProgress(railProgress, pageVisible)
-                                val inset: () -> Dp = remember(useRail, sidebarWidth, progress) {
-                                    { if (useRail) sidebarWidth * progress() else 0.dp }
+                                val inset: () -> Dp = remember(useRail, progress) {
+                                    { if (useRail) AppExpandedRailWidth * progress() else 0.dp }
                                 }
                                 CompositionLocalProvider(
                                     LocalAppPageStartInset provides inset,
@@ -541,10 +533,7 @@ private fun MainScreen(
                             pendingFeatureSearchKey = key
                             onItemSelected(1)
                         },
-                        modifier = Modifier.windowInsetsPadding(
-                            WindowInsets.displayCutout.union(WindowInsets.navigationBars)
-                                .only(WindowInsetsSides.Horizontal),
-                        ).pageStartInset(),
+                        modifier = Modifier.appPageHorizontalInsets(),
                     )
                 }
             }
@@ -612,6 +601,7 @@ private fun BottomNavigationBar(
     onItemSelected: (Int) -> Unit,
     onSearchClick: (() -> Unit)? = null,
 ) {
+    val barModifier = Modifier.windowInsetsPadding(AppPageContentWindowInsets).padding(horizontal = 24.dp)
     when (style) {
         // HyperOS 玻璃底栏：官方 miuix-glass 组件（与 miuix example 的 AppContent 一致）。
         // 高度、图标/文字尺寸、指示器内缩、边缘高光、模糊与折射全部由 GlassNavigationBar 负责，
@@ -652,9 +642,7 @@ private fun BottomNavigationBar(
                             }
                         }
                     },
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .glassNavigationBarWidth(items.size),
+                    modifier = barModifier.glassNavigationBarWidth(items.size),
                 )
             }
         }
@@ -672,13 +660,7 @@ private fun BottomNavigationBar(
                     onItemClick = onItemSelected,
                     backdrop = if (blurActive) backdrop else null,
                     isBlurActive = blurActive,
-                    modifier = Modifier
-                        .windowInsetsPadding(
-                            WindowInsets.displayCutout.union(WindowInsets.navigationBars)
-                                .only(WindowInsetsSides.Horizontal),
-                        )
-                        .padding(horizontal = 24.dp)
-                        .glassNavigationBarWidth(items.size, trailingActionWidth = 0.dp),
+                    modifier = barModifier.glassNavigationBarWidth(items.size, trailingActionWidth = 0.dp),
                 )
             }
         }

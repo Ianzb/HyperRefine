@@ -1,22 +1,25 @@
 package cn.ianzb.hyperrefine.ui.component
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.captionBar
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -29,6 +32,7 @@ import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
 import cn.ianzb.hyperrefine.ui.util.pageStartInset
 import cn.ianzb.hyperrefine.ui.util.rememberBlurBackdrop
 import cn.ianzb.hyperrefine.ui.util.rememberTopBarBackdrop
+import cn.ianzb.hyperrefine.ui.util.withPageStartInset
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -38,13 +42,29 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.glass.Search
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-/**
- * 所有页面的统一窗口内边距：只保留水平方向的系统栏与挖孔，垂直方向交给各页内容自行处理，
- * 这样顶栏与底栏才能覆盖到状态栏/导航栏之下（与官方示例一致）。
- */
+internal val AppPageSafeWindowInsets: WindowInsets
+    @Composable
+    get() = WindowInsets.systemBars.union(WindowInsets.captionBar).union(WindowInsets.displayCutout)
+
+/** 正文的水平安全区，顶栏和列表分别处理顶部与底部留白。 */
 val AppPageContentWindowInsets: WindowInsets
     @Composable
-    get() = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal)
+    get() = AppPageSafeWindowInsets.only(WindowInsetsSides.Horizontal)
+
+@Composable
+internal fun Modifier.appPageHorizontalInsets(): Modifier =
+    windowInsetsPadding(AppPageContentWindowInsets).pageStartInset()
+
+@Composable
+internal fun appPageListPadding(innerPadding: PaddingValues, extraBottomPadding: Dp = 0.dp): PaddingValues {
+    val systemPadding = AppPageSafeWindowInsets.asPaddingValues()
+    return remember(innerPadding, extraBottomPadding, systemPadding) {
+        object : PaddingValues by innerPadding {
+            override fun calculateBottomPadding() =
+                maxOf(innerPadding.calculateBottomPadding() + extraBottomPadding, systemPadding.calculateBottomPadding())
+        }
+    }.withPageStartInset()
+}
 
 /**
  * 页面骨架：玻璃顶栏 + [PageBackdrop] 采样图层。
@@ -130,7 +150,7 @@ fun AppPageScaffold(
 /**
  * 单列表页面的骨架：在 [AppPageScaffold] 基础上直接给出配置好的 [LazyColumn]。
  *
- * 列表已经处理了顶栏滚动联动（`pageScrollModifiers`）与宽屏侧栏留白（`pageStartInset`），
+ * 列表已经处理了顶栏滚动联动、系统安全区和宽屏侧栏留白，
  * 页面只需要提供 `item { }` 内容。
  *
  * @param extraBottomPadding 额外底部留白，例如为悬浮底栏/悬浮按钮让出空间。
@@ -161,21 +181,18 @@ fun AppLazyPage(
         topBarSearchAction = topBarSearchAction,
         contentWindowInsets = contentWindowInsets,
     ) { innerPadding ->
+        val listPadding = appPageListPadding(innerPadding, extraBottomPadding)
         LazyColumn(
             userScrollEnabled = userScrollEnabled,
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .pageStartInset()
                 .pageScrollModifiers(
                     showTopAppBar = true,
                     topAppBarScrollBehavior = scrollBehavior,
                     contentState = listState,
                 ),
-            contentPadding = PaddingValues(
-                top = innerPadding.calculateTopPadding(),
-                bottom = innerPadding.calculateBottomPadding() + extraBottomPadding,
-            ),
+            contentPadding = listPadding,
             content = content,
         )
     }

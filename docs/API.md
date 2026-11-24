@@ -1186,6 +1186,12 @@ fun SubPageScaffold(
 
 主导航通过 miuix `NavDisplay` 展示 `AppSubPage`，侧栏在路由宿主外持续显示。列表直接使用 `SubPageScaffold` 提供的 `contentPadding`，侧栏起始留白在测量阶段读取。独立的二级页入口可继续使用 `BaseSubPageActivity`。
 
+#### 页面安全区与侧栏留白
+
+- 水平方向取系统栏、窗口标题栏和挖孔安全区的并集，再在逻辑起始边加动态侧栏宽度。向左或向右横屏时，左右安全区分别取窗口实际值。
+- 主页面列表和许可证页使用 `AppLazyPage`，详情页使用 `SubPageScaffold` 提供的边距。「关于」页的标志和列表共用同一水平边距。页面只添加自身的内容间距。
+- 顶栏和搜索内容共享水平安全区，顶部留白包括状态栏、窗口标题栏和挖孔。背景和玻璃采样层仍使用完整窗口。
+
 宽屏二级页通过 `selectedIndex = -1` 清除主标签高亮。点击侧栏标签会即时退出二级路由，再由主界面 Pager 负责标签切换动画。
 
 顶栏与「第三方许可证与致谢」页完全同一条代码路径（`AppPageScaffold` 默认的 miuix `GlassTopAppBar`），不自行绘制任何顶栏 / 返回按钮：返回按钮就是组件库的 `GlassIconButton` + `MiuixIcons.Glass.ChevronBackward`。

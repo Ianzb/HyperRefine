@@ -1,32 +1,18 @@
 package cn.ianzb.hyperrefine.ui.screen.about
 
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.ui.component.AppSectionCard
-import cn.ianzb.hyperrefine.ui.component.AppPageScaffold
+import cn.ianzb.hyperrefine.ui.component.AppLazyPage
 import cn.ianzb.hyperrefine.ui.component.AppSectionCard
-import cn.ianzb.hyperrefine.ui.util.pageScrollModifiers
-import cn.ianzb.hyperrefine.ui.util.pageStartInset
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import cn.ianzb.hyperrefine.ui.component.AppArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
@@ -236,80 +222,47 @@ fun LicensePageContent(
     onBack: () -> Unit,
     isBlurEnabled: Boolean = true,
 ) {
-    val topAppBarScrollBehavior = MiuixScrollBehavior()
-
-    AppPageScaffold(
+    AppLazyPage(
         title = stringResource(R.string.third_party_licenses_title),
         isBlurEnabled = isBlurEnabled,
-        scrollBehavior = topAppBarScrollBehavior,
         onBack = onBack,
-    ) { innerPadding ->
-        val uriHandler = LocalUriHandler.current
-        val lazyListState = rememberLazyListState()
-        val layoutDirection = LocalLayoutDirection.current
-        val cutoutPadding = WindowInsets.displayCutout.asPaddingValues()
-        val contentPadding = PaddingValues(
-            top = innerPadding.calculateTopPadding(),
-            bottom = innerPadding.calculateBottomPadding(),
-            start = innerPadding.calculateStartPadding(layoutDirection) + cutoutPadding.calculateLeftPadding(LayoutDirection.Ltr),
-            end = innerPadding.calculateEndPadding(layoutDirection) + cutoutPadding.calculateRightPadding(LayoutDirection.Ltr),
-        )
+    ) {
+        item {
+            MiuixText(
+                text = stringResource(R.string.licenses_header),
+                color = colorScheme.onSurfaceVariantSummary,
+                style = top.yukonga.miuix.kmp.theme.MiuixTheme.textStyles.footnote2,
+                textAlign = TextAlign.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 28.dp, vertical = 12.dp),
+            )
+        }
 
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .fillMaxSize()
-                .pageStartInset()
-                .pageScrollModifiers(
-                    showTopAppBar = true,
-                    topAppBarScrollBehavior = topAppBarScrollBehavior,
-                )
-                .padding(
-                    start = contentPadding.calculateStartPadding(layoutDirection),
-                    end = contentPadding.calculateEndPadding(layoutDirection),
-                ),
-            contentPadding = PaddingValues(
-                top = contentPadding.calculateTopPadding(),
-                bottom = contentPadding.calculateBottomPadding(),
-            ),
-        ) {
-            item {
-                MiuixText(
-                    text = stringResource(R.string.licenses_header),
-                    color = colorScheme.onSurfaceVariantSummary,
-                    style = top.yukonga.miuix.kmp.theme.MiuixTheme.textStyles.footnote2,
-                    textAlign = TextAlign.Start,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 28.dp, vertical = 12.dp),
-                )
+        licenseSections.forEach { section ->
+            item(key = "section_${section.titleRes}") {
+                SmallTitle(text = stringResource(section.titleRes))
             }
-
-            licenseSections.forEach { section ->
-                item(key = "section_${section.titleRes}") {
-                    SmallTitle(text = stringResource(section.titleRes))
-                }
-                items(
-                    items = section.libraries,
-                    key = { "${section.titleRes}_${it.name}" },
-                ) { library ->
-                    AppSectionCard {
-                        AppArrowPreference(
-                            title = library.name,
-                            summary = buildString {
-                                if (library.version.isNotBlank() && library.version != "-") {
-                                    append("v").append(library.version).append(" · ")
-                                }
-                                append(library.license)
-                            },
-                            onClick = {
-                                uriHandler.openUri(library.website)
-                            },
-                        )
-                    }
+            items(
+                items = section.libraries,
+                key = { "${section.titleRes}_${it.name}" },
+            ) { library ->
+                val uriHandler = LocalUriHandler.current
+                AppSectionCard {
+                    AppArrowPreference(
+                        title = library.name,
+                        summary = buildString {
+                            if (library.version.isNotBlank() && library.version != "-") {
+                                append("v").append(library.version).append(" · ")
+                            }
+                            append(library.license)
+                        },
+                        onClick = {
+                            uriHandler.openUri(library.website)
+                        },
+                    )
                 }
             }
-
         }
     }
 }

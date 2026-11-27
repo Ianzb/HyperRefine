@@ -1507,7 +1507,7 @@ internal object StatusBarIconRuntime {
         private val moduleHidden = HashSet<String>()
         /** 原生状态栏/控制中心各自使用的 slot 黑名单；这是系统自己控制显隐的入口。 */
         /** 每个容器首次接管前的 ignoredSlots，保留 mini 模式等原生额外项。 */
-        private val transformed = IdentityHashMap<View, Boolean>()
+        private val transformed = IdentityHashMap<View, TransformBaseline>()
         private val spaced = IdentityHashMap<View, Boolean>()
         private val aligned = IdentityHashMap<View, String>()
         private val attached = AtomicBoolean(false)
@@ -2324,21 +2324,51 @@ internal object StatusBarIconRuntime {
             spaced[view] = true
         }
 
+        private class TransformBaseline {
+            var translationY: Float? = null
+            var scale: Pair<Float, Float>? = null
+            var alpha: Float? = null
+        }
+
         private fun applyTransforms(view: View, config: StatusBarIconComponentConfig) {
-            val baseView = capture(view)
             val offset = config.offsetY.coerceIn(-24f, 24f) * density
             val scale = config.scale.coerceIn(0.3f, 3f)
             val alpha = config.alpha.coerceIn(0f, 1f)
-            val custom = offset != 0f || scale != 1f || alpha != 1f
-            val wasCustom = transformed[view] == true
-            if (!custom && !wasCustom) return
-            transformed[view] = custom
-            if (view.translationY != baseView.translationY + offset) {
-                view.translationY = baseView.translationY + offset
+            if (offset == 0f && scale == 1f && alpha == 1f) {
+                restoreTransforms(view)
+                return
             }
-            if (view.scaleX != baseView.scaleX * scale) view.scaleX = baseView.scaleX * scale
-            if (view.scaleY != baseView.scaleY * scale) view.scaleY = baseView.scaleY * scale
-            if (view.alpha != baseView.alpha * alpha) view.alpha = baseView.alpha * alpha
+
+            val baseline = transformed.getOrPut(view, ::TransformBaseline)
+            if (offset != 0f) {
+                val initial = baseline.translationY ?: view.translationY.also { baseline.translationY = it }
+                view.translationY = initial + offset
+            } else {
+                baseline.translationY?.let { view.translationY = it }
+                baseline.translationY = null
+            }
+            if (scale != 1f) {
+                val initial = baseline.scale ?: (view.scaleX to view.scaleY).also { baseline.scale = it }
+                view.scaleX = initial.first * scale
+                view.scaleY = initial.second * scale
+            } else {
+                baseline.scale?.let { (x, y) -> view.scaleX = x; view.scaleY = y }
+                baseline.scale = null
+            }
+            if (alpha != 1f) {
+                val initial = baseline.alpha ?: view.alpha.also { baseline.alpha = it }
+                view.alpha = initial * alpha
+            } else {
+                baseline.alpha?.let { view.alpha = it }
+                baseline.alpha = null
+            }
+        }
+
+        private fun restoreTransforms(view: View) {
+            val baseline = transformed.remove(view) ?: return
+            baseline.translationY?.let { view.translationY = it }
+            baseline.scale?.let { (x, y) -> view.scaleX = x; view.scaleY = y }
+            baseline.alpha?.let { view.alpha = it }
         }
 
         private fun capture(view: View): BaseView = base.getOrPut(view) {
@@ -2346,11 +2376,7 @@ internal object StatusBarIconRuntime {
             BaseView(
                 visibility = view.visibility,
                 translationX = view.translationX,
-                translationY = view.translationY,
                 scrollX = view.scrollX,
-                scaleX = view.scaleX,
-                scaleY = view.scaleY,
-                alpha = view.alpha,
                 marginStart = params?.marginStart ?: 0,
                 marginEnd = params?.marginEnd ?: 0,
                 paddingStart = view.paddingStart,
@@ -2365,14 +2391,11 @@ internal object StatusBarIconRuntime {
         private fun restore(root: ViewGroup) {
             refreshIconBlockLists()
             restoreSpeedStyles()
+            transformed.keys.toList().forEach(::restoreTransforms)
             base.forEach { (view, value) ->
                 runCatching {
                     view.visibility = value.visibility
                     view.translationX = value.translationX
-                    view.translationY = value.translationY
-                    view.scaleX = value.scaleX
-                    view.scaleY = value.scaleY
-                    view.alpha = value.alpha
                     if (view.layoutParams is ViewGroup.MarginLayoutParams) {
                         val params = view.layoutParams as ViewGroup.MarginLayoutParams
                         params.marginStart = value.marginStart
@@ -2810,11 +2833,7 @@ internal object StatusBarIconRuntime {
     private data class BaseView(
         val visibility: Int,
         val translationX: Float,
-        val translationY: Float,
         val scrollX: Int,
-        val scaleX: Float,
-        val scaleY: Float,
-        val alpha: Float,
         val marginStart: Int,
         val marginEnd: Int,
         val paddingStart: Int,

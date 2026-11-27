@@ -65,14 +65,25 @@ class ToolboxSidebarGlassHook : BaseHook() {
             if (applied) null else chain.proceed()
         }
 
-        listOf(gameRefresh, videoRefresh).forEach { refresh ->
+        val panels = mutableMapOf<java.lang.reflect.Method, (Any) -> ViewGroup?>(
+            gameRefresh to { it as? ViewGroup },
+            videoRefresh to { videoBackground.get(it) as? ViewGroup },
+        )
+        run {
+            runCatching {
+                val callPanel = loader.loadClass("r8.i")
+                val refresh = callPanel.getDeclaredMethod("E")
+                val background = callPanel.getDeclaredField("d").apply { isAccessible = true }
+                check(refresh.returnType == Void.TYPE && ViewGroup::class.java.isAssignableFrom(background.type))
+                panels[refresh] = { background.get(it) as? ViewGroup }
+            }.onFailure { HookHelper.log("$tag: conversation toolbox unavailable", it) }
+        }
+        panels.forEach { (refresh, resolvePanel) ->
             HookHelper.deoptimize(refresh)
             HookHelper.intercept(refresh) { chain ->
                 if (!HookPrefs.getBoolean(key, false)) return@intercept chain.proceed()
                 val receiver = chain.thisObject ?: return@intercept chain.proceed()
-                val panel = if (refresh == gameRefresh) receiver as? ViewGroup
-                else videoBackground.get(receiver) as? ViewGroup
-                if (panel == null) return@intercept chain.proceed()
+                val panel = resolvePanel(receiver) ?: return@intercept chain.proceed()
 
                 val previous = refreshingPanel.get()
                 refreshingPanel.set(panel)

@@ -10,6 +10,7 @@ import java.util.WeakHashMap
  */
 internal class CcDetailGlassParams {
     private val panelParams = WeakHashMap<View, FloatArray>()
+    private val volumeParams = WeakHashMap<View, FloatArray>()
     private val activeWrite = ThreadLocal<MaterialWrite>()
 
     fun install() {
@@ -17,11 +18,20 @@ internal class CcDetailGlassParams {
             val setter = View::class.java.getMethod("setMiGlass", FloatArray::class.java)
             // Read the arguments after material customizers have applied their scene settings.
             HookHelper.intercept(setter, priority = XposedInterface.PRIORITY_LOWEST) { chain ->
-                val write = activeWrite.get() ?: return@intercept chain.proceed()
-                if (write.view !== chain.thisObject) return@intercept chain.proceed()
-                val params = chain.args.firstOrNull() as? FloatArray ?: return@intercept chain.proceed()
-                val effective = write.resolve(params)
-                if (effective === params) chain.proceed() else chain.proceed(arrayOf(effective))
+                val view = chain.thisObject as? View ?: return@intercept chain.proceed()
+                val params = chain.args.firstOrNull() as? FloatArray
+                val write = activeWrite.get()
+                val effective = when {
+                    write?.view === view && params != null -> write.resolve(params)
+                    else -> volumeParams[view]?.takeIf {
+                        view.isAttachedToWindow && CcGlassKeys.isEnabled(CcGlassKeys.NOTIFICATION_MEDIA) &&
+                            (params == null || it.size == params.size)
+                    } ?: params
+                }
+                if (effective == null || (params != null && effective.contentEquals(params))) {
+                    return@intercept chain.proceed()
+                }
+                chain.proceed(arrayOf(effective.copyOf()))
             }
         }.onFailure { HookHelper.log("CcGlass: detail glass parameter sharing unavailable", it) }
     }
@@ -31,6 +41,7 @@ internal class CcDetailGlassParams {
         source: View,
         sourceDefaults: FloatArray,
         targetDefaults: FloatArray = sourceDefaults,
+        copyCustomizedValues: Boolean = false,
         apply: () -> Unit,
     ): Boolean {
         var sample: FloatArray? = null
@@ -39,9 +50,10 @@ internal class CcDetailGlassParams {
                 if (sourceDefaults === targetDefaults) {
                     if (!params.contentEquals(targetDefaults)) sample = params.copyOf()
                 } else {
-                    // A selected device supplies only values whose native defaults match the volume track.
                     val effective = FloatArray(params.size) { index ->
-                        if (sourceDefaults[index] == targetDefaults[index]) params[index] else targetDefaults[index]
+                        val sourceMatches = sourceDefaults[index] == targetDefaults[index]
+                        val customized = copyCustomizedValues && params[index] != sourceDefaults[index]
+                        if (sourceMatches || customized) params[index] else targetDefaults[index]
                     }
                     sample = effective.takeUnless { it.contentEquals(targetDefaults) }
                 }
@@ -56,13 +68,25 @@ internal class CcDetailGlassParams {
         return true
     }
 
-    fun applyToTarget(view: View, apply: () -> Boolean): Boolean {
+    fun applyToTarget(view: View, retainVolumeMaterial: Boolean = false, apply: () -> Boolean): Boolean {
         val params = generateSequence(view.parent as? View) { it.parent as? View }
-            .firstNotNullOfOrNull { panelParams[it] } ?: return apply()
-        return withWrite(view, { original ->
-            if (original.size == params.size && !original.contentEquals(params)) params.copyOf() else original
+            .firstNotNullOfOrNull { panelParams[it] }
+        if (params == null && !retainVolumeMaterial) return apply()
+        var appliedParams: FloatArray? = null
+        val applied = withWrite(view, { original ->
+            val effective = params?.takeIf { it.size == original.size } ?: original
+            if (retainVolumeMaterial) appliedParams = effective.copyOf()
+            effective
         }, apply)
+        if (applied) appliedParams?.let { volumeParams[view] = it }
+        return applied
     }
+
+    fun clearVolumeMaterial(view: View) {
+        volumeParams.remove(view)
+    }
+
+    fun hasVolumeMaterial(view: View): Boolean = volumeParams.containsKey(view)
 
     fun clear(panel: View) {
         panelParams.remove(panel)

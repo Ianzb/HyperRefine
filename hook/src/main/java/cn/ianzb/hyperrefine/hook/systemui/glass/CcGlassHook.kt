@@ -1,6 +1,7 @@
 package cn.ianzb.hyperrefine.hook.systemui.glass
 
 import android.graphics.Outline
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.LayerDrawable
 import android.view.View
 import android.view.ViewGroup
@@ -335,7 +336,7 @@ class CcGlassHook : BaseHook() {
         }
         HookHelper.hookAfter(content.getDeclaredMethod("onDetachedFromWindow")) { param ->
             val root = param.thisObject as? View ?: return@hookAfter
-            mediaVolumeSliders.remove(root)
+            mediaVolumeSliders.remove(root)?.get()?.let(detailGlassParams::clearVolumeMaterial)
             detailGlassParams.clear(root)
         }
     }
@@ -367,18 +368,79 @@ class CcGlassHook : BaseHook() {
             // Resolve the host after attachment and wait for the track's own layout.
             scheduleMediaVolumeSlider(slider)
         }
+        // The notification host can refresh native mix colors independently of the initial bind.
+        Reflect.findMethodIfExists(header, "updateSeekBarBlur")?.let { refresh ->
+            HookHelper.hookAfter(refresh) { param ->
+                val slider = volumeBar.get(param.thisObject) as? SeekBar ?: return@hookAfter
+                if (usesNotificationVolumeGlass(slider)) scheduleMediaVolumeSlider(slider)
+            }
+        }
+        Reflect.findMethodIfExists(android.widget.ProgressBar::class.java, "setProgressDrawable", Drawable::class.java)
+            ?.let { refresh ->
+                HookHelper.hookAfter(refresh) { param ->
+                    val slider = param.thisObject as? SeekBar ?: return@hookAfter
+                    if (volumeBar.type.isInstance(slider) && usesNotificationVolumeGlass(slider)) {
+                        scheduleMediaVolumeSlider(slider)
+                    }
+                }
+            }
+        val seekBarBase = volumeBar.type.superclass
+        if (seekBarBase != null) {
+            Reflect.findMethodIfExists(seekBarBase, "drawableStateChanged")?.let { stateChanged ->
+                HookHelper.hookAfter(stateChanged) { param ->
+                    val slider = param.thisObject as? SeekBar ?: return@hookAfter
+                    if (!detailGlassParams.hasVolumeMaterial(slider) || !usesNotificationVolumeGlass(slider)) {
+                        return@hookAfter
+                    }
+                    // Miuix sets alpha on the whole LayerDrawable when the pressed or enabled state changes.
+                    val track = mediaVolumeTrack(slider) ?: return@hookAfter
+                    if (track.alpha != 0) track.alpha = 0
+                }
+            }
+        }
+        Reflect.findMethodIfExists(volumeBar.type, "onTouchEvent", android.view.MotionEvent::class.java)?.let { touch ->
+            HookHelper.hookAfter(touch) { param ->
+                val slider = param.thisObject as? SeekBar ?: return@hookAfter
+                val event = param.args.firstOrNull() as? android.view.MotionEvent ?: return@hookAfter
+                if (event.actionMasked == android.view.MotionEvent.ACTION_MOVE) return@hookAfter
+                val scene = mediaScene(slider)
+                if (CcGlassKeys.isEnabled(scene)) scheduleMediaVolumeSlider(slider)
+            }
+        }
     }
+
+    private fun usesNotificationVolumeGlass(slider: SeekBar): Boolean =
+        slider.isAttachedToWindow && CcGlassKeys.isEnabled(CcGlassKeys.NOTIFICATION_MEDIA) &&
+            mediaScene(slider) == CcGlassKeys.NOTIFICATION_MEDIA
 
     private fun scheduleMediaVolumeSlider(slider: SeekBar) {
         applyBeforeGlassDraw(
             slider,
             scene = { mediaScene(slider) },
-            ready = { mediaVolumeTrack(slider)?.bounds?.isEmpty == false },
+            ready = {
+                mediaVolumeTrack(slider)?.bounds?.isEmpty == false &&
+                    notificationMediaSourceReady(slider)
+            },
             applyOnLayout = false,
         ) {
-            mediaContent(slider)?.let { mediaVolumeSliders[it] = java.lang.ref.WeakReference(slider) }
+            mediaContent(slider)?.let { panel ->
+                mediaVolumeSliders[panel] = java.lang.ref.WeakReference(slider)
+                if (mediaScene(slider) == CcGlassKeys.NOTIFICATION_MEDIA) {
+                    val list = (call(panel, "getMRecycler") ?: findList(panel)) as? ViewGroup
+                    val source = list?.let { mediaGlassSource(mediaDeviceCards(it)) }
+                    if (source != null) captureMediaGlass(panel, source)
+                }
+            }
             applyMediaVolumeSlider(slider)
         }
+    }
+
+    private fun notificationMediaSourceReady(slider: SeekBar): Boolean {
+        if (mediaScene(slider) != CcGlassKeys.NOTIFICATION_MEDIA) return true
+        val panel = mediaContent(slider) ?: return true
+        val list = (call(panel, "getMRecycler") ?: findList(panel)) as? ViewGroup ?: return true
+        val cards = mediaDeviceCards(list)
+        return cards.isEmpty() || mediaGlassSource(cards) != null
     }
 
     private fun mediaVolumeTrack(slider: SeekBar) =
@@ -393,7 +455,10 @@ class CcGlassHook : BaseHook() {
         val originalOutline = slider.outlineProvider
         slider.outlineProvider = MEDIA_VOLUME_TRACK_OUTLINE
         CcGlassApi.setSdfSize(slider, track.bounds.width(), track.bounds.height())
-        if (!detailGlassParams.applyToTarget(slider) { CcGlassApi.applyStyle(slider, token) }) {
+        if (!detailGlassParams.applyToTarget(slider, retainVolumeMaterial = usesNotificationVolumeGlass(slider)) {
+                CcGlassApi.applyStyle(slider, token)
+            }
+        ) {
             slider.outlineProvider = originalOutline
             return
         }
@@ -432,17 +497,11 @@ class CcGlassHook : BaseHook() {
 
     private fun applyDeviceCards(list: ViewGroup) {
         if (!CcGlassKeys.isEnabled(mediaScene(list))) return
-        val cards = (0 until list.childCount).mapNotNull(list::getChildAt)
-            .filter { it.isClickable && it !is android.widget.TextView }
+        val cards = mediaDeviceCards(list)
         val panel = mediaContent(list)
-        val readyCards = cards.asSequence().filter { it.width > 0 && it.height > 0 }
-        val source = readyCards.firstOrNull { !it.isSelected } ?: readyCards.firstOrNull()
-        val defaults = defaultGlassParams
-        val sourceDefaults = if (source?.isSelected == true) activatedGlassParams else defaults
-        if (panel != null && source != null && defaults != null && sourceDefaults != null) {
-            val changed = detailGlassParams.capture(panel, source, sourceDefaults, defaults) {
-                applyDeviceCard(source)
-            }
+        val source = mediaGlassSource(cards)
+        if (panel != null && source != null) {
+            val changed = captureMediaGlass(panel, source)
             if (changed) {
                 mediaVolumeSliders[panel]?.get()?.takeIf { mediaContent(it) === panel }
                     ?.let(::scheduleMediaVolumeSlider)
@@ -450,6 +509,30 @@ class CcGlassHook : BaseHook() {
             cards.forEach { if (it !== source) applyDeviceCard(it) }
         } else {
             cards.forEach(::applyDeviceCard)
+        }
+    }
+
+    private fun mediaDeviceCards(list: ViewGroup): List<View> =
+        (0 until list.childCount).mapNotNull(list::getChildAt)
+            .filter { it.isClickable && it !is android.widget.TextView }
+
+    private fun mediaGlassSource(cards: List<View>): View? {
+        val ready = cards.asSequence().filter { it.width > 0 && it.height > 0 }
+        return ready.firstOrNull { !it.isSelected } ?: ready.firstOrNull()
+    }
+
+    private fun captureMediaGlass(panel: View, source: View): Boolean {
+        val defaults = defaultGlassParams
+        val sourceDefaults = if (source.isSelected) activatedGlassParams else defaults
+        if (defaults == null || sourceDefaults == null) {
+            applyDeviceCard(source)
+            return false
+        }
+        return detailGlassParams.capture(
+            panel, source, sourceDefaults, defaults,
+            copyCustomizedValues = mediaScene(panel) == CcGlassKeys.NOTIFICATION_MEDIA,
+        ) {
+            applyDeviceCard(source)
         }
     }
 

@@ -107,6 +107,7 @@ class LockGlassDimHook : BaseHook() {
         seen[view] = true
         val dim = dimColor(view)
         val old = applied[view]
+        if (dim == 0 && old == null && original.all { it is Point }) return
         val next = ArrayList<Point>(original.size + 1)
         for (item in original) {
             if (item !is Point) continue
@@ -127,6 +128,7 @@ class LockGlassDimHook : BaseHook() {
     private fun onAdd(param: HookParam) {
         val view = param.thisObject as? View ?: return
         seen[view] = true
+        if (!isDimEnabled() && !applied.containsKey(view)) return
         if (!view.isAttachedToWindow) {
             // 玻璃 View 往往在 attach 前就写入混色，等 attach 后再补一层。
             view.post { reapply(view) }
@@ -142,9 +144,10 @@ class LockGlassDimHook : BaseHook() {
 
     private fun reapply(view: View) {
         if (!view.isAttachedToWindow) return
-        val colors = readColors(view) ?: return
         val dim = dimColor(view)
         val old = applied[view]
+        if (dim == 0 && old == null) return
+        val colors = readColors(view) ?: return
         var changed = false
         if (old != null) {
             changed = colors.removeAll { it.x == old && it.y == BLEND_MODE }
@@ -171,13 +174,12 @@ class LockGlassDimHook : BaseHook() {
 
     /** 当前是否应该压暗玻璃；不满足时返回 0。 */
     private fun dimColor(view: View? = null): Int {
+        if (!isDimEnabled()) return 0
         if (keyguardStateKnown) {
             if (!keyguardShowing) return 0
         } else if (!isKeyguardLocked(view)) {
             return 0
         }
-        if (!HookPrefs.getBoolean(WallpaperDimKeys.ENABLED, false)) return 0
-        if (!HookPrefs.getBoolean(WallpaperDimKeys.GLASS_ENABLED, false)) return 0
         if (!isNight()) return 0
         val amount = if (HookPrefs.contains(WallpaperDimKeys.LOCK_AMOUNT)) {
             amount(WallpaperDimKeys.LOCK_AMOUNT)
@@ -188,6 +190,10 @@ class LockGlassDimHook : BaseHook() {
         if (alpha == 0) return 0
         return Color.argb(alpha, 0, 0, 0)
     }
+
+    private fun isDimEnabled(): Boolean =
+        HookPrefs.getBoolean(WallpaperDimKeys.ENABLED, false) &&
+            HookPrefs.getBoolean(WallpaperDimKeys.GLASS_ENABLED, false)
 
     private fun isKeyguardLocked(view: View?): Boolean {
         val context = view?.context ?: return false

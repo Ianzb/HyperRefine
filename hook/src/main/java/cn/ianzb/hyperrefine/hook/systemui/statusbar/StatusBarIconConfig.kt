@@ -81,8 +81,9 @@ object StatusBarIconConfigReader {
     fun load(): StatusBarIconSnapshot {
         val enabled = HookPrefs.getBoolean(StatusBarIconKeys.ENABLED, false)
         val order = readOrder()
+        val values = HookPrefs.getAll()
         val configs = StatusBarIconRegistry.components.associate { component ->
-            component.id to readComponent(component.id)
+            component.id to readComponent(component.id, values)
         }
         return StatusBarIconSnapshot(enabled, order, configs)
     }
@@ -115,10 +116,10 @@ object StatusBarIconConfigReader {
             .map(String::trim)
             .filter { it.isNotEmpty() && StatusBarIconRegistry.byId(it) != null }
 
-    private fun readComponent(id: String): StatusBarIconComponentConfig {
+    private fun readComponent(id: String, values: Map<String, *> = HookPrefs.getAll()): StatusBarIconComponentConfig {
         val fallback = StatusBarIconComponentConfig()
         val recommendedWeight = StatusBarIconRegistry.recommendedFontWeight(id)
-        val storedWeight = HookPrefs.getIntFlexible(StatusBarIconKeys.fontWeight(id), recommendedWeight)
+        val storedWeight = HookPrefs.getIntFlexible(values, StatusBarIconKeys.fontWeight(id), recommendedWeight)
         val rawDisplay = (HookPrefs.getString(StatusBarIconKeys.display(id), "") ?: "").trim()
         // 左侧图标没有独立的控制中心宿主；旧的 CC_ONLY 值要归一化掉。
         // 权限指示现在也有独立的 CC 宿主，由运行时按 View 所在宿主判断。
@@ -166,10 +167,8 @@ object StatusBarIconConfigReader {
             logic = StatusBarIconLogic.from(
                 HookPrefs.getString(StatusBarIconKeys.logic(id), fallback.logic.value),
             ),
-            alarmWithin = HookPrefs.getIntFlexible(
-                StatusBarIconKeys.alarmWithin(id),
-                fallback.alarmWithin,
-            ).coerceIn(0, 72),
+            alarmWithin = HookPrefs.getIntFlexible(values, StatusBarIconKeys.alarmWithin(id), fallback.alarmWithin)
+                .coerceIn(0, 72),
             fontWeightEnabled = HookPrefs.getBoolean(
                 StatusBarIconKeys.fontWeightEnabled(id),
                 fallback.fontWeightEnabled,
@@ -236,12 +235,10 @@ object StatusBarIconConfigReader {
                 fallback.speedSlowHide,
             ),
             speedSlowThreshold = HookPrefs.getIntFlexible(
-                StatusBarIconKeys.speedSlowThreshold(id),
-                fallback.speedSlowThreshold,
+                values, StatusBarIconKeys.speedSlowThreshold(id), fallback.speedSlowThreshold,
             ).coerceIn(0, 10_240),
             maxNotifications = HookPrefs.getIntFlexible(
-                StatusBarIconKeys.maxNotifications(id),
-                fallback.maxNotifications,
+                values, StatusBarIconKeys.maxNotifications(id), fallback.maxNotifications,
             ).coerceIn(1, 16),
             notificationMultiDot = HookPrefs.getBoolean(
                 StatusBarIconKeys.notificationMultiDot(id),

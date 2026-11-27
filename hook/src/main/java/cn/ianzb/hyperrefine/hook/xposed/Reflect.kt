@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap
 object Reflect {
 
     private val fieldCache = ConcurrentHashMap<Class<*>, ConcurrentHashMap<String, Field>>()
+    private val inheritedFieldCache = ConcurrentHashMap<Class<*>, ConcurrentHashMap<String, Field>>()
     private val methodCache = ConcurrentHashMap<Class<*>, ConcurrentHashMap<MethodKey, Method>>()
 
     private data class MethodKey(
@@ -62,11 +63,15 @@ object Reflect {
     }
 
     fun getObjectField(instance: Any, name: String): Any? {
-        var current: Class<*>? = instance.javaClass
+        val type = instance.javaClass
+        val byName = inheritedFieldCache.getOrPut(type) { ConcurrentHashMap() }
+        byName[name]?.let { return it.get(instance) }
+        var current: Class<*>? = type
         while (current != null) {
             val field = runCatching { current.getDeclaredField(name) }.getOrNull()
             if (field != null) {
                 field.isAccessible = true
+                byName.putIfAbsent(name, field)
                 return field.get(instance)
             }
             current = current.superclass

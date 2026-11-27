@@ -377,24 +377,29 @@ class CcGlassHook : BaseHook() {
         }
         Reflect.findMethodIfExists(android.widget.ProgressBar::class.java, "setProgressDrawable", Drawable::class.java)
             ?.let { refresh ->
-                HookHelper.hookAfter(refresh) { param ->
-                    val slider = param.thisObject as? SeekBar ?: return@hookAfter
-                    if (volumeBar.type.isInstance(slider) && usesNotificationVolumeGlass(slider)) {
+                HookHelper.intercept(refresh) { chain ->
+                    val result = chain.proceed()
+                    val slider = chain.thisObject as? SeekBar
+                    if (slider != null && volumeBar.type.isInstance(slider) && usesNotificationVolumeGlass(slider)) {
                         scheduleMediaVolumeSlider(slider)
                     }
+                    result
                 }
             }
         val seekBarBase = volumeBar.type.superclass
         if (seekBarBase != null) {
             Reflect.findMethodIfExists(seekBarBase, "drawableStateChanged")?.let { stateChanged ->
-                HookHelper.hookAfter(stateChanged) { param ->
-                    val slider = param.thisObject as? SeekBar ?: return@hookAfter
-                    if (!detailGlassParams.hasVolumeMaterial(slider) || !usesNotificationVolumeGlass(slider)) {
-                        return@hookAfter
+                HookHelper.intercept(stateChanged) { chain ->
+                    val result = chain.proceed()
+                    val slider = chain.thisObject as? SeekBar
+                    if (slider != null && volumeBar.type.isInstance(slider) &&
+                        detailGlassParams.hasVolumeMaterial(slider) && usesNotificationVolumeGlass(slider)
+                    ) {
+                        // Miuix resets alpha on the whole LayerDrawable during drawable state updates.
+                        val track = mediaVolumeTrack(slider)
+                        if (track != null && track.alpha != 0) track.alpha = 0
                     }
-                    // Miuix sets alpha on the whole LayerDrawable when the pressed or enabled state changes.
-                    val track = mediaVolumeTrack(slider) ?: return@hookAfter
-                    if (track.alpha != 0) track.alpha = 0
+                    result
                 }
             }
         }

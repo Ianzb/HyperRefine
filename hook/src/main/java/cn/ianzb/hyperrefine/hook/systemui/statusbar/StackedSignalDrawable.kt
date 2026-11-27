@@ -53,15 +53,22 @@ internal class StackedSignalDrawable(
     }
 
     override fun setAlpha(alpha: Int) {
-        opacity = alpha.coerceIn(0, 255); invalidateSelf()
+        val next = alpha.coerceIn(0, 255)
+        if (opacity == next) return
+        opacity = next
+        invalidateSelf()
     }
     override fun getAlpha() = opacity
     override fun setColorFilter(filter: ColorFilter?) {
-        paint.colorFilter = filter; invalidateSelf()
+        if (paint.colorFilter === filter) return
+        paint.colorFilter = filter
+        invalidateSelf()
     }
     override fun setTintList(tint: ColorStateList?) {
         this.tint = tint
-        foreground = tint?.getColorForState(state, tint.defaultColor) ?: baseColor
+        val next = tint?.getColorForState(state, tint.defaultColor) ?: baseColor
+        if (foreground == next) return
+        foreground = next
         invalidateSelf()
     }
     override fun isStateful() = tint?.isStateful == true

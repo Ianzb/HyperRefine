@@ -65,6 +65,7 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
             it.parameterTypes.contentEquals(arrayOf(card))
         } ?: return
         val volume = Reflect.findMethodIfExists(section, "u")?.takeIf { it.returnType == View::class.java } ?: return
+        val pendingLayouts = java.util.Collections.newSetFromMap(WeakHashMap<View, Boolean>())
         fun applyVolume(view: View) {
             if (!CcGlassKeys.isEnabled(key) || !view.isAttachedToWindow ||
                 resourceName(view) !in HEADSET_VOLUME_SURFACES
@@ -75,13 +76,14 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
         fun refreshVolume(view: View) {
             if (view.isLaidOut && !view.isLayoutRequested) {
                 applyVolume(view)
-            } else {
+            } else if (pendingLayouts.add(view)) {
                 view.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
                     override fun onLayoutChange(
                         v: View, left: Int, top: Int, right: Int, bottom: Int,
                         oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int,
                     ) {
                         v.removeOnLayoutChangeListener(this)
+                        pendingLayouts.remove(v)
                         if (right > left && bottom > top) applyVolume(v)
                     }
                 })

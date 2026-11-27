@@ -45,6 +45,27 @@ class CcRadiusHook : BaseHook() {
     private val volumeColumnIsCCPanel = ThreadLocal<Boolean?>()
 
     private val dimenItemCache = HashMap<Long, String?>()
+    private val outlineMethods = HashMap<ClassLoader, GlassOutlineMethods>()
+
+    private data class GlassOutlineMethods(
+        val forMediaPanel: java.lang.reflect.Method?,
+        val twoArguments: java.lang.reflect.Method?,
+    )
+
+    private fun glassOutlineMethods(target: Any): GlassOutlineMethods {
+        val loader = target.javaClass.classLoader ?: Thread.currentThread().contextClassLoader
+            ?: ClassLoader.getSystemClassLoader()
+        return synchronized(outlineMethods) {
+            outlineMethods.getOrPut(loader) {
+                val methods = Reflect.findClassIfExists(MI_BLUR_COMPAT, loader)?.declaredMethods
+                    ?.filter { it.name == "setBlurOutlineRoundRect" }.orEmpty()
+                GlassOutlineMethods(
+                    methods.firstOrNull { it.parameterCount >= 2 }?.apply { isAccessible = true },
+                    methods.firstOrNull { it.parameterCount == 2 }?.apply { isAccessible = true },
+                )
+            }
+        }
+    }
 
     override fun init() {
         val systemCl = target.classLoader ?: return
@@ -517,11 +538,7 @@ class CcRadiusHook : BaseHook() {
     private fun forceMediaPanel(obj: Any, px: Float) {
         forceFloatField(obj, "cornerRadius", px)
         runCatching {
-            val cls = Reflect.findClassIfExists(MI_BLUR_COMPAT, obj.javaClass.classLoader) ?: return@runCatching
-            val m = cls.declaredMethods.firstOrNull {
-                it.name == "setBlurOutlineRoundRect" && it.parameterCount >= 2
-            } ?: return@runCatching
-            m.isAccessible = true
+            val m = glassOutlineMethods(obj).forMediaPanel ?: return@runCatching
             if (m.parameterCount == 2) m.invoke(null, obj, px) else m.invoke(null, obj, px, true)
         }.onFailure { HookHelper.log("$tag: MediaPlayerPanel glass outline failed", it) }
     }
@@ -564,11 +581,7 @@ class CcRadiusHook : BaseHook() {
 
     private fun applyGlassOutline(view: View, px: Float) {
         runCatching {
-            val cls = Reflect.findClassIfExists(MI_BLUR_COMPAT, view.javaClass.classLoader) ?: return@runCatching
-            val m = cls.declaredMethods.firstOrNull {
-                it.name == "setBlurOutlineRoundRect" && it.parameterCount == 2
-            } ?: return@runCatching
-            m.isAccessible = true
+            val m = glassOutlineMethods(view).twoArguments ?: return@runCatching
             m.invoke(null, view, px)
         }.onFailure { HookHelper.log("$tag: setBlurOutlineRoundRect failed", it) }
     }

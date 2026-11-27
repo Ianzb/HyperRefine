@@ -41,6 +41,7 @@ object PercentText {
 
     /** 垂直位置重试计数（布局未就绪时逐帧重试，带上限）。 */
     private val verticalRetry = java.util.WeakHashMap<TextView, Int>()
+    private val pendingVerticalRetry = java.util.Collections.newSetFromMap(java.util.WeakHashMap<TextView, Boolean>())
 
     /** 垂直位置最大重试帧数。 */
     private const val MAX_VERTICAL_RETRIES = 30
@@ -113,7 +114,7 @@ object PercentText {
         lowVolumeColor: Int? = null,
     ) {
         val text = percentText(value, max)
-        if (tv.text.toString() != text) tv.text = text
+        if (!android.text.TextUtils.equals(tv.text, text)) tv.text = text
         if (tv.visibility != View.VISIBLE) tv.visibility = View.VISIBLE
 
         val size = HookPrefs.getFloat("${pref}_font_size", DEFAULT_SIZE).coerceIn(4f, 48f)
@@ -161,9 +162,10 @@ object PercentText {
     /** 布局未就绪时重试（带上限，避免视图长期不可见时无限循环）。 */
     private fun scheduleVerticalRetry(tv: TextView, pref: String) {
         val attempts = verticalRetry[tv] ?: 0
-        if (attempts >= MAX_VERTICAL_RETRIES) return
+        if (attempts >= MAX_VERTICAL_RETRIES || !pendingVerticalRetry.add(tv)) return
         verticalRetry[tv] = attempts + 1
-        tv.post {
+        tv.postOnAnimation {
+            pendingVerticalRetry.remove(tv)
             if (tv.isAttachedToWindow) applyVerticalPosition(tv, pref) else verticalRetry.remove(tv)
         }
     }

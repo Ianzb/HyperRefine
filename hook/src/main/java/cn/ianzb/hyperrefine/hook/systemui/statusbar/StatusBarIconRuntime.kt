@@ -91,8 +91,7 @@ internal object StatusBarIconRuntime {
     }
 
     /** 字重覆盖前的原始 Typeface；只在当前进程内保留弱引用。 */
-    private val originalTypefaces = WeakHashMap<TextView, Typeface?>()
-    private val originalVariations = WeakHashMap<TextView, String?>()
+    private val fontWeights = WeakHashMap<TextView, FontWeightState>()
     private val originalTextSizes = WeakHashMap<TextView, Float>()
     private val originalClockTexts = WeakHashMap<TextView, CharSequence?>()
     private val speedStyles = WeakHashMap<View, SpeedStyleState>()
@@ -404,7 +403,8 @@ internal object StatusBarIconRuntime {
                 orderHandler.post(refreshRunnable)
             }
         } else {
-            root.post { hosts[root]?.refresh() }
+            val host = hosts[root]
+            if (host != null) host.postRefresh() else root.post { hosts[root]?.postRefresh() }
         }
     }
 
@@ -712,8 +712,14 @@ internal object StatusBarIconRuntime {
 
     fun applyNetworkSpeed(view: View, config: StatusBarIconComponentConfig) {
         applySpeedContent(view, config)
-        applySpeedFontSize(view, config)
-        applySpeedLayout(view, config)
+        val style = speedStyles[view] ?: captureSpeedStyle(view)?.also { speedStyles[view] = it }
+        if (style != null) {
+            val oldNumberSize = style.numberText.textSize
+            val oldUnitSize = style.unitText.textSize
+            applySpeedFontSize(view, config, style)
+            val sizeChanged = oldNumberSize != style.numberText.textSize || oldUnitSize != style.unitText.textSize
+            applySpeedLayout(view, config, style, sizeChanged)
+        }
         val slow = isSlowSpeed(view, config)
         if (speedSlowStates[view] != slow) {
             speedSlowStates[view] = slow
@@ -731,11 +737,10 @@ internal object StatusBarIconRuntime {
             val number = Reflect.getObjectField(view, "mNetworkSpeedNumber")?.toString().orEmpty().trim()
             val unit = Reflect.getObjectField(view, "mNetworkSpeedUnit")?.toString().orEmpty().trim()
             val showUnit = config.speedUnitStyle != "none"
-            when (config.speedStyle) {
+            val (numberLabel, unitLabel) = when (config.speedStyle) {
                 "single_line" -> {
                     val (down, _) = sampleTraffic(view)
-                    numberText.text = formatSpeed(down, showUnit, config.speedUnitStyle, unitSeparator = "")
-                    unitText.text = ""
+                    formatSpeed(down, showUnit, config.speedUnitStyle, unitSeparator = "") to ""
                 }
                 "dual_line" -> {
                     val (down, up) = sampleTraffic(view)
@@ -743,31 +748,29 @@ internal object StatusBarIconRuntime {
                     val upText = formatSpeed(up, showUnit, config.speedUnitStyle)
                     val downLine = decorateSpeed(downText, config, upload = false)
                     val upLine = decorateSpeed(upText, config, upload = true)
-                    numberText.text = if (config.speedDualUploadFirst) upLine else downLine
-                    unitText.text = if (config.speedDualUploadFirst) downLine else upLine
+                    if (config.speedDualUploadFirst) upLine to downLine else downLine to upLine
                 }
-                "number_only" -> {
-                    numberText.text = number
-                    unitText.text = ""
-                }
+                "number_only" -> number to ""
                 else -> {
-                    numberText.text = if (number.isEmpty()) "" else "$number "
+                    val numberLabel = if (number.isEmpty()) "" else "$number "
                     // 跟随系统样式仍由原生提供数值和当前量级；单位写法按同一份
                     // K/M/G 映射改写，保证不改变原生字号、行距和采样结果。
-                    unitText.text = if (showUnit && number.isNotEmpty() && unit.isNotEmpty()) {
+                    val unitLabel = if (showUnit && number.isNotEmpty() && unit.isNotEmpty()) {
                         "${speedUnitLabel(config.speedUnitStyle, speedUnitScale(unit))} "
                     } else {
                         ""
                     }
+                    numberLabel to unitLabel
                 }
             }
+            if (!TextUtils.equals(numberText.text, numberLabel)) numberText.text = numberLabel
+            if (!TextUtils.equals(unitText.text, unitLabel)) unitText.text = unitLabel
         }.onFailure {
             android.util.Log.w("HyperRefineStatusBar", "speed content failed", it)
         }
     }
 
-    private fun applySpeedFontSize(view: View, config: StatusBarIconComponentConfig) {
-        val state = speedStyles[view] ?: captureSpeedStyle(view)?.also { speedStyles[view] = it } ?: return
+    private fun applySpeedFontSize(view: View, config: StatusBarIconComponentConfig, state: SpeedStyleState) {
         val numberText = state.numberText
         val unitText = state.unitText
         val size = config.speedFontSize
@@ -810,9 +813,12 @@ internal object StatusBarIconRuntime {
         state.numberText.setTextSize(TypedValue.COMPLEX_UNIT_PX, base * 2f)
     }
 
-    private fun applySpeedLayout(view: View, config: StatusBarIconComponentConfig) {
-        val state = speedStyles[view] ?: captureSpeedStyle(view)?.also { speedStyles[view] = it } ?: return
-        val container = state.container ?: return
+    private fun applySpeedLayout(
+        view: View,
+        config: StatusBarIconComponentConfig,
+        state: SpeedStyleState,
+        sizeChanged: Boolean,
+    ) {
         val numberText = state.numberText
         val unitText = state.unitText
         val showUnit = config.speedUnitStyle != "none"
@@ -823,8 +829,10 @@ internal object StatusBarIconRuntime {
             single ||
             (noUnit && !dual)
 
+        val unitVisibility = if (numberOnly) View.GONE else View.VISIBLE
+        val visibilityChanged = numberText.visibility != View.VISIBLE || unitText.visibility != unitVisibility
         numberText.visibility = View.VISIBLE
-        unitText.visibility = if (numberOnly) View.GONE else View.VISIBLE
+        unitText.visibility = unitVisibility
 
         var numberGravity = state.numberGravity
         var unitGravity = state.unitGravity
@@ -845,38 +853,36 @@ internal object StatusBarIconRuntime {
             unitTranslation = state.unitTranslation + rowGap / 2f
         }
 
-        setFrameGravity(numberText, numberGravity)
-        setFrameGravity(unitText, unitGravity)
+        val numberGravityChanged = setFrameGravity(numberText, numberGravity)
+        val unitGravityChanged = setFrameGravity(unitText, unitGravity)
         numberText.translationX = state.numberTranslationX
         unitText.translationX = state.unitTranslationX
         numberText.translationY = numberTranslation
         unitText.translationY = unitTranslation
 
         // 样式/字号变化后清掉宿主缓存的空宽度，避免网速仍按旧尺寸占位。
+        val styleChanged = state.appliedStyle != config.speedStyle
+        state.appliedStyle = config.speedStyle
+        if (!sizeChanged && !visibilityChanged && !styleChanged && !numberGravityChanged && !unitGravityChanged) return
         val cachedEmptyWidth = runCatching {
             Reflect.getObjectField(view, "mEmptyWidth") as? Int
         }.getOrNull()
         if (cachedEmptyWidth != -1) {
             runCatching { Reflect.setObjectField(view, "mEmptyWidth", -1) }
         }
-        container.requestLayout()
+        state.container?.requestLayout()
         view.requestLayout()
     }
 
     private fun sampleTraffic(view: View): Pair<Long, Long> {
         val now = SystemClock.elapsedRealtime()
+        val previous = speedTraffic[view]
+        val elapsed = if (previous == null) 0L else now - previous.time
+        if (previous != null && elapsed < 350L) return previous.down to previous.up
         val tx = trafficBytes { TrafficStats.getTotalTxBytes() to TrafficStats.getTxBytes("lo") }
         val rx = trafficBytes { TrafficStats.getTotalRxBytes() to TrafficStats.getRxBytes("lo") }
-        val previous = speedTraffic[view]
-        var down = previous?.down ?: 0L
-        var up = previous?.up ?: 0L
-        if (previous != null) {
-            val elapsed = now - previous.time
-            if (elapsed >= 350L) {
-                down = ((rx - previous.rx).coerceAtLeast(0L) * 1000L / elapsed)
-                up = ((tx - previous.tx).coerceAtLeast(0L) * 1000L / elapsed)
-            }
-        }
+        val down = if (previous == null) 0L else (rx - previous.rx).coerceAtLeast(0L) * 1000L / elapsed
+        val up = if (previous == null) 0L else (tx - previous.tx).coerceAtLeast(0L) * 1000L / elapsed
         speedTraffic[view] = TrafficSample(now, tx, rx, down, up)
         return down to up
     }
@@ -972,12 +978,12 @@ internal object StatusBarIconRuntime {
         else -> if (upload) "↑" else "↓"
     }
 
-    private fun setFrameGravity(view: TextView, gravity: Int) {
-        val params = view.layoutParams as? FrameLayout.LayoutParams ?: return
-        if (params.gravity != gravity) {
-            params.gravity = gravity
-            view.layoutParams = params
-        }
+    private fun setFrameGravity(view: TextView, gravity: Int): Boolean {
+        val params = view.layoutParams as? FrameLayout.LayoutParams ?: return false
+        if (params.gravity == gravity) return false
+        params.gravity = gravity
+        view.layoutParams = params
+        return true
     }
 
     private fun captureSpeedStyle(view: View): SpeedStyleState? {
@@ -1252,15 +1258,14 @@ internal object StatusBarIconRuntime {
 
     fun registerClock(view: TextView) {
         if (!HookPrefs.getBoolean(StatusBarIconKeys.ENABLED, false)) return
+        if (clockViews.containsKey(view)) return
         if (clockScene(view.context, view.id) == null) return
         clockViews[view] = true
         ensureClockTicker()
     }
 
-    fun rememberClockText(view: TextView) {
-        if (!originalClockTexts.containsKey(view)) {
-            originalClockTexts[view] = view.text
-        }
+    fun rememberClockText(view: TextView, original: CharSequence? = view.text) {
+        originalClockTexts.putIfAbsent(view, original)
     }
 
     /** 只对状态栏时钟应用字重；通知中心/控制中心时钟不被组件字重影响。 */
@@ -1342,78 +1347,66 @@ internal object StatusBarIconRuntime {
         clockViews.clear()
     }
 
-    fun applyTextWeight(root: View, weight: Int) {
-        val views = ArrayList<TextView>()
-        collectTextViews(root, views)
-        views.forEach { view ->
-            if (!originalTypefaces.containsKey(view)) {
-                originalTypefaces[view] = view.typeface
-            }
-            val base = originalTypefaces[view]
-            val desiredWeight = weight.coerceIn(100, 900)
-            val desired = if (weight > 0) {
-                Typeface.create(base ?: Typeface.DEFAULT, desiredWeight, base?.isItalic == true)
-            } else {
-                base
-            }
-            if (view.typeface != desired) view.typeface = desired
-            // 静态字体只能就近取字重；可变字体通过 wght 轴拿到 100..900 的连续字重，
-            // 否则细体/中等字重会统一回落到 Regular，看起来只有“更粗”有效。
-            runCatching {
-                if (!originalVariations.containsKey(view)) {
-                    originalVariations[view] = view.paint.fontVariationSettings
-                }
-                val variation = if (weight > 0) {
-                    "'wght' $desiredWeight"
-                } else {
-                    originalVariations[view]
-                }
-                if (view.paint.fontVariationSettings != variation) {
-                    view.paint.fontVariationSettings = variation
-                    view.invalidate()
-                }
-            }
+    fun applyTextWeight(root: View, weight: Int) = forEachTextView(root) { view ->
+        if (weight <= 0) {
+            restoreFontWeight(view)
+            return@forEachTextView
+        }
+        val previous = fontWeights[view]
+        val targetWeight = weight.coerceIn(100, 900)
+        val current = view.typeface
+        val variation = view.paint.fontVariationSettings
+        val stillApplied = previous != null && current == previous.appliedTypeface
+        val stillVaried = previous != null && variation == previous.appliedVariation
+        if (previous?.weight == targetWeight && stillApplied && stillVaried) return@forEachTextView
+
+        val base = if (stillApplied) previous?.base else current
+        val baseVariation = if (stillVaried) previous?.baseVariation else variation
+        val desired = Typeface.create(base ?: Typeface.DEFAULT, targetWeight, base?.isItalic == true)
+        if (current != desired) view.typeface = desired
+        // Variable fonts support intermediate weights that static faces may round off.
+        applyFontVariation(view, "'wght' $targetWeight")
+        fontWeights[view] = FontWeightState(
+            base, baseVariation, targetWeight, view.typeface, view.paint.fontVariationSettings,
+        )
+    }
+
+    fun applyTextSize(root: View, sizeSp: Float) = forEachTextView(root) { view ->
+        if (sizeSp > 0f) {
+            originalTextSizes.putIfAbsent(view, view.textSize)
+            setTextSizeIfChanged(view, TypedValue.COMPLEX_UNIT_SP, sizeSp.coerceIn(8f, 32f))
+        } else {
+            restoreTextSize(view)
         }
     }
 
-    fun applyTextSize(root: View, sizeSp: Float) {
-        val views = ArrayList<TextView>()
-        collectTextViews(root, views)
-        views.forEach { view ->
-            if (!originalTextSizes.containsKey(view)) {
-                originalTextSizes[view] = view.textSize
-            }
-            if (sizeSp > 0f) {
-                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp.coerceIn(8f, 32f))
-            } else {
-                originalTextSizes.remove(view)?.let { base ->
-                    view.setTextSize(TypedValue.COMPLEX_UNIT_PX, base)
-                }
-            }
+    private fun restoreTextWeight(root: View) = forEachTextView(root) { view ->
+        restoreFontWeight(view)
+        restoreTextSize(view)
+    }
+
+    private fun restoreFontWeight(view: TextView) {
+        val state = fontWeights.remove(view) ?: return
+        val sameTypeface = view.typeface == state.appliedTypeface
+        val sameVariation = view.paint.fontVariationSettings == state.appliedVariation
+        if (sameTypeface && view.typeface != state.base) view.typeface = state.base
+        if (sameVariation) applyFontVariation(view, state.baseVariation)
+    }
+
+    private fun applyFontVariation(view: TextView, setting: String?) {
+        if (view.paint.fontVariationSettings == setting) return
+        runCatching {
+            if (view.paint.setFontVariationSettings(setting)) view.invalidate()
         }
     }
 
-    fun restoreTextWeight(root: View) {
-        val views = ArrayList<TextView>()
-        collectTextViews(root, views)
-        views.forEach { view ->
-            if (originalTypefaces.containsKey(view)) {
-                val base = originalTypefaces.remove(view)
-                if (view.typeface != base) view.typeface = base
-            }
-            runCatching {
-                if (originalVariations.containsKey(view)) {
-                    val base = originalVariations.remove(view)
-                    if (view.paint.fontVariationSettings != base) {
-                        view.paint.fontVariationSettings = base
-                        view.invalidate()
-                    }
-                }
-            }
-            originalTextSizes.remove(view)?.let { base ->
-                view.setTextSize(TypedValue.COMPLEX_UNIT_PX, base)
-            }
-        }
+    private fun restoreTextSize(view: TextView) {
+        originalTextSizes.remove(view)?.let { setTextSizeIfChanged(view, TypedValue.COMPLEX_UNIT_PX, it) }
+    }
+
+    private fun setTextSizeIfChanged(view: TextView, unit: Int, size: Float) {
+        val pixels = TypedValue.applyDimension(unit, size, view.resources.displayMetrics)
+        if (view.textSize != pixels) view.setTextSize(unit, size)
     }
 
     private fun ensureClockTicker() {
@@ -1478,12 +1471,22 @@ internal object StatusBarIconRuntime {
         }
     }
 
-    private fun collectTextViews(view: View, out: MutableList<TextView>) {
-        if (view is TextView) out.add(view)
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) collectTextViews(view.getChildAt(i), out)
+    private fun forEachTextView(view: View, action: (TextView) -> Unit) {
+        when (view) {
+            is TextView -> action(view)
+            is ViewGroup -> for (index in 0 until view.childCount) {
+                forEachTextView(view.getChildAt(index), action)
+            }
         }
     }
+
+    private data class FontWeightState(
+        val base: Typeface?,
+        val baseVariation: String?,
+        val weight: Int,
+        val appliedTypeface: Typeface?,
+        val appliedVariation: String?,
+    )
 
     private class Host(root: ViewGroup, private val privacyOnly: Boolean = false) {
         private val rootRef = WeakReference(root)
@@ -1516,6 +1519,7 @@ internal object StatusBarIconRuntime {
         private var lastMaxNotifications = -1
         private var lastNotificationCount = -1
         private var lastAlarmRefresh = 0L
+        private var watchesAlarm = false
         private var currentSnapshot: StatusBarIconSnapshot? = null
         private var preDraw: ViewTreeObserver.OnPreDrawListener? = null
         private var refreshPosted = false
@@ -1572,6 +1576,10 @@ internal object StatusBarIconRuntime {
             val cc = controlCenterExpanded()
             lastCc = cc
             currentSnapshot = snapshot
+            watchesAlarm = StatusBarIconRegistry.right.any { component ->
+                component.conditions.contains(StatusBarIconCondition.ALARM_WITHIN) &&
+                    snapshot.display(component.id) == "condition:${StatusBarIconCondition.ALARM_WITHIN.value}"
+            }
             if (privacyOnly) {
                 applyPrivacyOnly(root, snapshot, controlCenterExpanded())
                 return
@@ -2482,7 +2490,6 @@ internal object StatusBarIconRuntime {
             if (!HookPrefs.getBoolean(StatusBarIconKeys.ENABLED, false)) return
             if (!attached.get()) return
             // 只在控制中心状态 / 通知数量变化时做完整刷新；不逐帧重写，避免与原生动画冲突。
-            if (controlCenterExpanded() != lastCc) refresh()
             val area = notificationArea(root)
             val count = area?.let { outer ->
                 val container = find(outer, "notificationIcons") ?: firstChildOfType(outer, "NotificationIconContainer")
@@ -2500,15 +2507,9 @@ internal object StatusBarIconRuntime {
             forcedVisible.forEach { (view, force) ->
                 if (force && view.visibility != View.VISIBLE) view.visibility = View.VISIBLE
             }
-            val snapshot = currentSnapshot ?: return
             // 闹钟条件依赖“距离下次响铃还有多久”，系统广播偶发丢失时不能一直用
             // 旧结果。仅在确实启用该条件时低频重算，避免无意义的全量刷新。
-            val expectsAlarm = StatusBarIconRegistry.right.any { component ->
-                component.conditions.contains(StatusBarIconCondition.ALARM_WITHIN) &&
-                    snapshot.display(component.id) ==
-                    "condition:${StatusBarIconCondition.ALARM_WITHIN.value}"
-            }
-            if (!expectsAlarm) {
+            if (!watchesAlarm) {
                 lastAlarmRefresh = 0L
             } else {
                 val now = SystemClock.elapsedRealtime()
@@ -2518,9 +2519,11 @@ internal object StatusBarIconRuntime {
                     return
                 }
             }
+            val snapshot = currentSnapshot ?: return
             trackedIds.forEach { (view, id) ->
-                applyTransforms(view, snapshot.config(id))
-                applyAlignmentOffset(view, id, snapshot.config(id))
+                val config = snapshot.config(id)
+                applyTransforms(view, config)
+                applyAlignmentOffset(view, id, config)
             }
         }
 
@@ -2620,14 +2623,14 @@ internal object StatusBarIconRuntime {
             val root = rootRef.get() ?: return
             val clock = find(root, "clock") as? TextView ?: return
             registerClock(clock)
-            rememberClockText(clock)
             val text = clockText(context, clock.id)
             if (text != null) {
+                rememberClockText(clock)
                 if (!TextUtils.equals(clock.text, text)) clock.text = text
             } else {
                 // 从自定义格式切回系统格式时，先恢复进入自定义前的文本，再让宿主重算。
                 if (originalClockTexts.containsKey(clock)) {
-                    val original = originalClockTexts[clock]
+                    val original = originalClockTexts.remove(clock)
                     if (!TextUtils.equals(clock.text, original)) clock.text = original
                 }
                 runCatching { Reflect.callMethod(clock, "updateTime") }
@@ -2820,6 +2823,7 @@ internal object StatusBarIconRuntime {
         val unitTranslation: Float,
         val numberTextSize: Float,
         val unitTextSize: Float,
+        var appliedStyle: String? = null,
     )
 
     private data class DotDrawState(

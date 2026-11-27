@@ -181,6 +181,7 @@ class DeviceCenterMoreHook : BaseHook() {
         val view = itemViewOf(holder) ?: return
         view.visibility = View.GONE
         view.layoutParams?.let { params ->
+            if (params.width == 0 && params.height == 0) return@let
             params.width = 0
             params.height = 0
             view.layoutParams = params

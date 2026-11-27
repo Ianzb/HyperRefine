@@ -65,14 +65,17 @@ object HookPrefs {
 
     /** 兼容滑块写入的 Float / Long / String 整数值；取不到时使用默认值。 */
     fun getIntFlexible(key: String, defaultValue: Int = 0): Int = safe(defaultValue) { prefs ->
-        when (val value = prefs.all[key(key)]) {
+        getIntFlexible(prefs.all, key, defaultValue)
+    }
+
+    fun getIntFlexible(values: Map<String, *>, key: String, defaultValue: Int): Int =
+        when (val value = values[key(key)]) {
             is Int -> value
             is Long -> value.toInt()
             is Float -> value.toInt()
             is String -> value.toIntOrNull() ?: defaultValue
             else -> defaultValue
         }
-    }
 
     fun getLong(key: String, defaultValue: Long = 0L): Long =
         safe(defaultValue) { it.getLong(key(key), defaultValue) }

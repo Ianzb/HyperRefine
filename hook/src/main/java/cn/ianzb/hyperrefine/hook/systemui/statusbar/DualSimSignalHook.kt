@@ -20,7 +20,7 @@ import kotlin.math.roundToInt
 
 /** Event-driven native-view composition; no polling, telephony changes, or copied signal assets. */
 class DualSimSignalHook : BaseHook() {
-    override val key = StatusBarKeys.DUAL_ROWS
+    override val key = StatusBarKeys.DUAL_MODE
     override fun init() {
         installation.installOnce { installFor(target.classLoader) }
     }
@@ -263,6 +263,7 @@ private class DualSignalRuntime(private val flows: DualSimFlowObserver) {
     }
 
     private fun refresh() {
+        val mode = StatusBarKeys.dualMode()
         val snapshot = synchronized(signals) { Triple(signals.values.toList(), dataSubId, slotIndexes.toMap()) }
         // Separate hosts (home / lock screen / another display) never share a composed view.
         rows.values.toList().filter { it.root.get()?.isAttachedToWindow == true }
@@ -270,20 +271,27 @@ private class DualSignalRuntime(private val flows: DualSimFlowObserver) {
                 // Host icon/dot/alpha transitions are presentation, not a SIM disappearing.
                 // Real visibility, provider and satellite state still come from the model below.
                 val eligible = group.map { it.subId }.toSet()
-                val pairing = StatusBarPolicy.pair(snapshot.first.filter { it.subId in eligible }, snapshot.second)
-                val first = pairing?.let { pair -> group.firstOrNull { it.subId == pair.primary.subId } }
+                val candidates = snapshot.first.filter { it.subId in eligible }
+                val pairing = StatusBarPolicy.pair(candidates, snapshot.second)
+                val primary = pairing?.primary ?: if (mode == StatusBarKeys.DUAL_ALWAYS) {
+                    candidates.firstOrNull { it.visible && it.cellularMode && !it.satellite && it.resourceId > 0 }
+                } else null
+                val first = primary?.let { signal -> group.firstOrNull { it.subId == signal.subId } }
                 val second = pairing?.let { pair -> group.firstOrNull { it.subId == pair.secondary.subId } }
-                val levels = if (pairing != null && first != null && second != null) {
-                    fun nativeLevel(row: Row, resource: Int): Int? {
-                        if (!signalLevels.containsKey(resource)) signalLevels[resource] = runCatching {
-                            StatusBarPolicy.signalLevel(row.image.get()!!.resources.getResourceEntryName(resource))
-                        }.getOrNull()
-                        return signalLevels[resource]
-                    }
+                fun nativeLevel(row: Row, resource: Int): Int? {
+                    if (!signalLevels.containsKey(resource)) signalLevels[resource] = runCatching {
+                        StatusBarPolicy.signalLevel(row.image.get()!!.resources.getResourceEntryName(resource))
+                    }.getOrNull()
+                    return signalLevels[resource]
+                }
+                val levels = if (mode == StatusBarKeys.DUAL_ALWAYS && first != null && primary != null) {
+                    DualSimArtworkPolicy.fourCellLevel(nativeLevel(first, primary.resourceId))
+                        ?.let { DualSimArtworkPolicy.Levels(it, it) }
+                } else if (mode == StatusBarKeys.DUAL_AUTO && pairing != null && first != null && second?.native != null) {
                     DualSimArtworkPolicy.levels(snapshot.third[first.subId] ?: -1, snapshot.third[second.subId] ?: -1,
                         nativeLevel(first, pairing.primary.resourceId), nativeLevel(second, pairing.secondary.resourceId))
                 } else null
-                if (pairing == null || first?.native == null || second?.native == null || levels == null) {
+                if (first?.native == null || levels == null) {
                     group.forEach { restore(it, snapshot.first.firstOrNull { state -> state.subId == it.subId }?.rootVisible) }
                     return@forEach
                 }

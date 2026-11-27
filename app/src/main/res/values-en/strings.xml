@@ -192,7 +192,7 @@
     <string name="fast_charge_notify_exit">Hide charging boost end reminders</string>
     <string name="section_toolbox">Sidebar toolbox</string>
     <string name="toolbox_sidebar_glass">Match the toolbox glass to the sidebar</string>
-    <string name="toolbox_sidebar_glass_summary">Use the same blur material and blend colors as the sidebar in the game and video toolboxes</string>
+    <string name="toolbox_sidebar_glass_summary">Use the sidebar’s blur material and blend colors in game, video, and call toolboxes</string>
     <string name="fast_charge_notify_exit_summary">Hide the reminder shown when charging boost ends</string>
 
     <string name="section_device_connect">Device connectivity</string>
@@ -566,7 +566,7 @@
     <string name="sb_mobile_hide_type">Hide network type completely</string>
     <string name="sb_mobile_dual_section">Stacked signals</string>
     <string name="sb_dual_rows">Show two rows of stacked signals</string>
-    <string name="sb_dual_rows_summary">When enabled, mobile signal indicators use a two-row stacked layout. Adjust the scale and offsets below, then restart System UI.</string>
+    <string name="sb_dual_rows_summary">Automatic stacks two active SIMs. Always mirrors the first row. Restart System UI to apply.</string>
     <string name="sb_icon_scale">Size scale</string>
     <string name="sb_left_gap">Left spacing</string>
     <string name="sb_right_gap">Right spacing</string>
@@ -803,4 +803,7 @@
     <string name="cc_glass_device_card_summary">Controls inside device cards and the headphone connection device list</string>
     <string name="device_center_smart_home_card_animation">Match Mi Home card opening animation</string>
     <string name="device_center_smart_home_card_animation_summary">Use the device connectivity style for the card’s opening opacity</string>
+    <string name="sb_dual_hidden">Hidden</string>
+    <string name="sb_dual_auto">Automatic</string>
+    <string name="sb_dual_always">Always</string>
 </resources>

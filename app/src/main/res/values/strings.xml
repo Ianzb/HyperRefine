@@ -192,7 +192,7 @@
     <string name="fast_charge_notify_exit">隐藏退出快充加速提醒</string>
     <string name="section_toolbox">侧边栏工具箱</string>
     <string name="toolbox_sidebar_glass">统一工具箱柔光玻璃</string>
-    <string name="toolbox_sidebar_glass_summary">让游戏和视频工具箱的背景使用与侧边栏一致的模糊材质和混色</string>
+    <string name="toolbox_sidebar_glass_summary">让游戏、视频和通话工具箱的背景使用与侧边栏一致的模糊材质和混色</string>
     <string name="fast_charge_notify_exit_summary">退出快充加速时不再弹出提醒</string>
 
     <string name="section_device_connect">设备互联</string>
@@ -567,7 +567,7 @@
     <string name="sb_mobile_hide_type">完全隐藏网络类型</string>
     <string name="sb_mobile_dual_section">堆叠信号</string>
     <string name="sb_dual_rows">显示双排堆叠信号</string>
-    <string name="sb_dual_rows_summary">开启后移动信号改为双排堆叠显示，缩放和位置偏移可在下方调整；重启系统界面后生效</string>
+    <string name="sb_dual_rows_summary">自动仅在双卡时堆叠，始终模式的第二排复制第一排格数；重启系统界面后生效</string>
     <string name="sb_icon_scale">大小缩放</string>
     <string name="sb_left_gap">左侧间距</string>
     <string name="sb_right_gap">右侧间距</string>
@@ -804,4 +804,7 @@
     <string name="cc_glass_device_card_summary">设备卡片内的操作控件和「耳机连接至」设备列表</string>
     <string name="device_center_smart_home_card_animation">同步米家卡片开场动画</string>
     <string name="device_center_smart_home_card_animation_summary">让米家设备卡片的开场透明度跟随设备互联样式</string>
+    <string name="sb_dual_hidden">隐藏</string>
+    <string name="sb_dual_auto">自动</string>
+    <string name="sb_dual_always">始终</string>
 </resources>

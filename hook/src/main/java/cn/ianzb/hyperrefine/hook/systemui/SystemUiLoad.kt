@@ -33,7 +33,7 @@ class SystemUiLoad : BaseLoad() {
     override fun onPackageLoaded(target: PackageTarget) {
         initHook(HideWifiActivityHook(), HookPrefs.getBoolean(StatusBarKeys.WIFI_ACTIVITY))
         initHook(MobileIndicatorVisibilityHook(), HookPrefs.getBoolean(StatusBarKeys.HIDE_TYPE))
-        initHook(DualSimSignalHook(), HookPrefs.getBoolean(StatusBarKeys.DUAL_ROWS))
+        initHook(DualSimSignalHook(), StatusBarKeys.dualMode() != StatusBarKeys.DUAL_HIDDEN)
         initHook(
             StatusBarIconHook(),
             HookPrefs.getBoolean(StatusBarIconKeys.ENABLED, false),

@@ -2,6 +2,7 @@ package cn.ianzb.hyperrefine.hook.connect
 
 import android.content.Context
 import android.content.res.Resources
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
@@ -48,15 +49,62 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
                 val shape = view.background
                 val result = chain.proceed()
                 val drawable = CONTROL_OUTLINES[resourceName(view)]
-                if (drawable != null) {
-                    loadControlOutline(view, drawable)?.let { applyGlass(view, type, it) }
-                } else {
-                    applyGlass(view, type, shape ?: view.background)
-                }
+                applyGlass(view, type, drawable?.let { loadControlOutline(view, it) } ?: shape ?: view.background)
                 result
             }
             hookSynergyState(applyGlass)
+            hookHeadsetVolumeSection(applyGlass)
             hookHeadsetRouteRows(applyGlass)
+        }
+    }
+
+    private fun hookHeadsetVolumeSection(applyGlass: (View, Int, Drawable?) -> Unit) {
+        val section = Reflect.findClassIfExists("com.miui.circulateplus.world.headset.v1", target.classLoader) ?: return
+        val card = Reflect.findClassIfExists(HEADSET_CARD_VIEW, target.classLoader) ?: return
+        val constructor = section.declaredConstructors.singleOrNull {
+            it.parameterTypes.contentEquals(arrayOf(card))
+        } ?: return
+        val volume = Reflect.findMethodIfExists(section, "u")?.takeIf { it.returnType == View::class.java } ?: return
+        fun applyVolume(view: View) {
+            if (!CcGlassKeys.isEnabled(key) || !view.isAttachedToWindow ||
+                resourceName(view) !in HEADSET_VOLUME_SURFACES
+            ) return
+            val shape = loadControlOutline(view, "miplay_detail_header_bg_shape") ?: view.background
+            applyGlass(view, 2, shape)
+        }
+        fun refreshVolume(view: View) {
+            if (view.isLaidOut && !view.isLayoutRequested) {
+                applyVolume(view)
+            } else {
+                view.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+                    override fun onLayoutChange(
+                        v: View, left: Int, top: Int, right: Int, bottom: Int,
+                        oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int,
+                    ) {
+                        v.removeOnLayoutChangeListener(this)
+                        if (right > left && bottom > top) applyVolume(v)
+                    }
+                })
+            }
+        }
+        val volumes = WeakHashMap<View, java.lang.ref.WeakReference<View>>()
+        HookHelper.hookAfter(constructor) { param ->
+            val owner = param.args.firstOrNull() as? View ?: return@hookAfter
+            val landscapeId = owner.resources.getIdentifier("miplay_volume", "id", target.packageName)
+            val view = landscapeId.takeIf { it != 0 }?.let { owner.findViewById<View>(it) }
+                ?: volume.invoke(param.thisObject) as? View ?: return@hookAfter
+            volumes[owner] = java.lang.ref.WeakReference(view)
+            if (view.isAttachedToWindow) refreshVolume(view)
+        }
+        listOfNotNull(
+            Reflect.findMethodIfExists(card, "onAttachedToWindow"),
+            Reflect.findMethodIfExists(card, "onConfigurationChanged", Configuration::class.java),
+        ).forEach { refresh ->
+            HookHelper.hookAfter(refresh) { param ->
+                volumes[param.thisObject]?.get()?.let { view ->
+                    view.post { if (view.isAttachedToWindow) refreshVolume(view) }
+                }
+            }
         }
     }
 
@@ -249,11 +297,14 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
         const val HEADSET_ROUTE_ROW = "circulate_device_item_container"
         const val ROUTE_DEFAULT_MATERIAL = 2
         const val ROUTE_SELECTED_MATERIAL = 3
-        val HEADSET_SURFACES = setOf("volume_bar", "headset_more_settings", "anc_select_card", "mi_audio_effect_select_card")
+        val HEADSET_VOLUME_SURFACES = setOf("volume_bar", "miplay_volume")
+        val HEADSET_SURFACES = HEADSET_VOLUME_SURFACES +
+            setOf("headset_more_settings", "anc_select_card", "mi_audio_effect_select_card")
         val CONTROL_OUTLINES = mapOf(
             WATCH_MORE_BUTTON to "watch_more_btn_shape",
             "headset_more_settings" to "headset_detail_more_settings_shape",
             "volume_bar" to "miplay_detail_header_bg_shape",
+            "miplay_volume" to "miplay_detail_header_bg_shape",
         )
         const val SMART_HOME_CARD_HOST = "com.xiaomi.smarthome.fusion.MiJiaControlViewHostService"
         const val SMART_HOME_MATERIAL = "com.xiaomi.smarthome.control.utils.material.MaterialUtils"

@@ -43,7 +43,7 @@ internal class StackedSignalDrawable(
         val saved = canvas.save()
         canvas.translate(bounds.left.toFloat(), bounds.top + verticalOffset)
         // User sizing stays inside the drawable; do not overwrite native ImageView animations.
-        canvas.scale(artworkScale, artworkScale, bounds.width() / 2f, bounds.height().toFloat())
+        canvas.scale(artworkScale, artworkScale, bounds.width() / 2f, bounds.height() / 2f)
         geometry.forEach { cell ->
             val level = if (cell.row == 0) topLevel else bottomLevel
             paint.color = DualSimArtworkPolicy.cellColor(foreground, opacity, cell.column < level)

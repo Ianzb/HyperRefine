@@ -36,8 +36,7 @@ internal object DualSimArtworkPolicy {
         val offsetY = (height - VIEWPORT_HEIGHT * scale) / 2f
         val step = VIEWPORT_WIDTH / CELL_COUNT
         val barWidth = step * 0.64f
-        // Keep the whole two-row artwork optically centred in the status-bar slot. The old
-        // bottom-anchored geometry sat ~3.6dp too low and left only ~1.1dp between the rows.
+        // Keep the lower row anchored and move only the upper row away from the network label.
         val artworkHeight = min(VIEWPORT_HEIGHT * 0.72f, VIEWPORT_WIDTH * 0.80f)
         val artworkTop = (VIEWPORT_HEIGHT - artworkHeight) / 2f
         val bottomHeight = min(artworkHeight * 0.22f, barWidth * 0.98f)
@@ -48,7 +47,7 @@ internal object DualSimArtworkPolicy {
             val left = column * step + (step - barWidth) / 2f
             val barHeight = upperHeight * (0.4f + column * 0.2f)
             val radius = min(barWidth, barHeight) * 0.48f
-            Cell(0, column, left, upperBaseline - barHeight, left + barWidth, upperBaseline, radius)
+            Cell(0, column, left, upperBaseline + 0.75f - barHeight, left + barWidth, upperBaseline + 0.75f, radius)
         } + (0 until CELL_COUNT).map { column ->
             val left = column * step + (step - barWidth) / 2f
             val radius = min(barWidth, bottomHeight) * 0.48f

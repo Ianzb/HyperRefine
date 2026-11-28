@@ -14,6 +14,8 @@ import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.experimental.packageinstaller.InstallerExperiment
 import cn.ianzb.hyperrefine.hook.assistant.AssistantKeys
 import cn.ianzb.hyperrefine.hook.browser.BrowserKeys
+import cn.ianzb.hyperrefine.hook.connect.BluetoothHighestSampleRateHook
+import cn.ianzb.hyperrefine.hook.connect.BluetoothAudioLoad
 import cn.ianzb.hyperrefine.hook.connect.ConnectKeys
 import cn.ianzb.hyperrefine.hook.connect.MirrorKeys
 import cn.ianzb.hyperrefine.hook.device.DeviceType
@@ -491,6 +493,7 @@ private fun deviceCenterSpecs(specs: List<OptionSpec>): List<OptionSpec> =
 private fun networkSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
         specByKey(specs, KEY_FIVE_G),
+        specByKey(specs, BluetoothHighestSampleRateHook.KEY),
     )
 
 /** 「息屏」二级页内的配置项，用于功能页搜索直达。 */
@@ -964,6 +967,14 @@ internal fun featureSpecs(): List<OptionSpec> {
             summaryRes = R.string.dark_mode_schedule_immediate_summary,
             defaultBoolean = false,
             targetPackages = listOf(DarkModeScheduleKeys.TARGET),
+            showStatus = true,
+        ),
+        OptionSpec(
+            key = BluetoothHighestSampleRateHook.KEY,
+            type = OptionType.SWITCH,
+            titleRes = R.string.bluetooth_highest_sample_rate,
+            summaryRes = R.string.bluetooth_highest_sample_rate_summary,
+            targetPackages = listOf(BluetoothAudioLoad.TARGET),
             showStatus = true,
         ),
         OptionSpec(

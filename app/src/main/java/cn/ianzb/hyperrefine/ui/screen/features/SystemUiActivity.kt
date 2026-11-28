@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import cn.ianzb.hyperrefine.R
+import cn.ianzb.hyperrefine.hook.connect.BluetoothAudioLoad
 import cn.ianzb.hyperrefine.hook.misound.AppVolumeKeys
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
@@ -42,7 +43,9 @@ class SystemUiActivity : BaseSubPageActivity() {
     }
 }
 
-internal val SystemUiActions: @Composable () -> Unit = { QuickActionsAction(listOf("com.android.systemui", AppVolumeKeys.TARGET_PACKAGE)) }
+internal val SystemUiActions: @Composable () -> Unit = {
+    QuickActionsAction(listOf("com.android.systemui", AppVolumeKeys.TARGET_PACKAGE, BluetoothAudioLoad.TARGET))
+}
 
 @Composable
 internal fun SystemUiContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {

@@ -818,4 +818,8 @@
     <string name="sb_icon_artwork_imported">已导入图像。重载系统界面后生效。</string>
     <string name="sb_icon_artwork_reset">恢复系统图标</string>
     <string name="sb_icon_artwork_failed">无法导入图像，请选择受支持的图片并检查 LSPosed 服务连接。</string>
+    <string name="bluetooth_scope_request">申请蓝牙作用域</string>
+    <string name="bluetooth_highest_sample_rate">优先最高采样率</string>
+    <string name="bluetooth_highest_sample_rate_summary">优先选用当前蓝牙编解码器支持的最高采样率。开启后从右上角重启蓝牙，再重新连接耳机。</string>
+    <string name="bluetooth_scope_request_summary">在 LSPosed 中批准后，模块才能读取并应用蓝牙音频配置。</string>
 </resources>

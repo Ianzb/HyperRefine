@@ -817,4 +817,8 @@
     <string name="sb_icon_artwork_imported">Image imported. Restart System UI to apply.</string>
     <string name="sb_icon_artwork_reset">Restore system icon</string>
     <string name="sb_icon_artwork_failed">Could not import the image. Choose a supported image and check the LSPosed service connection.</string>
+    <string name="bluetooth_scope_request">Request Bluetooth scope</string>
+    <string name="bluetooth_highest_sample_rate">Prefer highest sample rate</string>
+    <string name="bluetooth_highest_sample_rate_summary">Prefer the highest sample rate available for the current Bluetooth codec. After enabling, restart Bluetooth from the top-right menu and reconnect the headset.</string>
+    <string name="bluetooth_scope_request_summary">Approve the LSPosed request to let the module read and apply Bluetooth audio settings.</string>
 </resources>

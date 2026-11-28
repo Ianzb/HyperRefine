@@ -1,6 +1,7 @@
 system
 android
 com.android.systemui
+com.android.bluetooth
 com.miui.home
 com.miui.securitycenter
 com.miui.packageinstaller

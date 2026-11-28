@@ -1,6 +1,7 @@
 package cn.ianzb.hyperrefine.hook.base
 
 import cn.ianzb.hyperrefine.hook.connect.MiLinkLoad
+import cn.ianzb.hyperrefine.hook.connect.BluetoothAudioLoad
 import cn.ianzb.hyperrefine.hook.connect.XiaomiMirrorLoad
 import cn.ianzb.hyperrefine.hook.assistant.AssistantLoad
 import cn.ianzb.hyperrefine.hook.browser.BrowserLoad
@@ -33,6 +34,7 @@ object HookEntryRegistry {
         AssistantLoad(),
         HomeLoad(),
         SystemUiLoad(),
+        BluetoothAudioLoad(),
         SystemServerLoad(),
         NotificationLoad(),
         SecurityCenterLoad(),

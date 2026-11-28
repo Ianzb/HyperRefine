@@ -1,5 +1,7 @@
 package cn.ianzb.hyperrefine.xposed
 
+import cn.ianzb.hyperrefine.hook.connect.BluetoothAudioLoad
+
 /**
  * 应用重启 / 系统重启工具。
  *
@@ -29,6 +31,8 @@ object AppRestarter {
         }
         if (!isRunning(packageName)) return true
         SafeModeReader.noteUserRestart(packageName)
+        // BluetoothManagerService rebinds after the process exits. Force-stop can prevent that.
+        if (packageName == BluetoothAudioLoad.TARGET) return RootHelper.exec("killall ${BluetoothAudioLoad.TARGET}")
         return RootHelper.exec("am force-stop $packageName")
     }
 

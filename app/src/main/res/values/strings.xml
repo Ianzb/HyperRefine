@@ -312,7 +312,7 @@
     <string name="device_center_shrink_hit_area">缩小设备点击范围</string>
     <string name="device_center_shrink_hit_area_summary">点击范围缩小到图标本身，点卡片空白处改为打开融合设备中心</string>
     <string name="device_center_card_glass">流转卡片玻璃</string>
-    <string name="device_center_card_glass_summary">给流转卡片补上系统柔光玻璃，设备不可用时也有玻璃效果</string>
+    <string name="device_center_card_glass_summary">为设备不可用时显示的流转卡片背景补上柔光玻璃。耳机音量等内部控件由「更多场景启用柔光玻璃 → 融合设备中心展开卡片」控制。</string>
     <string name="network_section">网络</string>
     <string name="aod_section">息屏</string>
     <string name="five_g_switch">5G 开关</string>
@@ -801,7 +801,7 @@
     <string name="cc_glass_device_center">控制中心的融合设备中心快捷入口</string>
     <string name="cc_glass_device_center_summary">圆形设备图标卡片和设备中心按钮</string>
     <string name="cc_glass_device_card">融合设备中心展开卡片</string>
-    <string name="cc_glass_device_card_summary">设备卡片内的操作控件和「耳机连接至」设备列表</string>
+    <string name="cc_glass_device_card_summary">为展开卡片内的音量、降噪等操作控件和「耳机连接至」列表补上玻璃。改动后从右上角重启互联服务。</string>
     <string name="device_center_smart_home_card_animation">同步米家卡片开场动画</string>
     <string name="device_center_smart_home_card_animation_summary">让米家设备卡片的开场透明度跟随设备互联样式</string>
     <string name="sb_dual_hidden">隐藏</string>

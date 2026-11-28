@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
 import cn.ianzb.hyperrefine.hook.base.BaseHook
+import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
@@ -22,7 +23,7 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
     override val key: String = CcGlassKeys.DEVICE_CARD
 
     override fun init() {
-        val utils = Reflect.findClassIfExists(MATERIAL_UTILS, target.classLoader) ?: return
+        val utils = Reflect.findClass(MATERIAL_UTILS, target.classLoader)
         val miHome = target.packageName == MiLinkLoad.SMART_HOME_PACKAGE
         val supportsMaterial = if (miHome) null else utils.getDeclaredMethod("s", View::class.java)
         val materialStyle = utils.getDeclaredMethod(if (miHome) "OooOo0o" else "o", Context::class.java)
@@ -40,6 +41,7 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
         } else {
             val panelMaterial = utils.getDeclaredMethod("k", View::class.java, Int::class.javaPrimitiveType)
             val deviceCard = Reflect.findClassIfExists(DEVICE_CARD_VIEW, target.classLoader)
+            val headsetCard = Reflect.findClassIfExists(HEADSET_CARD_VIEW, target.classLoader)
             HookHelper.intercept(panelMaterial) { chain ->
                 val view = chain.args.getOrNull(0) as? View ?: return@intercept chain.proceed()
                 val type = chain.args.getOrNull(1) as? Int ?: return@intercept chain.proceed()
@@ -53,14 +55,35 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
                 result
             }
             hookSynergyState(applyGlass)
-            hookHeadsetVolumeSection(applyGlass)
+            if (headsetCard != null) {
+                hookHeadsetPreferences(headsetCard)
+                hookHeadsetVolumeSection(headsetCard, applyGlass)
+            }
             hookHeadsetRouteRows(applyGlass)
+            logHeadsetPreferences("MiLink UI startup")
         }
     }
 
-    private fun hookHeadsetVolumeSection(applyGlass: (View, Int, Drawable?) -> Unit) {
+    private fun logHeadsetPreferences(stage: String) {
+        val master = HookPrefs.getBoolean(CcGlassKeys.MASTER, false)
+        val scene = HookPrefs.getBoolean(key, true)
+        HookHelper.log("$tag: $stage (master=$master, scene=$scene)")
+    }
+
+    private fun hookHeadsetPreferences(card: Class<*>) {
+        val attach = Reflect.findMethodIfExists(card, "onAttachedToWindow") ?: return
+        var lastSettings: Pair<Boolean, Boolean>? = null
+        HookHelper.hookAfter(attach) {
+            val current = HookPrefs.getBoolean(CcGlassKeys.MASTER, false) to HookPrefs.getBoolean(key, true)
+            if (lastSettings != current) {
+                lastSettings = current
+                HookHelper.log("$tag: headset attached (master=${current.first}, scene=${current.second})")
+            }
+        }
+    }
+
+    private fun hookHeadsetVolumeSection(card: Class<*>, applyGlass: (View, Int, Drawable?) -> Unit) {
         val section = Reflect.findClassIfExists("com.miui.circulateplus.world.headset.v1", target.classLoader) ?: return
-        val card = Reflect.findClassIfExists(HEADSET_CARD_VIEW, target.classLoader) ?: return
         val constructor = section.declaredConstructors.singleOrNull {
             it.parameterTypes.contentEquals(arrayOf(card))
         } ?: return
@@ -74,6 +97,7 @@ class ExpandedDeviceCardGlassHook : BaseHook() {
             applyGlass(view, 2, shape)
         }
         fun refreshVolume(view: View) {
+            if (!CcGlassKeys.isEnabled(key)) return
             if (view.isLaidOut && !view.isLayoutRequested) {
                 applyVolume(view)
             } else if (pendingLayouts.add(view)) {

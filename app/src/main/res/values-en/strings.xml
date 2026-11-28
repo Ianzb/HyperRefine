@@ -312,7 +312,7 @@
     <string name="device_center_shrink_hit_area">Shrink device tap area</string>
     <string name="device_center_shrink_hit_area_summary">Limit the tap area to the device icon; tap empty space on the card to open Xiaomi Smart Hub</string>
     <string name="device_center_card_glass">Continuity card glass</string>
-    <string name="device_center_card_glass_summary">Add the system soft glass effect to device continuity cards, even when a device is unavailable</string>
+    <string name="device_center_card_glass_summary">Add soft glass to the card background shown when a device is unavailable. Controls inside expanded cards use their own option under Soft glass.</string>
     <string name="network_section">Network</string>
     <string name="aod_section">Always-on display</string>
     <string name="five_g_switch">5G switch</string>
@@ -800,7 +800,7 @@
     <string name="cc_glass_device_center">Device Center shortcuts in Control Center</string>
     <string name="cc_glass_device_center_summary">Circular device tiles and the Device Center button</string>
     <string name="cc_glass_device_card">Expanded Device Center cards</string>
-    <string name="cc_glass_device_card_summary">Controls inside device cards and the headphone connection device list</string>
+    <string name="cc_glass_device_card_summary">Add glass to volume, noise control, and other controls inside expanded cards, as well as the headphone connection list. Restart the interconnect service from the top-right menu after changing this option.</string>
     <string name="device_center_smart_home_card_animation">Match Mi Home card opening animation</string>
     <string name="device_center_smart_home_card_animation_summary">Use the device connectivity style for the card’s opening opacity</string>
     <string name="sb_dual_hidden">Hidden</string>

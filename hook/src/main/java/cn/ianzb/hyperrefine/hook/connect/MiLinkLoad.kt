@@ -39,7 +39,8 @@ class MiLinkLoad : BaseLoad() {
                     HookPrefs.getBoolean(ConnectKeys.CROSS_DEVICE_NOTIFICATION, false),
                 )
                 initHook(MiLinkCardGlassHook(), cardGlass)
-                initHook(ExpandedDeviceCardGlassHook(), CcGlassKeys.isEnabled(CcGlassKeys.DEVICE_CARD))
+                // Use the current preferences when a card renders, even if they arrive after startup.
+                initHook(ExpandedDeviceCardGlassHook(), true)
                 // 融合设备中心（CirculateWorldActivity）：常驻顶栏渐变模糊（随「顶栏渐变」总开关）。
                 initHook(CirculateWorldTopBarGradientHook(), HookPrefs.getBoolean(TopBarKeys.KEY, false))
             }

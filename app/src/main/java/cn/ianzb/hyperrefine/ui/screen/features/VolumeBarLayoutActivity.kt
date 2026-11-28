@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.hook.systemui.VolumeBarKeys
+import cn.ianzb.hyperrefine.hook.systemui.VolumeTimerHook
 import cn.ianzb.hyperrefine.ui.component.QuickActionsAction
 import cn.ianzb.hyperrefine.ui.component.pref.HookOptionView
 import cn.ianzb.hyperrefine.ui.component.pref.HookSection
@@ -40,6 +41,13 @@ internal val VolumeBarLayoutActions: @Composable () -> Unit = { QuickActionsActi
 internal fun VolumeBarLayoutContent(isBlurEnabled: Boolean, contentPadding: PaddingValues) {
     val scrollBehavior = LocalSubPageScrollBehavior.current
     val sections = listOf(
+        HookSection(
+            titleRes = R.string.volume_timer_section,
+            specs = listOf(
+                featureSpec(VolumeTimerHook.KEY),
+                featureSpec(VolumeTimerHook.MINUTES),
+            ),
+        ),
         HookSection(
             titleRes = R.string.volume_bar_panel_section,
             specs = listOf(

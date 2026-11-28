@@ -19,6 +19,7 @@ import cn.ianzb.hyperrefine.R
 import cn.ianzb.hyperrefine.ui.component.AppTopAppBarIconAction
 import cn.ianzb.hyperrefine.hook.device.DeviceType
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconComponent
+import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconArtwork
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconCondition
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconKeys
 import cn.ianzb.hyperrefine.hook.systemui.statusbar.StatusBarIconMode
@@ -175,6 +176,10 @@ internal fun IconSettingsContent(id: String, contentPadding: PaddingValues) {
                     },
                 )
             }
+        }
+
+        if (StatusBarIconArtwork.supports(component)) {
+            item { StatusBarArtworkOptions(id) }
         }
 
         item {

@@ -807,4 +807,15 @@
     <string name="sb_dual_hidden">隐藏</string>
     <string name="sb_dual_auto">自动</string>
     <string name="sb_dual_always">始终</string>
+    <string name="volume_timer_section">静音与勿扰定时</string>
+    <string name="volume_timer_custom">自定义定时档位</string>
+    <string name="volume_timer_custom_summary">同时应用于控制中心和侧边音量的详情页。重载系统界面后生效。</string>
+    <string name="volume_timer_minutes">定时档位（分钟）</string>
+    <string name="volume_timer_minutes_summary">按从小到大的顺序输入 1–8 个分钟数（每项 1–1440），以逗号分隔。例如 15,30,60。保留关闭档，输入无效时使用系统默认值。重载系统界面后生效。</string>
+    <string name="sb_icon_artwork">自定义图标图像</string>
+    <string name="sb_icon_artwork_import">导入图像</string>
+    <string name="sb_icon_artwork_summary">替换此系统图标的图像，保留原有显示条件。重载系统界面后生效。</string>
+    <string name="sb_icon_artwork_imported">已导入图像。重载系统界面后生效。</string>
+    <string name="sb_icon_artwork_reset">恢复系统图标</string>
+    <string name="sb_icon_artwork_failed">无法导入图像，请选择受支持的图片并检查 LSPosed 服务连接。</string>
 </resources>

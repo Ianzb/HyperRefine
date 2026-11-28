@@ -4,6 +4,7 @@ import android.view.View
 import android.view.ViewGroup
 import cn.ianzb.hyperrefine.hook.base.BaseHook
 import cn.ianzb.hyperrefine.hook.prefs.HookPrefs
+import cn.ianzb.hyperrefine.hook.xposed.HookHelper
 import cn.ianzb.hyperrefine.hook.xposed.Reflect
 
 /**
@@ -403,6 +404,10 @@ class StatusBarIconHook : BaseHook() {
             }
         }
         StatusBarMembers.install(installs)
+        statusIconViewClass?.let { iconView ->
+            runCatching { StatusBarIconArtwork.install(iconView) }
+                .onFailure { HookHelper.log("$tag: custom icon artwork unavailable", it) }
+        }
         // 这些 hook 只优化间距动画与通知上限的即时性；部分 ROM 不支持 hook
         // onLayout/构造器时不能让它们把整套状态栏图标功能一起回滚。
         onIconContainerLayout.forEach { method ->

@@ -806,4 +806,15 @@
     <string name="sb_dual_hidden">Hidden</string>
     <string name="sb_dual_auto">Automatic</string>
     <string name="sb_dual_always">Always</string>
+    <string name="volume_timer_section">Silent and Do Not Disturb timers</string>
+    <string name="volume_timer_custom">Customize timer steps</string>
+    <string name="volume_timer_custom_summary">Applies to volume details in Control Center and the side volume panel. Restart System UI to apply.</string>
+    <string name="volume_timer_minutes">Timer steps (minutes)</string>
+    <string name="volume_timer_minutes_summary">Enter 1–8 durations in ascending order, separated by commas, such as 15,30,60. Each duration is 1–1440 minutes. Off is kept and invalid input uses the system defaults. Restart System UI to apply.</string>
+    <string name="sb_icon_artwork">Custom icon artwork</string>
+    <string name="sb_icon_artwork_import">Import image</string>
+    <string name="sb_icon_artwork_summary">Replace this system icon’s artwork and keep its visibility rules. Restart System UI to apply.</string>
+    <string name="sb_icon_artwork_imported">Image imported. Restart System UI to apply.</string>
+    <string name="sb_icon_artwork_reset">Restore system icon</string>
+    <string name="sb_icon_artwork_failed">Could not import the image. Choose a supported image and check the LSPosed service connection.</string>
 </resources>

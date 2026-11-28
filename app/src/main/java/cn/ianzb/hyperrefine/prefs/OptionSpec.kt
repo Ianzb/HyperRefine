@@ -61,4 +61,5 @@ data class OptionSpec(
     val sliderDecimals: Int = 0,
     val sliderUnitRes: Int = 0,
     val sliderValueLabelRes: Int = 0,
+    val textValidator: ((String) -> Boolean)? = null,
 )

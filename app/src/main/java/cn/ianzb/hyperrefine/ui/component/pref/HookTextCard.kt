@@ -88,7 +88,9 @@ private fun TextValueDialog(
     AppDialog(
         show = true,
         title = stringResource(spec.titleRes),
-        summary = stringResource(R.string.hook_text_dialog_summary),
+        summary = spec.summaryText.ifEmpty {
+            stringResource(spec.summaryRes.takeIf { it != 0 } ?: R.string.hook_text_dialog_summary)
+        },
         onDismissRequest = onDismiss,
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -135,6 +137,7 @@ private fun TextValueDialog(
                 )
                 AppDialogButton(
                     text = stringResource(R.string.action_confirm),
+                    enabled = spec.textValidator?.invoke(input.text.toString()) != false,
                     onClick = {
                         ConfigState.set(spec.key, input.text.toString())
                         onDismiss()

@@ -1,6 +1,7 @@
 package cn.ianzb.hyperrefine.hook.systemui.wallpaper
 
 import android.app.Application
+import android.app.KeyguardManager
 import android.content.ComponentCallbacks
 import android.content.ComponentName
 import android.content.Context
@@ -29,16 +30,17 @@ import kotlin.math.roundToInt
  * 看不到这层 alpha，于是控制中心、负一屏的模糊背景会停在压暗前的亮度。
  *
  * 官方模糊的叠色层（`View#setMiBackgroundBlendColors`，画在模糊之上）正好可以补这一层：在最前面插入
- * 同浓度的黑色，模糊结果整体乘上 (1 - 压暗值)，与压暗后的壁纸亮度一致。只处理 id 名含 `blur` 的模糊
- * 容器（通知栏 / 控制中心为 `blur_blend_container`），且只在桌面 / 负一屏这类「背景就是壁纸」的界面
- * 之上生效；宿主写叠色后仍会经过本类，压暗层不会被覆盖掉。
+ * 同浓度的黑色。SystemUI 使用通知栏 / 控制中心共用的 `blur_blend_container`。
+ * 锁屏时取锁屏压暗值，解锁后仅在桌面或负一屏上方应用桌面值。
  *
  * 只调用系统自身的接口，不复制任何系统代码。
  */
 internal object WallpaperDimBlurDim {
 
     private const val TAG = "WallpaperDimBlurDim"
+    private const val SYSTEM_UI = "com.android.systemui"
     private const val SET_BLEND = "setMiBackgroundBlendColors"
+    private const val ADD_BLEND = "addMiBackgroundBlendColor"
     private const val CLEAR_BLEND = "clearMiBackgroundBlendColor"
     private const val SET_RADIUS = "setMiBackgroundBlurRadius"
     private const val SET_MODE = "setMiBackgroundBlurMode"
@@ -54,9 +56,13 @@ internal object WallpaperDimBlurDim {
 
     @Volatile
     private var dim = 0f
+    @Volatile
+    private var lockDim = 0f
+    @Volatile
+    private var keyguardShowing = false
 
-    /** 最上层是不是「背景为壁纸」的界面；查询不可用时保持上一次判断（初始按是处理）。 */
-    private val wallpaperBehind = AtomicBoolean(true)
+    /** 查询不可用时保留上一次判断。 */
+    private val wallpaperBehind = AtomicBoolean(false)
 
     private val installed = AtomicBoolean()
     private val main = Handler(Looper.getMainLooper())
@@ -80,7 +86,7 @@ internal object WallpaperDimBlurDim {
     private val applied = WeakHashMap<View, Float>()
 
     private val idNames = HashMap<String, String?>()
-    private val writing = ThreadLocal.withInitial { false }
+    private val writing = ThreadLocal<Boolean>()
 
     private var setBlendMethod: Method? = null
 
@@ -112,18 +118,29 @@ internal object WallpaperDimBlurDim {
 
     /** 深浅色切换 / 滑条变化后按新值重写全部已知容器。 */
     private fun update(context: Context) {
-        val next = currentDim(context)
-        if (next == dim) return
-        dim = next
+        val home = currentDim(context, WallpaperDimKeys.AMOUNT)
+        val lock = if (HookPrefs.contains(WallpaperDimKeys.LOCK_AMOUNT)) {
+            currentDim(context, WallpaperDimKeys.LOCK_AMOUNT)
+        } else home
+        if (home == dim && lock == lockDim) return
+        dim = home
+        lockDim = lock
         main.post { refresh() }
     }
 
-    private fun currentDim(context: Context): Float {
+    internal fun onKeyguardChanged(showing: Boolean) {
+        if (showing == keyguardShowing) return
+        keyguardShowing = showing
+        if (!showing) queryWallpaperBehind(force = true)
+        main.post { refresh() }
+    }
+
+    private fun currentDim(context: Context, key: String): Float {
         if (!HookPrefs.getBoolean(WallpaperDimKeys.ENABLED, false)) return 0f
         val night = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
             Configuration.UI_MODE_NIGHT_YES
         if (!night) return 0f
-        return HookPrefs.getFloat(WallpaperDimKeys.AMOUNT, WallpaperDimKeys.DEFAULT_AMOUNT)
+        return HookPrefs.getFloat(key, WallpaperDimKeys.DEFAULT_AMOUNT)
             .coerceIn(0f, 100f) / 100f
     }
 
@@ -131,6 +148,11 @@ internal object WallpaperDimBlurDim {
     private fun track(app: Application) {
         appContext = app
         if (!tracked.add(app)) return
+        if (app.packageName == SYSTEM_UI) {
+            keyguardShowing = runCatching {
+                app.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
+            }.getOrDefault(false)
+        }
         runCatching {
             app.registerComponentCallbacks(object : ComponentCallbacks {
                 override fun onConfigurationChanged(newConfig: Configuration) = update(app)
@@ -154,26 +176,31 @@ internal object WallpaperDimBlurDim {
             HookHelper.log("$TAG: $SET_BLEND not found, blur dim disabled")
             return
         }
-        hookSetBlend(view)
+        hookSetBlend()
         hookClearBlend(view)
+        hookAddBlend(view)
         // 宿主可能只开模糊、不写叠色：任一模糊参数生效时补上压暗层（按压暗结果去重，不逐帧写）。
         hookBlurSetter(view, SET_RADIUS) { it > 0 }
         hookBlurSetter(view, SET_MODE) { it != 0 }
         hookBlurSetter(view, SET_GLASS_RADIUS) { it > 0 }
     }
 
-    private fun hookSetBlend(view: Class<*>) {
+    private fun hookSetBlend() {
         val method = setBlendMethod ?: return
         runCatching {
             HookHelper.hookBefore(method) { param ->
                 val target = param.thisObject as? View ?: return@hookBefore
-                if (!isBlurContainer(target)) return@hookBefore
+                if (writing.get() == true || !isBlurContainer(target)) return@hookBefore
                 val host = copyOf(param.args[0]) ?: return@hookBefore
-                record(target, host)
-                if (writing.get() == true) return@hookBefore
+                val stripped = record(target, host)
                 queryWallpaperBehind()
                 val effective = effectiveDim()
-                if (effective <= 0f) return@hookBefore
+                synchronized(applied) { applied[target] = effective }
+                if (effective <= 0f) {
+                    synchronized(injected) { injected.remove(target) }
+                    if (stripped) param.setArg(0, host)
+                    return@hookBefore
+                }
                 param.setArg(0, withDim(target, host, effective))
             }
         }.onFailure { HookHelper.log("$TAG: hook $SET_BLEND failed", it) }
@@ -185,10 +212,39 @@ internal object WallpaperDimBlurDim {
         runCatching {
             HookHelper.hookAfter(method) { param ->
                 val target = param.thisObject as? View ?: return@hookAfter
-                if (!isBlurContainer(target) || effectiveDim() <= 0f) return@hookAfter
-                write(target, hostColorsOf(target))
+                if (writing.get() == true || !isBlurContainer(target)) return@hookAfter
+                val host = ArrayList<Point>()
+                record(target, host)
+                if (effectiveDim() > 0f) write(target, host)
+                else {
+                    synchronized(applied) { applied.remove(target) }
+                    synchronized(injected) { injected.remove(target) }
+                }
             }
         }.onFailure { HookHelper.log("$TAG: hook $CLEAR_BLEND failed", it) }
+    }
+
+    private fun hookAddBlend(view: Class<*>) {
+        val int = Int::class.javaPrimitiveType!!
+        val method = Reflect.findMethodIfExists(view, ADD_BLEND, int, int) ?: return
+        val read = Reflect.findMethodIfExists(view, "getMiBackgroundBlendColors") ?: return
+        runCatching {
+            HookHelper.hookAfter(method) { param ->
+                val target = param.thisObject as? View ?: return@hookAfter
+                if (writing.get() == true || !isBlurContainer(target)) return@hookAfter
+                val colors = synchronized(hostColors) { hostColors[target]?.let(::ArrayList) }
+                val host = if (colors != null) {
+                    val color = param.args[0] as? Int ?: return@hookAfter
+                    val mode = param.args[1] as? Int ?: return@hookAfter
+                    colors.apply { add(Point(color, mode)) }
+                } else {
+                    copyOf(read.invoke(target)) ?: return@hookAfter
+                }
+                record(target, host)
+                queryWallpaperBehind()
+                if (effectiveDim() > 0f || (appliedOf(target) ?: 0f) > 0f) write(target, host)
+            }
+        }.onFailure { HookHelper.log("$TAG: hook $ADD_BLEND failed", it) }
     }
 
     /** 模糊参数（半径 / 模式）出现时补写压暗层；参数会随展开动画逐帧更新，故按结果去重。 */
@@ -201,8 +257,11 @@ internal object WallpaperDimBlurDim {
                 if (!isBlurContainer(target) || !active(param.args[0] as? Int ?: 0)) return@hookAfter
                 queryWallpaperBehind()
                 val effective = effectiveDim()
-                if (effective <= 0f || appliedOf(target) == effective) return@hookAfter
-                write(target, hostColorsOf(target))
+                val previous = appliedOf(target) ?: 0f
+                if (previous == effective) return@hookAfter
+                val host = hostColorsOf(target)
+                synchronized(hostColors) { hostColors.putIfAbsent(target, host) }
+                write(target, host)
             }
         }.onFailure { HookHelper.log("$TAG: hook $name failed", it) }
     }
@@ -216,16 +275,27 @@ internal object WallpaperDimBlurDim {
     private fun write(view: View, host: ArrayList<Point>) {
         val method = setBlendMethod ?: return
         val effective = effectiveDim()
-        val value = if (effective <= 0f) host else withDim(view, host, effective)
+        val value = if (effective <= 0f) {
+            synchronized(injected) { injected.remove(view) }
+            host
+        } else withDim(view, host, effective)
         writing.set(true)
-        runCatching { method.invoke(view, value) }
-            .onFailure { HookHelper.log("$TAG: apply dim failed", it) }
-        writing.set(false)
-        synchronized(applied) { applied[view] = effective }
+        try {
+            method.invoke(view, value)
+            synchronized(applied) { applied[view] = effective }
+        } catch (error: Exception) {
+            HookHelper.log("$TAG: apply dim failed", error)
+        } finally {
+            writing.remove()
+        }
     }
 
     /** 生效压暗值：开关 / 深浅色给出的压暗值，只在「背后是壁纸」的界面上使用。 */
-    private fun effectiveDim(): Float = if (wallpaperBehind.get()) dim else 0f
+    private fun effectiveDim(): Float = when {
+        keyguardShowing -> lockDim
+        wallpaperBehind.get() -> dim
+        else -> 0f
+    }
 
     private fun dimPoint(value: Float): Point =
         Point(((value * 255f).roundToInt().coerceIn(1, 255)) shl 24, SRC_OVER)
@@ -246,10 +316,12 @@ internal object WallpaperDimBlurDim {
         return ArrayList(list)
     }
 
-    private fun record(view: View, host: ArrayList<Point>) {
+    private fun record(view: View, host: ArrayList<Point>): Boolean {
         val mine = synchronized(injected) { injected[view] }
-        if (mine != null && host.isNotEmpty() && host[0] == mine) host.removeAt(0)
+        val stripped = mine != null && host.firstOrNull() === mine
+        if (stripped) host.removeAt(0)
         synchronized(hostColors) { hostColors[view] = host }
+        return stripped
     }
 
     private fun hostColorsOf(view: View): ArrayList<Point> =
@@ -270,8 +342,12 @@ internal object WallpaperDimBlurDim {
             idNames[key] = resolved
             resolved
         }
-        return name?.contains("blur", ignoreCase = true) == true
+        return if (appContext?.packageName == SYSTEM_UI) name == "blur_blend_container"
+        else name?.contains("blur", ignoreCase = true) == true
     }
+
+    internal fun managesSystemUiContainer(view: View): Boolean =
+        setBlendMethod != null && appContext?.packageName == SYSTEM_UI && isBlurContainer(view)
 
     /**
      * 刷新「最上层是不是桌面 / 负一屏」的判断。
@@ -294,10 +370,17 @@ internal object WallpaperDimBlurDim {
         }
     }
 
-    private fun topPackage(context: Context): String? = runCatching {
-        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) ?: return@runCatching null
-        val info = Reflect.callMethod(manager, "getFocusedRootTaskInfo") ?: return@runCatching null
-        val activity = Reflect.getObjectField(info, "topActivity") as? ComponentName
-        activity?.packageName
-    }.getOrNull()
+    private fun topPackage(context: Context): String? {
+        val info = runCatching {
+            context.getSystemService(Context.ACTIVITY_SERVICE)?.let {
+                Reflect.callMethod(it, "getFocusedRootTaskInfo")
+            }
+        }.getOrNull() ?: runCatching {
+            val type = Reflect.findClass("android.app.ActivityTaskManager", context.classLoader)
+            val service = Reflect.callStaticMethod(type, "getService") ?: return@runCatching null
+            Reflect.callMethod(service, "getFocusedRootTaskInfo")
+        }.getOrNull() ?: return null
+        return runCatching { (Reflect.getObjectField(info, "topActivity") as? ComponentName)?.packageName }
+            .getOrNull()
+    }
 }

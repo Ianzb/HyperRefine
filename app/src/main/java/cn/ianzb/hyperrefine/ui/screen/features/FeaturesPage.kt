@@ -28,6 +28,7 @@ import cn.ianzb.hyperrefine.hook.systemui.AodBottomIconsHook
 import cn.ianzb.hyperrefine.hook.systemui.AodFullScreenKeepHook
 import cn.ianzb.hyperrefine.hook.systemui.FiveGSwitchHook
 import cn.ianzb.hyperrefine.hook.systemui.VolumeBarKeys
+import cn.ianzb.hyperrefine.hook.systemui.VolumeTimerHook
 import cn.ianzb.hyperrefine.hook.systemui.glass.CcGlassKeys
 import cn.ianzb.hyperrefine.hook.systemui.radius.CcRadiusKeys
 import cn.ianzb.hyperrefine.hook.systemui.SplitScreenKeys
@@ -524,6 +525,8 @@ private fun appVolumeSpecs(specs: List<OptionSpec>): List<OptionSpec> =
 /** 「音量条布局」二级页内的配置项，用于功能页搜索直达。 */
 private fun volumeBarLayoutSpecs(specs: List<OptionSpec>): List<OptionSpec> =
     listOf(
+        specByKey(specs, VolumeTimerHook.KEY),
+        specByKey(specs, VolumeTimerHook.MINUTES),
         specByKey(specs, VolumeBarKeys.PANEL_BG),
         specByKey(specs, VolumeBarKeys.PANEL_PAD_VERTICAL),
         specByKey(specs, VolumeBarKeys.PANEL_PAD_HORIZONTAL),
@@ -1939,6 +1942,23 @@ private fun buildAutoBalanceSpecs(systemUi: List<String>): List<OptionSpec> = li
 
 /** 「音量条」配置项（系统界面：多应用面板 + 官方侧边音量条）。 */
 private fun buildVolumeBarSpecs(systemUi: List<String>): List<OptionSpec> = listOf(
+    OptionSpec(
+        key = VolumeTimerHook.KEY,
+        type = OptionType.SWITCH,
+        titleRes = R.string.volume_timer_custom,
+        summaryRes = R.string.volume_timer_custom_summary,
+        targetPackages = systemUi,
+    ),
+    OptionSpec(
+        key = VolumeTimerHook.MINUTES,
+        type = OptionType.TEXT,
+        titleRes = R.string.volume_timer_minutes,
+        summaryRes = R.string.volume_timer_minutes_summary,
+        defaultString = VolumeTimerHook.DEFAULT,
+        targetPackages = systemUi,
+        dependsOn = VolumeTimerHook.KEY,
+        textValidator = VolumeTimerHook.Companion::isValid,
+    ),
     OptionSpec(
         key = VolumeBarKeys.PANEL_BG,
         type = OptionType.SWITCH,

@@ -175,6 +175,7 @@ class LockGlassDimHook : BaseHook() {
     /** 当前是否应该压暗玻璃；不满足时返回 0。 */
     private fun dimColor(view: View? = null): Int {
         if (!isDimEnabled()) return 0
+        if (view != null && WallpaperDimBlurDim.managesSystemUiContainer(view)) return 0
         if (keyguardStateKnown) {
             if (!keyguardShowing) return 0
         } else if (!isKeyguardLocked(view)) {

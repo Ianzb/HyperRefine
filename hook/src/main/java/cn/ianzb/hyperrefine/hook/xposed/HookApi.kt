@@ -77,6 +77,8 @@ object HookHelper {
         xposed = module
     }
 
+    internal fun openRemoteFile(name: String): android.os.ParcelFileDescriptor = xposed.openRemoteFile(name)
+
     /**
      * 对方法 / 构造器去优化，确保被内联调用的 hook 点能真正命中。
      * 返回是否成功；未初始化或框架不支持时静默返回 false。

@@ -142,10 +142,12 @@ class WallpaperDarkDimHook : BaseHook() {
         method.isAccessible = true
         runCatching {
             HookHelper.hookAfter(method) { param ->
+                val showing = param.args.getOrNull(0) as? Boolean
+                if (showing != null) WallpaperDimBlurDim.onKeyguardChanged(showing)
                 applyDim(
                     app,
                     force = true,
-                    keyguardOverride = param.args.getOrNull(0) as? Boolean,
+                    keyguardOverride = showing,
                 )
             }
         }.onFailure { HookHelper.log("$tag: hook keyguard state failed", it) }

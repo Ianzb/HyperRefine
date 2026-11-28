@@ -80,6 +80,7 @@ class SystemUiLoad : BaseLoad() {
                 HookPrefs.getBoolean(VolumeBarKeys.BUTTON_STYLE, false),
         )
         initHook(VolumeBarSizeHook(), HookPrefs.getBoolean(VolumeBarKeys.BAR_SIZE, false))
+        initHook(VolumeTimerHook(), HookPrefs.getBoolean(VolumeTimerHook.KEY, false))
         initHook(SideVolumePositionHook(), HookPrefs.getBoolean(VolumeBarKeys.SIDE_POS, false))
         initHook(SidePanelPositionHook(), HookPrefs.getBoolean(VolumeBarKeys.L2_POS, false))
         initHook(

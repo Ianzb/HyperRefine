@@ -510,6 +510,8 @@ class StatusBarIconHook : BaseHook() {
                 android.util.Log.w("HyperRefineStatusBar", "speed interval hook unavailable", it)
             }
         }
+        runCatching { FullscreenPrivacyIndicator.install(loader, guard) }
+            .onFailure { HookHelper.log("$tag: fullscreen privacy window unavailable", it) }
         // 控制中心的隐私指示由独立 View 承载；原生 onPromptInfoChanged 会重设子 View 显隐，
         // 在其后重新套用显示模式，避免用户切换隐私状态后“仅控制中心显示/隐藏”失效。
         listOf(
